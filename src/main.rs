@@ -45,10 +45,11 @@ type Result<T> = std::result::Result<T, MainError>;
 
 #[derive(Debug)]
 struct Args {
-    script: Option<String>,
+    script: String,
+    args: Vec<String>,
 
-    expr: Option<String>,
-    loop_: Option<String>,
+    expr: bool,
+    loop_: bool,
     count: bool,
 
     build_only: bool,
@@ -81,28 +82,26 @@ fn parse_args() -> Args {
         .subcommand(SubCommand::new("script")
             .version(version)
             .about(about)
-            .usage("\
-                cargo script [FLAGS OPTIONS] <script>\n\
-              \tcargo script [FLAGS OPTIONS] --expr <expr>\n\
-              \tcargo script [FLAGS OPTIONS --count] --loop <loop>\
-            ")
+            .usage("cargo script [FLAGS OPTIONS] <script> [--] <args>...")
             .arg(Arg::with_name("script")
                 .help("Script file (with or without extension) to execute.")
                 .required(true)
                 .index(1)
-                .conflicts_with_all(csas!["expr", "loop"])
+            )
+            .arg(Arg::with_name("args")
+                .help("Additional arguments passed to the script.")
+                .index(2)
+                .multiple(true)
             )
             .arg(Arg::with_name("expr")
-                .help("Evaluate an expression and display the result.")
+                .help("Execute <script> as a literal expression and display the result.")
                 .long("expr")
-                .takes_value(true)
-                .conflicts_with_all(csas!["loop", "script"])
+                .conflicts_with_all(csas!["loop"])
             )
             .arg(Arg::with_name("loop")
-                .help("Invoke a closure once for each line from stdin.")
+                .help("Execute <script> as a literal closure once for each line from stdin.")
                 .long("loop")
-                .takes_value(true)
-                .conflicts_with_all(csas!["expr", "script"])
+                .conflicts_with_all(csas!["expr"])
             )
             .arg(Arg::with_name("count")
                 .help("Invoke the loop closure with two arguments: line, and line number.")
@@ -133,10 +132,12 @@ fn parse_args() -> Args {
     let m = m.subcommand_matches("script").unwrap();
 
     Args {
-        script: m.value_of("script").map(Into::into),
+        script: m.value_of("script").map(Into::into).unwrap(),
+        args: m.values_of("args").unwrap_or(vec![]).into_iter()
+            .map(Into::into).collect(),
 
-        expr: m.value_of("expr").map(Into::into),
-        loop_: m.value_of("loop").map(Into::into),
+        expr: m.is_present("expr"),
+        loop_: m.is_present("loop"),
         count: m.is_present("count"),
 
         build_only: m.is_present("build_only"),
@@ -177,8 +178,8 @@ fn try_main() -> Result<i32> {
     let script_path: PathBuf;
     let content: String;
 
-    let input = match (args.arg_script.as_ref(), args.flag_expr, args.flag_loop) {
-        (Some(script), None, None) => {
+    let input = match (args.script, args.expr, args.loop_) {
+        (script, false, false) => {
             let (path, mut file) = try!(find_script(script).ok_or("could not find script"));
 
             script_name = path.file_stem()
@@ -195,16 +196,16 @@ fn try_main() -> Result<i32> {
 
             Input::File(&script_name, &script_path, &content, mtime)
         },
-        (None, Some(expr), None) => {
+        (expr, true, false) => {
             content = expr;
             Input::Expr(&content)
         },
-        (None, None, Some(loop_)) => {
+        (loop_, false, true) => {
             content = loop_;
-            Input::Loop(&content, args.flag_count)
+            Input::Loop(&content, args.count)
         },
         _ => try!(Err((Blame::Human,
-            "cannot specify more than one of <script>, --expr, or --loop")))
+            "cannot specify both --expr and --loop")))
     };
     info!("input: {:?}", input);
 
@@ -220,7 +221,7 @@ fn try_main() -> Result<i32> {
         use std::collections::hash_map::Entry::{Occupied, Vacant};
 
         let mut deps: HashMap<String, String> = HashMap::new();
-        for dep in args.flag_dep {
+        for dep in args.dep {
             // Append '=*' if it needs it.
             let dep = match dep.find('=') {
                 Some(_) => dep,
@@ -264,25 +265,25 @@ fn try_main() -> Result<i32> {
     info!("deps: {:?}", deps);
 
     // Work out what to do.
-    let (action, pkg_path, meta) = cache_action_for(&input, args.flag_debug, deps);
+    let (action, pkg_path, meta) = cache_action_for(&input, args.debug, deps);
     info!("action: {:?}", action);
     info!("pkg_path: {:?}", pkg_path);
     info!("meta: {:?}", meta);
 
     // Compile if we need it.
-    if action == CacheAction::Compile || args.flag_force {
+    if action == CacheAction::Compile || args.force {
         info!("compiling...");
         try!(compile(&input, &meta, &pkg_path));
     }
 
-    if args.flag_build_only {
+    if args.build_only {
         return Ok(0);
     }
 
     // Run it!
     let exe_path = get_exe_path(&input, &pkg_path, &meta);
     info!("executing {:?}", exe_path);
-    Ok(try!(Command::new(exe_path).status()
+    Ok(try!(Command::new(exe_path).args(&args.args).status()
         .map(|st| st.code().unwrap_or(1))))
 }
 
