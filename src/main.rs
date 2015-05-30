@@ -33,6 +33,7 @@ struct Args {
 
     flag_expr: Option<String>,
     flag_loop: Option<String>,
+    flag_count: bool,
 
     flag_build_only: bool,
     flag_debug: bool,
@@ -43,7 +44,7 @@ struct Args {
 const USAGE: &'static str = "Usage:
     cargo script [options] [--dep SPEC...] <script>
     cargo script [options] [--dep SPEC...] --expr EXPR
-    cargo script [options] [--dep SPEC...] --loop CLOSURE
+    cargo script [options] [--dep SPEC...] [--count] --loop CLOSURE
     cargo script --help
 
 Options:
@@ -51,6 +52,7 @@ Options:
 
     --expr EXPR             Evaluate an expression and display the result.
     --loop CLOSURE          Invoke a closure once for each line from standard input.
+    --count                 Invoke the loop closure with two arguments: line, line_number.
 
     --build-only            Build the script, but don't run it.
     --debug                 Build a debug executable rather than an optimised one.
@@ -113,7 +115,7 @@ fn try_main() -> Result<i32> {
         },
         (None, None, Some(loop_)) => {
             content = loop_;
-            Input::Loop(&content)
+            Input::Loop(&content, args.flag_count)
         },
         _ => try!(Err((Blame::Human,
             "cannot specify more than one of <script>, --expr, or --loop")))
@@ -182,7 +184,7 @@ fn try_main() -> Result<i32> {
     info!("meta: {:?}", meta);
 
     // Compile if we need it.
-    if action == CacheAction::Compile {
+    if action == CacheAction::Compile || args.flag_force {
         info!("compiling...");
         try!(compile(&input, &meta, &pkg_path));
     }
@@ -261,21 +263,53 @@ fn main() {
     let mut line_buffer = String::new();
     let mut stdin = std::io::stdin();
     loop {
-        stdin.read_line(&mut line_buffer).unwrap();
-        let output = invoke_closure(line, %%);
+        line_buffer.clear();
+        let read_res = stdin.read_line(&mut line_buffer).unwrap_or(0);
+        if read_res == 0 { break }
+        let output = invoke_closure(&line_buffer, %%);
 
         out_buffer.clear();
-        write!(&mut out_buffer, "{:?}", output);
-        let out_str = String::from_utf8_lossy(out_buffer);
+        write!(&mut out_buffer, "{:?}", output).unwrap();
+        let out_str = String::from_utf8_lossy(&out_buffer);
         if &*out_str != "()" {
             println!("{}", out_str);
         }
     }
 }
 
-fn invoke_closure<F, T>(line: &str, closure: F) -> T
+fn invoke_closure<F, T>(line: &str, mut closure: F) -> T
 where F: FnMut(&str) -> T {
     closure(line)
+}
+"#;
+
+const LOOP_COUNT_TEMPLATE: &'static str = r#"
+use std::io::prelude::*;
+
+fn main() {
+    let mut out_buffer: Vec<u8> = vec![];
+    let mut line_buffer = String::new();
+    let mut stdin = std::io::stdin();
+    let mut count = 0;
+    loop {
+        line_buffer.clear();
+        let read_res = stdin.read_line(&mut line_buffer).unwrap_or(0);
+        if read_res == 0 { break }
+        count += 1;
+        let output = invoke_closure(&line_buffer, count, %%);
+
+        out_buffer.clear();
+        write!(&mut out_buffer, "{:?}", output).unwrap();
+        let out_str = String::from_utf8_lossy(&out_buffer);
+        if &*out_str != "()" {
+            println!("{}", out_str);
+        }
+    }
+}
+
+fn invoke_closure<F, T>(line: &str, count: usize, mut closure: F) -> T
+where F: FnMut(&str, usize) -> T {
+    closure(line, count)
 }
 "#;
 
@@ -349,7 +383,9 @@ fn split_input(input: &Input, deps: &[(String, String)]) -> Result<(String, Stri
             (manifest, source, FILE_TEMPLATE)
         },
         Input::Expr(content) => ("", content, EXPR_TEMPLATE),
-        Input::Loop(content) => ("", content, LOOP_TEMPLATE),
+        Input::Loop(content, count) => {
+            ("", content, if count { LOOP_COUNT_TEMPLATE } else { LOOP_TEMPLATE })
+        },
     };
 
     let source = template.replace("%%", source);
@@ -631,23 +667,13 @@ where P: AsRef<Path> {
 enum Input<'a> {
     File(&'a str, &'a Path, &'a str, u64),
     Expr(&'a str),
-    Loop(&'a str),
+    Loop(&'a str, bool),
 }
 
 const DEFLATE_PATH_LEN_MAX: usize = 20;
 const CONTENT_DIGEST_LEN_MAX: usize = 20;
 
 impl<'a> Input<'a> {
-    // pub fn name(&self) -> &str {
-    //     use Input::*;
-
-    //     match *self {
-    //         File(name, _, _, _) => name,
-    //         Expr(..) => "<expr>",
-    //         Loop(..) => "<loop>",
-    //     }
-    // }
-
     pub fn safe_name(&self) -> &str {
         use Input::*;
 
@@ -713,7 +739,10 @@ impl<'a> Input<'a> {
                 id.push(if STUB_HASHES { "stub" } else { &*digest });
                 Ok(id)
             },
-            Loop(content) => {
+            Loop(content, count) => {
+                hasher.input_str("count:");
+                hasher.input_str(if count { "true;" } else { "false;" });
+
                 hasher.input_str(&content);
                 let mut digest = hasher.result_str();
                 digest.truncate(CONTENT_DIGEST_LEN_MAX);
