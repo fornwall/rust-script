@@ -75,6 +75,7 @@ fn parse_args() -> Args {
 
     // We have to kinda lie about who we are for the output to look right...
     let m = App::new("cargo")
+        .bin_name("cargo")
         .version(version)
         .about(about)
         .arg_required_else_help(true)

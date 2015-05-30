@@ -12,7 +12,7 @@ shaman = "0.1.0"
 toml = "0.1.20"
 
 [dependencies.clap]
-version = "0.10.1"
+version = "0.10.2"
 
 # Disable the "color" feature because it just outputs garbage on Windows.
 default-features = false

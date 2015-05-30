@@ -2,7 +2,7 @@
 name = "cargo-script"
 version = "0.1.1"
 dependencies = [
- "clap 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "clap 0.10.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "flate2 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -17,7 +17,7 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "0.10.1"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "strsim 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
