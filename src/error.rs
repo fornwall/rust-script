@@ -1,7 +1,14 @@
+/*!
+This module contains the definition of the program's main error type.
+*/
+
 use std::error::Error;
 use std::fmt;
 use std::io;
 
+/**
+Represents an error in the program.
+*/
 #[derive(Debug)]
 pub enum MainError {
     Io(Blame, io::Error),
@@ -9,6 +16,11 @@ pub enum MainError {
     OtherBorrowed(Blame, &'static str),
 }
 
+/**
+Records who we have chosen to blame for a particular error.
+
+This is used to distinguish between "report this to a user" and "explode violently".
+*/
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Blame { Human, Internal }
 

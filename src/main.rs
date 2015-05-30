@@ -1,3 +1,14 @@
+/*!
+`cargo-script` is a Cargo subcommand designed to let people quickly and easily run Rust "scripts" which can make use of Cargo's package ecosystem.
+
+Or, to put it in other words, it lets you write useful, but small, Rust programs without having to create a new directory and faff about with `Cargo.toml`.
+
+As such, `cargo-script` does two major things:
+
+1. Given a script, it extracts the embedded Cargo manifest and merges it with some sensible defaults.  This manifest, along with the source code, is written to a fresh Cargo package on-disk.
+
+2. It caches the generated and compiled packages, regenerating them only if the script or its metadata have changed.
+*/
 #![allow(deprecated)] // for file metadata
 #![feature(collections)]
 #![feature(fs_time)]
@@ -11,14 +22,19 @@ extern crate rustc_serialize;
 extern crate shaman;
 extern crate toml;
 
+/**
+If this is set to `true`, the digests used for package IDs will be replaced with "stub" to make testing a bit easier.  Obviously, you don't want this `true` for release...
+*/
 const STUB_HASHES: bool = false;
 
+mod consts;
 mod error;
+mod platform;
+mod util;
 
 use std::error::Error;
 use std::ffi::OsString;
 use std::fs;
-use std::io;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -247,79 +263,23 @@ where P: AsRef<Path> {
     Ok(())
 }
 
-const FILE_TEMPLATE: &'static str = r#"%%"#;
-
-const EXPR_TEMPLATE: &'static str = r#"
-fn main() {
-    println!("{}", (%%));
-}
-"#;
-
-const LOOP_TEMPLATE: &'static str = r#"
-use std::io::prelude::*;
-
-fn main() {
-    let mut out_buffer: Vec<u8> = vec![];
-    let mut line_buffer = String::new();
-    let mut stdin = std::io::stdin();
-    loop {
-        line_buffer.clear();
-        let read_res = stdin.read_line(&mut line_buffer).unwrap_or(0);
-        if read_res == 0 { break }
-        let output = invoke_closure(&line_buffer, %%);
-
-        out_buffer.clear();
-        write!(&mut out_buffer, "{:?}", output).unwrap();
-        let out_str = String::from_utf8_lossy(&out_buffer);
-        if &*out_str != "()" {
-            println!("{}", out_str);
-        }
-    }
-}
-
-fn invoke_closure<F, T>(line: &str, mut closure: F) -> T
-where F: FnMut(&str) -> T {
-    closure(line)
-}
-"#;
-
-const LOOP_COUNT_TEMPLATE: &'static str = r#"
-use std::io::prelude::*;
-
-fn main() {
-    let mut out_buffer: Vec<u8> = vec![];
-    let mut line_buffer = String::new();
-    let mut stdin = std::io::stdin();
-    let mut count = 0;
-    loop {
-        line_buffer.clear();
-        let read_res = stdin.read_line(&mut line_buffer).unwrap_or(0);
-        if read_res == 0 { break }
-        count += 1;
-        let output = invoke_closure(&line_buffer, count, %%);
-
-        out_buffer.clear();
-        write!(&mut out_buffer, "{:?}", output).unwrap();
-        let out_str = String::from_utf8_lossy(&out_buffer);
-        if &*out_str != "()" {
-            println!("{}", out_str);
-        }
-    }
-}
-
-fn invoke_closure<F, T>(line: &str, count: usize, mut closure: F) -> T
-where F: FnMut(&str, usize) -> T {
-    closure(line, count)
-}
-"#;
-
 /**
 Splits input into a complete Cargo manifest and unadultered Rust source.
 */
 fn split_input(input: &Input, deps: &[(String, String)]) -> Result<(String, String)> {
-    // First up, we need to parse any partial manifest embedded in the content.
     let (part_mani, source, template) = match *input {
         Input::File(_, _, content, _) => {
+            /*
+            We need to parse any partial manifest embedded in the content.  The only problem with this is that we *will not* assume the input is correctly formed, or that we've been passed a file that even *has* an embedded manifest; *i.e.* we might have been run with a plain Rust source file.
+
+            First, we look for and discard a hashbang, if present.
+
+            Next, we look for something which indicates the end of the embedded manifest.  *Officially*, this is a line which contains nothing but whitespace and *at least* three hyphens.  In *truth*, we will also look for anything that looks like Rust code.
+
+            Specifically, we check for a line starting with any of the strings in `SPLIT_MARKERS`.  This should *hopefully* cover every possible valid Rust program.
+
+            Once we've done that, we just chop the script content up in the appropriate places.
+            */
             let mut lines = content.lines_any().peekable();
 
             let skip = if let Some(line) = lines.peek() {
@@ -380,11 +340,12 @@ fn split_input(input: &Input, deps: &[(String, String)]) -> Result<(String, Stri
             };
 
             // Hooray!
-            (manifest, source, FILE_TEMPLATE)
+            (manifest, source, consts::FILE_TEMPLATE)
         },
-        Input::Expr(content) => ("", content, EXPR_TEMPLATE),
+        Input::Expr(content) => ("", content, consts::EXPR_TEMPLATE),
         Input::Loop(content, count) => {
-            ("", content, if count { LOOP_COUNT_TEMPLATE } else { LOOP_TEMPLATE })
+            let templ = if count { consts::LOOP_COUNT_TEMPLATE } else { consts::LOOP_TEMPLATE };
+            ("", content, templ)
         },
     };
 
@@ -411,23 +372,18 @@ fn split_input(input: &Input, deps: &[(String, String)]) -> Result<(String, Stri
     Ok((mani_str, source))
 }
 
-const DEFAULT_MANIFEST: &'static str = concat!(r#"
-[package]
-name = "%n"
-version = "0.1.0"
-authors = ["Anonymous"]
-
-[[bin]]
-name = "%n"
-path = "%n.rs"
-"#);
-
+/**
+Generates a default Cargo manifest for the given input.
+*/
 fn default_manifest(input: &Input) -> Result<toml::Table> {
-    let mani_str = DEFAULT_MANIFEST.replace("%n", input.safe_name());
+    let mani_str = consts::DEFAULT_MANIFEST.replace("%n", input.safe_name());
     toml::Parser::new(&mani_str).parse()
         .ok_or("could not parse default manifest, somehow".into())
 }
 
+/**
+Generates a partial Cargo manifest containing the specified dependencies.
+*/
 fn deps_manifest(deps: &[(String, String)]) -> Result<toml::Table> {
     let mut mani_str = String::new();
     mani_str.push_str("[dependencies]\n");
@@ -448,8 +404,12 @@ fn deps_manifest(deps: &[(String, String)]) -> Result<toml::Table> {
         .ok_or("could not parse dependency manifest".into())
 }
 
+/**
+Given two Cargo manifests, merges the second *into* the first.
+
+Note that the "merge" in this case is relatively simple: only *top-level* tables are actually merged; everything else is just outright replaced.
+*/
 fn merge_manifest(mut into_t: toml::Table, from_t: toml::Table) -> Result<toml::Table> {
-    // How we're going to do this: at the top level, we will outright replace anything that isn't a table.  The *contents* of all top-level tables will be replaced.  That *should* suffice.
     for (k, v) in from_t {
         match v {
             toml::Value::Table(from_t) => {
@@ -485,12 +445,23 @@ fn merge_manifest(mut into_t: toml::Table, from_t: toml::Table) -> Result<toml::
     }
 }
 
+/**
+This represents what to do with the input provided by the user.
+*/
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum CacheAction {
+    /// Compile the input into a fresh executable.
     Compile,
+    /// Don't bother compiling; just execute what's in the cache.
     Execute,
 }
 
+/**
+The metadata here serves two purposes:
+
+1. It records everything necessary for compilation and execution of a package.
+2. It records everything that must be exactly the same in order for a cached executable to still be valid, in addition to the content hash.
+*/
 #[derive(Clone, Debug, Eq, PartialEq, RustcDecodable, RustcEncodable)]
 struct PackageMetadata {
     /// Path to the script file.
@@ -507,7 +478,7 @@ struct PackageMetadata {
 }
 
 /**
-Determines whether, for a given input, a binary must be compiled, *or* an existing one can be run.
+For the given input, this constructs the package metadata and checks the cache to see what should be done.
 */
 fn cache_action_for(input: &Input, debug: bool, deps: Vec<(String, String)>) -> (CacheAction, PathBuf, PackageMetadata) {
     use std::fs::PathExt;
@@ -546,6 +517,7 @@ fn cache_action_for(input: &Input, debug: bool, deps: Vec<(String, String)>) -> 
     };
     info!("input_meta: {:?}", input_meta);
 
+    // Lazy powers, ACTIVATE!
     macro_rules! bail {
         () => {
             return (CacheAction::Compile, pkg_path, input_meta)
@@ -579,6 +551,11 @@ fn cache_action_for(input: &Input, debug: bool, deps: Vec<(String, String)>) -> 
     (CacheAction::Execute, pkg_path, input_meta)
 }
 
+/**
+Figures out where the output executable for the input should be.
+
+Note that this depends on Cargo *not* suddenly changing its mind about where stuff lives.  In theory, I should be able to just *ask* Cargo for this information, but damned if I can't find an easy way to do it...
+*/
 fn get_exe_path<P>(input: &Input, pkg_path: P, meta: &PackageMetadata) -> PathBuf
 where P: AsRef<Path> {
     let profile = match meta.debug {
@@ -590,11 +567,12 @@ where P: AsRef<Path> {
     exe_path.into()
 }
 
-const METADATA_FILE: &'static str = "metadata.json";
-
+/**
+Load the package metadata, given the path to the package's cache folder.
+*/
 fn get_pkg_metadata<P>(pkg_path: P) -> Result<PackageMetadata>
 where P: AsRef<Path> {
-    let meta_path = pkg_path.as_ref().join(METADATA_FILE);
+    let meta_path = pkg_path.as_ref().join(consts::METADATA_FILE);
     debug!("meta_path: {:?}", meta_path);
     let mut meta_file = try!(fs::File::open(&meta_path));
 
@@ -609,9 +587,12 @@ where P: AsRef<Path> {
     Ok(meta)
 }
 
+/**
+Save the package metadata, given the path to the package's cache folder.
+*/
 fn write_pkg_metadata<P>(pkg_path: P, meta: &PackageMetadata) -> Result<()>
 where P: AsRef<Path> {
-    let meta_path = pkg_path.as_ref().join(METADATA_FILE);
+    let meta_path = pkg_path.as_ref().join(consts::METADATA_FILE);
     debug!("meta_path: {:?}", meta_path);
     let mut meta_file = try!(fs::File::create(&meta_path));
     let meta_str = try!(rustc_serialize::json::encode(meta)
@@ -623,16 +604,11 @@ where P: AsRef<Path> {
 
 /**
 Returns the path to the cache directory.
-
-On Windows, LocalAppData is where user- and machine- specific data should go.  It *might* be more appropriate to use whatever the official name for "Program Data" is, though.
 */
 fn get_cache_path() -> Result<PathBuf> {
-    let lad_path = try!(win32::SHGetKnownFolderPath(
-        &win32::FOLDERID_LocalAppData, 0, std::ptr::null_mut()));
-    Ok(Path::new(&lad_path).to_path_buf().join("Cargo").join("script-cache"))
+    let cache_path = try!(platform::get_cache_dir_for("Cargo"));
+    Ok(cache_path.join("script-cache"))
 }
-
-const SEARCH_EXTS: &'static [&'static str] = &["crs", "rs"];
 
 /**
 Attempts to locate the script specified by the given path.  If the path as-given doesn't yield anything, it will try adding file extensions.
@@ -652,28 +628,50 @@ where P: AsRef<Path> {
     }
 
     // Ok, now try other extensions.
-    for &ext in SEARCH_EXTS {
+    for &ext in consts::SEARCH_EXTS {
         let path = path.with_extension(ext);
         if let Ok(file) = fs::File::open(&path) {
             return Some((path, file));
         }
     }
 
-    // Whelp. ¯\_(ツ)_/¯
+    // Welp. ¯\_(ツ)_/¯
     None
 }
 
+/**
+Represents an input source for a script.
+*/
 #[derive(Clone, Debug)]
 enum Input<'a> {
+    /**
+    The input is a script file.
+
+    The tuple members are: the name, absolute path, script contents, last modified time.
+    */
     File(&'a str, &'a Path, &'a str, u64),
+
+    /**
+    The input is an expression.
+
+    The tuple member is: the script contents.
+    */
     Expr(&'a str),
+
+    /**
+    The input is a loop expression.
+
+    The tuple member is: the script contents, whether the `--count` flag was given.
+    */
     Loop(&'a str, bool),
 }
 
-const DEFLATE_PATH_LEN_MAX: usize = 20;
-const CONTENT_DIGEST_LEN_MAX: usize = 20;
-
 impl<'a> Input<'a> {
+    /**
+    Return the "safe name" for the input.  This should be filename-safe.
+
+    Currently, nothing is done to ensure this, other than hoping *really hard* that we don't get fed some excessively bizzare input filename.
+    */
     pub fn safe_name(&self) -> &str {
         use Input::*;
 
@@ -684,15 +682,17 @@ impl<'a> Input<'a> {
         }
     }
 
+    /**
+    Compute the package ID for the input.  This is used as the name of the cache folder into which the Cargo package will be generated.
+    */
     pub fn compute_id<'dep, DepIt>(&self, deps: DepIt) -> Result<OsString>
     where DepIt: IntoIterator<Item=(&'dep str, &'dep str)> {
-        // use std::io::Write;
         use flate2::FlateWriteExt;
         use shaman::digest::Digest;
         use shaman::sha1::Sha1;
         use Input::*;
 
-        // Hash all the common stuff now.
+        // Hash all the deps now.
         let mut hasher = Sha1::new();
         for dep in deps {
             hasher.input_str("dep=");
@@ -704,21 +704,23 @@ impl<'a> Input<'a> {
 
         match *self {
             File(name, path, content, _) => {
+                // Deflate-compress the path to the script.
                 let z_path = {
                     let buf: Vec<u8> = vec![];
-                    let hex = Hexify(buf);
+                    let hex = util::Hexify(buf);
                     let mut z = hex.deflate_encode(flate2::Compression::Best);
                     try!(write!(z, "{}", path.display()));
                     let mut buf = try!(z.finish()).0;
 
-                    buf.truncate(DEFLATE_PATH_LEN_MAX);
+                    buf.truncate(consts::DEFLATE_PATH_LEN_MAX);
                     try!(String::from_utf8(buf)
                         .map_err(|_| "could not UTF-8 encode deflated path"))
                 };
 
+                // Update the hash with the content.
                 hasher.input_str(&content);
                 let mut digest = hasher.result_str();
-                digest.truncate(CONTENT_DIGEST_LEN_MAX);
+                digest.truncate(consts::CONTENT_DIGEST_LEN_MAX);
 
                 let mut id = OsString::new();
                 id.push("file-");
@@ -732,7 +734,7 @@ impl<'a> Input<'a> {
             Expr(content) => {
                 hasher.input_str(&content);
                 let mut digest = hasher.result_str();
-                digest.truncate(CONTENT_DIGEST_LEN_MAX);
+                digest.truncate(consts::CONTENT_DIGEST_LEN_MAX);
 
                 let mut id = OsString::new();
                 id.push("expr-");
@@ -740,12 +742,13 @@ impl<'a> Input<'a> {
                 Ok(id)
             },
             Loop(content, count) => {
+                // Make sure to include the [non-]presence of the `--count` flag in the flag, since it changes the actual generated script output.
                 hasher.input_str("count:");
                 hasher.input_str(if count { "true;" } else { "false;" });
 
                 hasher.input_str(&content);
                 let mut digest = hasher.result_str();
-                digest.truncate(CONTENT_DIGEST_LEN_MAX);
+                digest.truncate(consts::CONTENT_DIGEST_LEN_MAX);
 
                 let mut id = OsString::new();
                 id.push("loop-");
@@ -753,98 +756,5 @@ impl<'a> Input<'a> {
                 Ok(id)
             },
         }
-    }
-}
-
-struct Hexify<W>(pub W) where W: Write;
-
-impl<W> Write for Hexify<W>
-where W: Write {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        match buf.into_iter().next() {
-            Some(b) => {
-                try!(write!(self.0, "{:x}", b));
-                Ok(1)
-            },
-            None => Ok(0)
-        }
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        self.0.flush()
-    }
-}
-
-pub fn sha1_str(s: &str) -> String {
-    use shaman::digest::Digest;
-    use shaman::sha1::Sha1;
-    let mut hasher = Sha1::new();
-    hasher.input_str(&s);
-    hasher.result_str()
-}
-
-mod win32 {
-    #![allow(non_snake_case)]
-
-    extern crate ole32;
-    extern crate shell32;
-    extern crate winapi;
-    extern crate uuid;
-
-    use std::ffi::OsString;
-    use std::fmt;
-    use std::mem;
-    use std::os::windows::ffi::OsStringExt;
-    pub use self::uuid::FOLDERID_LocalAppData;
-    pub use error::MainError;
-
-    pub type WinResult<T> = Result<T, WinError>;
-
-    pub struct WinError(winapi::HRESULT);
-
-    impl fmt::Display for WinError {
-        fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-            write!(fmt, "HRESULT({})", self.0)
-        }
-    }
-
-    impl From<WinError> for MainError {
-        fn from(v: WinError) -> MainError {
-            v.to_string().into()
-        }
-    }
-
-    pub fn SHGetKnownFolderPath(rfid: &winapi::KNOWNFOLDERID, dwFlags: winapi::DWORD, hToken: winapi::HANDLE) -> WinResult<OsString> {
-        use self::winapi::PWSTR;
-        let mut psz_path: PWSTR = unsafe { mem::uninitialized() };
-        let hresult = unsafe {
-            shell32::SHGetKnownFolderPath(
-                rfid,
-                dwFlags,
-                hToken,
-                mem::transmute(&mut psz_path as &mut PWSTR as *mut PWSTR)
-            )
-        };
-
-        if hresult == winapi::S_OK {
-            let r = unsafe { pwstr_to_os_string(psz_path) };
-            unsafe { ole32::CoTaskMemFree(psz_path as *mut _) };
-            Ok(r)
-        } else {
-            Err(WinError(hresult))
-        }
-    }
-
-    unsafe fn pwstr_to_os_string(ptr: winapi::PWSTR) -> OsString {
-        OsStringExt::from_wide(::std::slice::from_raw_parts(ptr, pwstr_len(ptr)))
-    }
-
-    unsafe fn pwstr_len(mut ptr: winapi::PWSTR) -> usize {
-        let mut len = 0;
-        while *ptr != 0 {
-            len += 1;
-            ptr = ptr.offset(1);
-        }
-        len
     }
 }
