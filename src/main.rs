@@ -14,7 +14,7 @@ As such, `cargo-script` does two major things:
 #![feature(fs_time)]
 #![feature(path_ext)]
 
-extern crate docopt;
+extern crate clap;
 extern crate env_logger;
 extern crate flate2;
 #[macro_use] extern crate log;
@@ -43,41 +43,109 @@ use error::{Blame, MainError};
 
 type Result<T> = std::result::Result<T, MainError>;
 
-#[derive(Debug, RustcDecodable)]
+#[derive(Debug)]
 struct Args {
-    arg_script: Option<String>,
+    script: Option<String>,
 
-    flag_expr: Option<String>,
-    flag_loop: Option<String>,
-    flag_count: bool,
+    expr: Option<String>,
+    loop_: Option<String>,
+    count: bool,
 
-    flag_build_only: bool,
-    flag_debug: bool,
-    flag_dep: Vec<String>,
-    flag_force: bool,
+    build_only: bool,
+    debug: bool,
+    dep: Vec<String>,
+    force: bool,
 }
 
-const USAGE: &'static str = "Usage:
-    cargo script [options] [--dep SPEC...] <script>
-    cargo script [options] [--dep SPEC...] --expr EXPR
-    cargo script [options] [--dep SPEC...] [--count] --loop CLOSURE
-    cargo script --help
+fn parse_args() -> Args {
+    use clap::{App, Arg, SubCommand};
+    let version = option_env!("CARGO_PKG_VERSION").unwrap_or("unknown");
+    let about = r#"Compiles and runs "Cargoified Rust scripts"."#;
 
-Options:
-    -h, --help              Show this message.
+    // "const str array slice"
+    macro_rules! csas {
+        ($($es:expr),*) => {
+            {
+                const PIN: &'static [&'static str] = &[$($es),*];
+                PIN
+            }
+        }
+    }
 
-    --expr EXPR             Evaluate an expression and display the result.
-    --loop CLOSURE          Invoke a closure once for each line from stdin.
-    --count                 Invoke the loop closure with two arguments: line,
-                            and line number.
+    // We have to kinda lie about who we are for the output to look right...
+    let m = App::new("cargo")
+        .version(version)
+        .about(about)
+        .arg_required_else_help(true)
+        .subcommand_required_else_help(true)
+        .subcommand(SubCommand::new("script")
+            .version(version)
+            .about(about)
+            .usage("\
+                cargo script [FLAGS OPTIONS] <script>\n\
+              \tcargo script [FLAGS OPTIONS] --expr <expr>\n\
+              \tcargo script [FLAGS OPTIONS --count] --loop <loop>\
+            ")
+            .arg(Arg::with_name("script")
+                .help("Script file (with or without extension) to execute.")
+                .required(true)
+                .index(1)
+                .conflicts_with_all(csas!["expr", "loop"])
+            )
+            .arg(Arg::with_name("expr")
+                .help("Evaluate an expression and display the result.")
+                .long("expr")
+                .takes_value(true)
+                .conflicts_with_all(csas!["loop", "script"])
+            )
+            .arg(Arg::with_name("loop")
+                .help("Invoke a closure once for each line from stdin.")
+                .long("loop")
+                .takes_value(true)
+                .conflicts_with_all(csas!["expr", "script"])
+            )
+            .arg(Arg::with_name("count")
+                .help("Invoke the loop closure with two arguments: line, and line number.")
+                .long("count")
+                .requires("loop")
+            )
+            .arg(Arg::with_name("build_only")
+                .help("Build the script, but don't run it.")
+                .long("build-only")
+            )
+            .arg(Arg::with_name("debug")
+                .help("Build a debug executable, not an optimised one.")
+                .long("debug")
+            )
+            .arg(Arg::with_name("dep")
+                .help("Add an additional Cargo dependency.  Each SPEC can be either just the package name (which will assume the latest version) or a full `name=version` spec.")
+                .long("dep")
+                .takes_value(true)
+                .multiple(true)
+            )
+            .arg(Arg::with_name("force")
+                .help("Force the script to be rebuilt.")
+                .long("force")
+            )
+        )
+        .get_matches();
 
-    --build-only            Build the script, but don't run it.
-    --debug                 Build a debug executable, not an optimised one.
-    --dep SPEC              Add an additional Cargo dependency.  Each SPEC can
-                            be either just the package name (which will assume
-                            the latest version) or a full `name=version` spec.
-    --force                 Force the script to be rebuilt.
-";
+    let m = m.subcommand_matches("script").unwrap();
+
+    Args {
+        script: m.value_of("script").map(Into::into),
+
+        expr: m.value_of("expr").map(Into::into),
+        loop_: m.value_of("loop").map(Into::into),
+        count: m.is_present("count"),
+
+        build_only: m.is_present("build_only"),
+        debug: m.is_present("debug"),
+        dep: m.values_of("dep").unwrap_or(vec![]).into_iter()
+            .map(Into::into).collect(),
+        force: m.is_present("force"),
+    }
+}
 
 fn main() {
     env_logger::init().unwrap();
@@ -100,9 +168,7 @@ fn main() {
 }
 
 fn try_main() -> Result<i32> {
-    let args: Args = docopt::Docopt::new(USAGE)
-        .and_then(|d| d.decode())
-        .unwrap_or_else(|e| e.exit());
+    let args = parse_args();
     info!("Arguments: {:?}", args);
 
     // Take the arguments and work out what our input is going to be.  Primarily, this gives us the content, a user-friendly name, and a cache-friendly ID.

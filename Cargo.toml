@@ -4,13 +4,19 @@ version = "0.1.1"
 authors = ["Daniel Keep <daniel.keep@gmail.com>"]
 
 [dependencies]
-docopt = "0.6.64"
 env_logger = "0.3.1"
 flate2 = "0.2.7"
 log = "0.3.1"
 rustc-serialize = "0.3.14"
 shaman = "0.1.0"
 toml = "0.1.20"
+
+[dependencies.clap]
+version = "0.10.1"
+
+# Disable the "color" feature because it just outputs garbage on Windows.
+default-features = false
+features = ["suggestions"]
 
 [target.i686-pc-windows-gnu.dependencies]
 ole32-sys = "0.1.0"

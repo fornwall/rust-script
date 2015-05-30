@@ -1,7 +1,5 @@
 /*!
 This module just contains any big string literals I don't want cluttering up the rest of the code.
-
-The `USAGE` string is exempt, since that explains what `Args` means.
 */
 
 /*

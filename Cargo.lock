@@ -1,8 +1,8 @@
 [root]
 name = "cargo-script"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
- "docopt 0.6.64 (registry+https://github.com/rust-lang/crates.io-index)",
+ "clap 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "flate2 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -16,12 +16,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "docopt"
-version = "0.6.64"
+name = "clap"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "regex 0.1.33 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-serialize 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "strsim 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
