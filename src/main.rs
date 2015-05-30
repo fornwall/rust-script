@@ -67,12 +67,15 @@ Options:
     -h, --help              Show this message.
 
     --expr EXPR             Evaluate an expression and display the result.
-    --loop CLOSURE          Invoke a closure once for each line from standard input.
-    --count                 Invoke the loop closure with two arguments: line, line_number.
+    --loop CLOSURE          Invoke a closure once for each line from stdin.
+    --count                 Invoke the loop closure with two arguments: line,
+                            and line number.
 
     --build-only            Build the script, but don't run it.
-    --debug                 Build a debug executable rather than an optimised one.
-    --dep SPEC              Add an additional Cargo dependency.  Each SPEC can be either just the package name (which will assume the latest version) or a full `name=version` spec.
+    --debug                 Build a debug executable, not an optimised one.
+    --dep SPEC              Add an additional Cargo dependency.  Each SPEC can
+                            be either just the package name (which will assume
+                            the latest version) or a full `name=version` spec.
     --force                 Force the script to be rebuilt.
 ";
 
