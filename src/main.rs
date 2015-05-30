@@ -299,6 +299,9 @@ where P: AsRef<Path> {
     let (mani_str, script_str) = try!(split_input(input, &meta.deps));
 
     try!(fs::create_dir_all(pkg_path));
+    let cleanup_dir = util::Defer::defer(|| {
+        fs::remove_dir_all(pkg_path)
+    });
 
     let mani_path = {
         let mani_path = pkg_path.join("Cargo.toml");
@@ -335,6 +338,7 @@ where P: AsRef<Path> {
     // Write out metadata *now*.  Remember that we check the timestamp in the metadata, *not* on the executable.
     try!(write_pkg_metadata(pkg_path, meta));
 
+    cleanup_dir.disarm();
     Ok(())
 }
 
