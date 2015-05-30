@@ -208,6 +208,10 @@ fn try_main() -> Result<i32> {
         try!(compile(&input, &meta, &pkg_path));
     }
 
+    if args.flag_build_only {
+        return Ok(0);
+    }
+
     // Run it!
     let exe_path = get_exe_path(&input, &pkg_path, &meta);
     info!("executing {:?}", exe_path);
