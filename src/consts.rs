@@ -14,7 +14,7 @@ pub const FILE_TEMPLATE: &'static str = r#"%%"#;
 /// The template used for `--expr` input.
 pub const EXPR_TEMPLATE: &'static str = r#"
 fn main() {
-    println!("{}", (%%));
+    println!("{}", {%%});
 }
 "#;
 
@@ -30,6 +30,7 @@ pub const LOOP_TEMPLATE: &'static str = r#"
 use std::io::prelude::*;
 
 fn main() {
+    let mut closure = enforce_closure({%%});
     let mut out_buffer: Vec<u8> = vec![];
     let mut line_buffer = String::new();
     let mut stdin = std::io::stdin();
@@ -37,7 +38,7 @@ fn main() {
         line_buffer.clear();
         let read_res = stdin.read_line(&mut line_buffer).unwrap_or(0);
         if read_res == 0 { break }
-        let output = invoke_closure(&line_buffer, %%);
+        let output = closure(&line_buffer);
 
         out_buffer.clear();
         write!(&mut out_buffer, "{:?}", output).unwrap();
@@ -48,9 +49,9 @@ fn main() {
     }
 }
 
-fn invoke_closure<F, T>(line: &str, mut closure: F) -> T
+fn enforce_closure<F, T>(closure: F) -> F
 where F: FnMut(&str) -> T {
-    closure(line)
+    closure
 }
 "#;
 
@@ -59,6 +60,7 @@ pub const LOOP_COUNT_TEMPLATE: &'static str = r#"
 use std::io::prelude::*;
 
 fn main() {
+    let mut closure = enforce_closure({%%});
     let mut out_buffer: Vec<u8> = vec![];
     let mut line_buffer = String::new();
     let mut stdin = std::io::stdin();
@@ -68,7 +70,7 @@ fn main() {
         let read_res = stdin.read_line(&mut line_buffer).unwrap_or(0);
         if read_res == 0 { break }
         count += 1;
-        let output = invoke_closure(&line_buffer, count, %%);
+        let output = closure(&line_buffer, count);
 
         out_buffer.clear();
         write!(&mut out_buffer, "{:?}", output).unwrap();
@@ -79,9 +81,9 @@ fn main() {
     }
 }
 
-fn invoke_closure<F, T>(line: &str, count: usize, mut closure: F) -> T
+fn enforce_closure<F, T>(closure: F) -> F
 where F: FnMut(&str, usize) -> T {
-    closure(line, count)
+    closure
 }
 "#;
 
