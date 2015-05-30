@@ -82,6 +82,7 @@ Options:
 fn main() {
     env_logger::init().unwrap();
     info!("starting");
+    info!("args: {:?}", std::env::args().collect::<Vec<_>>());
     match try_main() {
         Ok(0) => (),
         Ok(code) => {
