@@ -1,0 +1,17 @@
+[package]
+name = "cargo-script"
+version = "0.1.0"
+authors = ["Daniel Keep <daniel.keep@gmail.com>"]
+
+[dependencies]
+docopt = "0.6.64"
+env_logger = "0.3.1"
+flate2 = "0.2.7"
+log = "0.3.1"
+ole32-sys = "0.1.0"
+rustc-serialize = "0.3.14"
+shaman = "0.1.0"
+shell32-sys = "0.1.0"
+toml = "0.1.20"
+winapi = "0.1.19"
+uuid-sys = "0.1.1"
