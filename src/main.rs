@@ -9,9 +9,8 @@ As such, `cargo-script` does two major things:
 
 2. It caches the generated and compiled packages, regenerating them only if the script or its metadata have changed.
 */
-#![allow(deprecated)] // for file metadata
 #![feature(collections)]
-#![feature(fs_time)]
+#![feature(metadata_ext)]
 #![feature(path_ext)]
 
 extern crate clap;
@@ -53,6 +52,7 @@ struct Args {
     count: bool,
 
     build_only: bool,
+    clear_cache: bool,
     debug: bool,
     dep: Vec<String>,
     force: bool,
@@ -104,6 +104,10 @@ fn parse_args() -> Args {
                 .long("loop")
                 .conflicts_with_all(csas!["expr"])
             )
+            .arg(Arg::with_name("clear_cache")
+                .help("Clears out the script cache.")
+                .long("clear-cache")
+            )
             .arg(Arg::with_name("count")
                 .help("Invoke the loop closure with two arguments: line, and line number.")
                 .long("count")
@@ -142,6 +146,7 @@ fn parse_args() -> Args {
         count: m.is_present("count"),
 
         build_only: m.is_present("build_only"),
+        clear_cache: m.is_present("clear_cache"),
         debug: m.is_present("debug"),
         dep: m.values_of("dep").unwrap_or(vec![]).into_iter()
             .map(Into::into).collect(),
@@ -173,6 +178,16 @@ fn try_main() -> Result<i32> {
     let args = parse_args();
     info!("Arguments: {:?}", args);
 
+    /*
+    If we've been asked to clear the cache, do that *now*.  There are two reasons:
+
+    1. Do it *before* we call `cache_action_for` such that this flag *also* acts as a synonym for `--force`.
+    2. Do it *before* we start trying to read the input so that, later on, we can make `<script>` optional, but still supply `--clear-cache`.
+    */
+    if args.clear_cache {
+        try!(clean_cache(0));
+    }
+
     // Take the arguments and work out what our input is going to be.  Primarily, this gives us the content, a user-friendly name, and a cache-friendly ID.
     // These three are just storage for the borrows we'll actually use.
     let script_name: String;
@@ -190,7 +205,7 @@ fn try_main() -> Result<i32> {
             let mut body = String::new();
             try!(file.read_to_string(&mut body));
 
-            let mtime = file.metadata().map(|md| md.modified()).unwrap_or(0);
+            let mtime = platform::file_last_modified(&file);
 
             script_path = try!(std::env::current_dir()).join(path);
             content = body;
@@ -277,6 +292,18 @@ fn try_main() -> Result<i32> {
         try!(compile(&input, &meta, &pkg_path));
     }
 
+    // Once we're done, clean out old packages from the cache.  There's no point if we've already done a full clear, though.
+    let _defer_clear = {
+        // To get around partially moved args problems.
+        let cc = args.clear_cache;
+        util::Defer::<_, MainError>::defer(move || {
+            if !cc {
+                try!(clean_cache(consts::MAX_CACHE_AGE_MS));
+            }
+            Ok(())
+        })
+    };
+
     if args.build_only {
         return Ok(0);
     }
@@ -286,6 +313,60 @@ fn try_main() -> Result<i32> {
     info!("executing {:?}", exe_path);
     Ok(try!(Command::new(exe_path).args(&args.args).status()
         .map(|st| st.code().unwrap_or(1))))
+}
+
+/**
+Clean up the cache folder.
+
+Looks for all folders whose metadata says they were created at least `max_age` in the past and kills them dead.
+*/
+fn clean_cache(max_age: u64) -> Result<()> {
+    info!("cleaning cache with max_age: {:?}", max_age);
+
+    let cutoff = platform::current_time() - max_age;
+    info!("cutoff:     {:>20?} ms", cutoff);
+
+    let cache_dir = try!(get_cache_path());
+    for child in try!(fs::read_dir(cache_dir)) {
+        let child = try!(child);
+        let path = child.path();
+        if path.is_file() { continue }
+
+        info!("checking: {:?}", path);
+
+        let remove_dir = || {
+            /*
+            Ok, so *why* aren't we using `modified in the package metadata?  The point of *that* is to track what we know about the input.  The problem here is that `--expr` and `--loop` don't *have* modification times; they just *are*.
+
+            Now, `PackageMetadata` *could* be modified to store, say, the moment in time the input was compiled, but then we couldn't use that field for metadata matching when decided whether or not a *file* input should be recompiled.
+
+            So, instead, we're just going to go by the timestamp on the metadata file *itself*.
+            */
+            let meta_mtime = {
+                let meta_path = get_pkg_metadata_path(&path);
+                let meta_file = match fs::File::open(&meta_path) {
+                    Ok(file) => file,
+                    Err(..) => {
+                        info!("couldn't open metadata for {:?}", path);
+                        return true
+                    }
+                };
+                platform::file_last_modified(&meta_file)
+            };
+            info!("meta_mtime: {:>20?} ms", meta_mtime);
+
+            (meta_mtime <= cutoff)
+        };
+
+        if remove_dir() {
+            info!("removing {:?}", path);
+            if let Err(err) = fs::remove_dir_all(&path) {
+                error!("failed to remove {:?} from cache: {}", path, err);
+            }
+        }
+    }
+    info!("done cleaning cache.");
+    Ok(())
 }
 
 /**
@@ -652,7 +733,7 @@ Load the package metadata, given the path to the package's cache folder.
 */
 fn get_pkg_metadata<P>(pkg_path: P) -> Result<PackageMetadata>
 where P: AsRef<Path> {
-    let meta_path = pkg_path.as_ref().join(consts::METADATA_FILE);
+    let meta_path = get_pkg_metadata_path(pkg_path);
     debug!("meta_path: {:?}", meta_path);
     let mut meta_file = try!(fs::File::open(&meta_path));
 
@@ -668,11 +749,19 @@ where P: AsRef<Path> {
 }
 
 /**
+Work out the path to a package's metadata file.
+*/
+fn get_pkg_metadata_path<P>(pkg_path: P) -> PathBuf
+where P: AsRef<Path> {
+    pkg_path.as_ref().join(consts::METADATA_FILE)
+}
+
+/**
 Save the package metadata, given the path to the package's cache folder.
 */
 fn write_pkg_metadata<P>(pkg_path: P, meta: &PackageMetadata) -> Result<()>
 where P: AsRef<Path> {
-    let meta_path = pkg_path.as_ref().join(consts::METADATA_FILE);
+    let meta_path = get_pkg_metadata_path(pkg_path);
     debug!("meta_path: {:?}", meta_path);
     let mut meta_file = try!(fs::File::create(&meta_path));
     let meta_str = try!(rustc_serialize::json::encode(meta)

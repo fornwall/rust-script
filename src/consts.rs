@@ -122,3 +122,12 @@ pub const DEFLATE_PATH_LEN_MAX: usize = 20;
 When generating a package's unique ID, how many hex nibbles of the script digest should be used *at most*?
 */
 pub const CONTENT_DIGEST_LEN_MAX: usize = 20;
+
+/**
+How old can stuff in the cache be before we automatically clear it out?
+
+Measured in milliseconds.
+*/
+// It's been *one week* since you looked at me,
+// cocked your head to the side and said "I'm angry."
+pub const MAX_CACHE_AGE_MS: u64 = 1*7*24*60*60*1000;
