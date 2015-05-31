@@ -24,7 +24,9 @@ pub const FILE_TEMPLATE: &'static str = r#"%%"#;
 /// The template used for `--expr` input.
 pub const EXPR_TEMPLATE: &'static str = r#"
 fn main() {
-    println!("{}", {%%});
+    println!("{}", 
+{%%}
+    );
 }
 "#;
 
@@ -40,7 +42,9 @@ pub const LOOP_TEMPLATE: &'static str = r#"
 use std::io::prelude::*;
 
 fn main() {
-    let mut closure = enforce_closure({%%});
+    let mut closure = enforce_closure(
+{%%}
+    );
     let mut out_buffer: Vec<u8> = vec![];
     let mut line_buffer = String::new();
     let mut stdin = std::io::stdin();
@@ -70,7 +74,9 @@ pub const LOOP_COUNT_TEMPLATE: &'static str = r#"
 use std::io::prelude::*;
 
 fn main() {
-    let mut closure = enforce_closure({%%});
+    let mut closure = enforce_closure(
+{%%}
+    );
     let mut out_buffer: Vec<u8> = vec![];
     let mut line_buffer = String::new();
     let mut stdin = std::io::stdin();
