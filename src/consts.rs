@@ -2,6 +2,18 @@
 This module just contains any big string literals I don't want cluttering up the rest of the code.
 */
 
+/**
+The message output when the user invokes `cargo script` with no further arguments.  We need to do this ourselves because `clap` doesn't provide any way to generate this message manually.
+*/
+pub const NO_ARGS_MESSAGE: &'static str = "\
+The following required arguments were not supplied:
+\t'<script>'
+
+USAGE:
+\tcargo script [FLAGS OPTIONS] [--] <script> <args>...
+
+For more information try --help";
+
 /*
 What follows are the templates used to wrap script input.  The input provided by the user is inserted in place of `%%`.  *Proper* templates of some kind would be nice, but damnit, I'm lazy.
 */

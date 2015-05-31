@@ -44,7 +44,7 @@ type Result<T> = std::result::Result<T, MainError>;
 
 #[derive(Debug)]
 struct Args {
-    script: String,
+    script: Option<String>,
     args: Vec<String>,
 
     expr: bool,
@@ -83,10 +83,9 @@ fn parse_args() -> Args {
         .subcommand(SubCommand::new("script")
             .version(version)
             .about(about)
-            .usage("cargo script [FLAGS OPTIONS] <script> [--] <args>...")
+            .usage("cargo script [FLAGS OPTIONS] [--] <script> <args>...")
             .arg(Arg::with_name("script")
                 .help("Script file (with or without extension) to execute.")
-                .required(true)
                 .index(1)
             )
             .arg(Arg::with_name("args")
@@ -98,11 +97,13 @@ fn parse_args() -> Args {
                 .help("Execute <script> as a literal expression and display the result.")
                 .long("expr")
                 .conflicts_with_all(csas!["loop"])
+                .requires("script")
             )
             .arg(Arg::with_name("loop")
                 .help("Execute <script> as a literal closure once for each line from stdin.")
                 .long("loop")
                 .conflicts_with_all(csas!["expr"])
+                .requires("script")
             )
             .arg(Arg::with_name("clear_cache")
                 .help("Clears out the script cache.")
@@ -116,20 +117,24 @@ fn parse_args() -> Args {
             .arg(Arg::with_name("build_only")
                 .help("Build the script, but don't run it.")
                 .long("build-only")
+                .requires("script")
             )
             .arg(Arg::with_name("debug")
                 .help("Build a debug executable, not an optimised one.")
                 .long("debug")
+                .requires("script")
             )
             .arg(Arg::with_name("dep")
                 .help("Add an additional Cargo dependency.  Each SPEC can be either just the package name (which will assume the latest version) or a full `name=version` spec.")
                 .long("dep")
                 .takes_value(true)
                 .multiple(true)
+                .requires("script")
             )
             .arg(Arg::with_name("force")
                 .help("Force the script to be rebuilt.")
                 .long("force")
+                .requires("script")
             )
         )
         .get_matches();
@@ -137,7 +142,7 @@ fn parse_args() -> Args {
     let m = m.subcommand_matches("script").unwrap();
 
     Args {
-        script: m.value_of("script").map(Into::into).unwrap(),
+        script: m.value_of("script").map(Into::into),
         args: m.values_of("args").unwrap_or(vec![]).into_iter()
             .map(Into::into).collect(),
 
@@ -186,6 +191,13 @@ fn try_main() -> Result<i32> {
     */
     if args.clear_cache {
         try!(clean_cache(0));
+
+        // If we *did not* get a `<script>` argument, that's OK.
+        if args.script.is_none() {
+            // Just let the user know that we did *actually* run.
+            println!("cargo script cache cleared.");
+            return Ok(0);
+        }
     }
 
     // Take the arguments and work out what our input is going to be.  Primarily, this gives us the content, a user-friendly name, and a cache-friendly ID.
@@ -195,7 +207,7 @@ fn try_main() -> Result<i32> {
     let content: String;
 
     let input = match (args.script, args.expr, args.loop_) {
-        (script, false, false) => {
+        (Some(script), false, false) => {
             let (path, mut file) = try!(find_script(script).ok_or("could not find script"));
 
             script_name = path.file_stem()
@@ -212,14 +224,15 @@ fn try_main() -> Result<i32> {
 
             Input::File(&script_name, &script_path, &content, mtime)
         },
-        (expr, true, false) => {
+        (Some(expr), true, false) => {
             content = expr;
             Input::Expr(&content)
         },
-        (loop_, false, true) => {
+        (Some(loop_), false, true) => {
             content = loop_;
             Input::Loop(&content, args.count)
         },
+        (None, _, _) => try!(Err((Blame::Human, consts::NO_ARGS_MESSAGE))),
         _ => try!(Err((Blame::Human,
             "cannot specify both --expr and --loop")))
     };
