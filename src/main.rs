@@ -486,10 +486,10 @@ fn split_input(input: &Input, deps: &[(String, String)]) -> Result<(String, Stri
 
                 // Ok, it's-a guessin' time!  Yes, this is *evil*.
                 const SPLIT_MARKERS: &'static [&'static str] = &[
-                    "//", "/*", "#![", "#[", "pub",
-                    "extern", "use", "mod", "type",
-                    "struct", "enum", "fn", "impl",
-                    "static", "const",
+                    "//", "/*", "#![", "#[", "pub ",
+                    "extern ", "use ", "mod ", "type ",
+                    "struct ", "enum ", "fn ", "impl ", "impl<",
+                    "static ", "const ",
                 ];
 
                 let line_trimmed = line.trim_left();
