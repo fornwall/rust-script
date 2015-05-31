@@ -81,12 +81,6 @@ pub mod inner {
         }
     }
 
-    // impl From<WinError> for MainError {
-    //     fn from(v: WinError) -> MainError {
-    //         v.to_string().into()
-    //     }
-    // }
-
     fn SHGetKnownFolderPath(rfid: &winapi::KNOWNFOLDERID, dwFlags: winapi::DWORD, hToken: winapi::HANDLE) -> WinResult<OsString> {
         use self::winapi::PWSTR;
         let mut psz_path: PWSTR = unsafe { mem::uninitialized() };
