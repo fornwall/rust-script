@@ -15,7 +15,6 @@ As such, `cargo-script` does two major things:
 
 extern crate clap;
 extern crate env_logger;
-extern crate flate2;
 #[macro_use] extern crate log;
 extern crate rustc_serialize;
 extern crate shaman;
@@ -869,54 +868,44 @@ impl<'a> Input<'a> {
     */
     pub fn compute_id<'dep, DepIt>(&self, deps: DepIt) -> Result<OsString>
     where DepIt: IntoIterator<Item=(&'dep str, &'dep str)> {
-        use flate2::FlateWriteExt;
         use shaman::digest::Digest;
         use shaman::sha1::Sha1;
         use Input::*;
 
-        // Hash all the deps now.
-        let mut hasher = Sha1::new();
-        for dep in deps {
-            hasher.input_str("dep=");
-            hasher.input_str(dep.0);
-            hasher.input_str("=");
-            hasher.input_str(dep.1);
-            hasher.input_str(";");
-        }
+        let hash_deps = || {
+            let mut hasher = Sha1::new();
+            for dep in deps {
+                hasher.input_str("dep=");
+                hasher.input_str(dep.0);
+                hasher.input_str("=");
+                hasher.input_str(dep.1);
+                hasher.input_str(";");
+            }
+            hasher
+        };
 
         match *self {
-            File(name, path, content, _) => {
-                // Deflate-compress the path to the script.
-                let z_path = {
-                    let buf: Vec<u8> = vec![];
-                    let hex = util::Hexify(buf);
-                    let mut z = hex.deflate_encode(flate2::Compression::Best);
-                    try!(write!(z, "{}", path.display()));
-                    let mut buf = try!(z.finish()).0;
+            File(name, path, _, _) => {
+                let mut hasher = Sha1::new();
 
-                    buf.truncate(consts::DEFLATE_PATH_LEN_MAX);
-                    try!(String::from_utf8(buf)
-                        .map_err(|_| "could not UTF-8 encode deflated path"))
-                };
-
-                // Update the hash with the content.
-                hasher.input_str(&content);
+                // Hash the path to the script.
+                hasher.input_str(&path.to_string_lossy());
                 let mut digest = hasher.result_str();
-                digest.truncate(consts::CONTENT_DIGEST_LEN_MAX);
+                digest.truncate(consts::ID_DIGEST_LEN_MAX);
 
                 let mut id = OsString::new();
                 id.push("file-");
                 id.push(name);
                 id.push("-");
-                id.push(if STUB_HASHES { "stub" } else { &*z_path });
-                id.push("-");
                 id.push(if STUB_HASHES { "stub" } else { &*digest });
                 Ok(id)
             },
             Expr(content) => {
+                let mut hasher = hash_deps();
+
                 hasher.input_str(&content);
                 let mut digest = hasher.result_str();
-                digest.truncate(consts::CONTENT_DIGEST_LEN_MAX);
+                digest.truncate(consts::ID_DIGEST_LEN_MAX);
 
                 let mut id = OsString::new();
                 id.push("expr-");
@@ -924,13 +913,15 @@ impl<'a> Input<'a> {
                 Ok(id)
             },
             Loop(content, count) => {
+                let mut hasher = hash_deps();
+
                 // Make sure to include the [non-]presence of the `--count` flag in the flag, since it changes the actual generated script output.
                 hasher.input_str("count:");
                 hasher.input_str(if count { "true;" } else { "false;" });
 
                 hasher.input_str(&content);
                 let mut digest = hasher.result_str();
-                digest.truncate(consts::CONTENT_DIGEST_LEN_MAX);
+                digest.truncate(consts::ID_DIGEST_LEN_MAX);
 
                 let mut id = OsString::new();
                 id.push("loop-");

@@ -5,7 +5,6 @@ authors = ["Daniel Keep <daniel.keep@gmail.com>"]
 
 [dependencies]
 env_logger = "0.3.1"
-flate2 = "0.2.7"
 log = "0.3.1"
 rustc-serialize = "0.3.14"
 shaman = "0.1.0"

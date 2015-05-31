@@ -131,19 +131,12 @@ Extensions to check when trying to find script input by name.
 */
 pub const SEARCH_EXTS: &'static [&'static str] = &["crs", "rs"];
 
-/*
-These relate to Input::compute_id.
-*/
-
 /**
-When generating a package's unique ID, how many hex nibbles of the compressed path should be used *at most*?
-*/
-pub const DEFLATE_PATH_LEN_MAX: usize = 20;
+When generating a package's unique ID, how many hex nibbles of the digest should be used *at most*?
 
-/**
-When generating a package's unique ID, how many hex nibbles of the script digest should be used *at most*?
+The largest meaningful value is `40`.
 */
-pub const CONTENT_DIGEST_LEN_MAX: usize = 20;
+pub const ID_DIGEST_LEN_MAX: usize = 16;
 
 /**
 How old can stuff in the cache be before we automatically clear it out?
