@@ -10,6 +10,7 @@ As such, `cargo-script` does two major things:
 2. It caches the generated and compiled packages, regenerating them only if the script or its metadata have changed.
 */
 #![feature(collections)]
+#![feature(core)]
 #![feature(metadata_ext)]
 #![feature(path_ext)]
 
@@ -544,6 +545,49 @@ fn split_input(input: &Input, deps: &[(String, String)]) -> Result<(String, Stri
 
     Ok((mani_str, source))
 }
+
+/**
+Returns a slice of the input string with the leading hashbang, if there is one, omitted.
+*/
+fn strip_hashbang(s: &str) -> &str {
+    use std::str::pattern::{Pattern, Searcher};
+    use util::ToMultiPattern;
+
+    if s.starts_with("#!") && !s.starts_with("#![") {
+        let mut search = vec!["\r\n", "\n"].to_multi_pattern().into_searcher(s);
+        match search.next_match() {
+            Some((_, b)) => &s[b..],
+            None => s
+        }
+    } else {
+        s
+    }
+}
+
+#[test]
+fn test_strip_hashbang() {
+    assert_eq!(strip_hashbang("\
+#!/usr/bin/env cargo-script-run
+and the rest
+\
+        "), "\
+and the rest
+\
+        ");
+    assert_eq!(strip_hashbang("\
+#![thingy]
+and the rest
+\
+        "), "\
+#![thingy]
+and the rest
+\
+        ");
+}
+
+/**
+Attempts to parse a manifest out of some source text.
+*/
 
 /**
 Generates a default Cargo manifest for the given input.
