@@ -39,13 +39,13 @@ Regarding the loop templates: what I *want* is for the result of the closure to 
 
 /// The template used for `--loop` input, assuming no `--count` flag is also given.
 pub const LOOP_TEMPLATE: &'static str = r#"
+use std::any::Any;
 use std::io::prelude::*;
 
 fn main() {
     let mut closure = enforce_closure(
 {%%}
     );
-    let mut out_buffer: Vec<u8> = vec![];
     let mut line_buffer = String::new();
     let mut stdin = std::io::stdin();
     loop {
@@ -54,30 +54,32 @@ fn main() {
         if read_res == 0 { break }
         let output = closure(&line_buffer);
 
-        out_buffer.clear();
-        write!(&mut out_buffer, "{:?}", output).unwrap();
-        let out_str = String::from_utf8_lossy(&out_buffer);
-        if &*out_str != "()" {
-            println!("{}", out_str);
+        let display = {
+            let output_any: &Any = &output;
+            !output_any.is::<()>()
+        };
+
+        if display {
+            println!("{:?}", output);
         }
     }
 }
 
 fn enforce_closure<F, T>(closure: F) -> F
-where F: FnMut(&str) -> T {
+where F: FnMut(&str) -> T, T: 'static {
     closure
 }
 "#;
 
 /// The template used for `--count --loop` input.
 pub const LOOP_COUNT_TEMPLATE: &'static str = r#"
+use std::any::Any;
 use std::io::prelude::*;
 
 fn main() {
     let mut closure = enforce_closure(
 {%%}
     );
-    let mut out_buffer: Vec<u8> = vec![];
     let mut line_buffer = String::new();
     let mut stdin = std::io::stdin();
     let mut count = 0;
@@ -88,17 +90,19 @@ fn main() {
         count += 1;
         let output = closure(&line_buffer, count);
 
-        out_buffer.clear();
-        write!(&mut out_buffer, "{:?}", output).unwrap();
-        let out_str = String::from_utf8_lossy(&out_buffer);
-        if &*out_str != "()" {
-            println!("{}", out_str);
+        let display = {
+            let output_any: &Any = &output;
+            !output_any.is::<()>()
+        };
+
+        if display {
+            println!("{:?}", output);
         }
     }
 }
 
 fn enforce_closure<F, T>(closure: F) -> F
-where F: FnMut(&str, usize) -> T {
+where F: FnMut(&str, usize) -> T, T: 'static {
     closure
 }
 "#;
