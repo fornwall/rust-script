@@ -24,7 +24,7 @@ pub const FILE_TEMPLATE: &'static str = r#"%%"#;
 /// The template used for `--expr` input.
 pub const EXPR_TEMPLATE: &'static str = r#"
 fn main() {
-    println!("{}", 
+    println!("{:?}", 
 {%%}
     );
 }
