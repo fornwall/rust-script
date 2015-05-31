@@ -162,18 +162,19 @@ fn main() {
     env_logger::init().unwrap();
     info!("starting");
     info!("args: {:?}", std::env::args().collect::<Vec<_>>());
+    let mut stderr = &mut std::io::stderr();
     match try_main() {
         Ok(0) => (),
         Ok(code) => {
             std::process::exit(code);
         },
         Err(ref err) if err.is_human() => {
-            // TODO: output to stderr.
-            println!("Error: {}", err);
+            writeln!(stderr, "error: {}", err).unwrap();
             std::process::exit(1);
         },
-        result @ Err(..) => {
-            result.unwrap();
+        Err(ref err) => {
+            writeln!(stderr, "internal error: {}", err).unwrap();
+            std::process::exit(1);
         }
     }
 }
