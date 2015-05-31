@@ -4,6 +4,29 @@ This module is for platform-specific stuff.
 
 pub use self::inner::{current_time, file_last_modified, get_cache_dir_for};
 
+#[cfg(unix)]
+mod inner {
+    use std::path::{Path, PathBuf};
+    use error::{MainError, Blame};
+    use std::env;
+
+    pub fn get_cache_dir_for<P>(product: P) -> Result<PathBuf, MainError>
+    where P: AsRef<Path> {
+        let home = match env::var_os("HOME") {
+            Some(val) => val,
+            None => return Err((Blame::Human, "$HOME is not defined").into())
+        };
+
+        match product.as_ref().to_str() {
+            Some(s) => {
+                let folder = format!(".{}", s.to_lowercase());
+                Ok(Path::new(&home).join(folder))
+            },
+            None => Err("product for `get_cache_dir_for` was not utf8".into())
+        }
+    }
+}
+
 #[cfg(windows)]
 pub mod inner {
     #![allow(non_snake_case)]
