@@ -43,46 +43,46 @@ Note that all of the following are equivalent:
 
 `now.rs` (code block manifest):
 
-    ```rust
-    //! This is a regular crate doc comment, but it also contains a partial
-    //! Cargo manifest.  Note the use of a *fenced* code block, and the
-    //! `cargo` "language".
-    //!
-    //! ```cargo
-    //! [dependencies]
-    //! time = "0.1.25"
-    //! ```
-    extern crate time;
-    fn main() {
-        println!("{}", time::now().rfc822z());
-    }
-    ```
+```rust
+//! This is a regular crate doc comment, but it also contains a partial
+//! Cargo manifest.  Note the use of a *fenced* code block, and the
+//! `cargo` "language".
+//!
+//! ```cargo
+//! [dependencies]
+//! time = "0.1.25"
+//! ```
+extern crate time;
+fn main() {
+    println!("{}", time::now().rfc822z());
+}
+```
 
 `now.rs` (dependency-only, short-hand manifest):
 
-    ```rust
-    // cargo-deps: time="0.1.25"
-    // You can also leave off the version number, in which case, it's assumed
-    // to be "*".  Also, the `cargo-deps` comment *must* be a single-line
-    // comment, and it *must* be the first thing in the file, after the
-    // hashbang.
-    extern crate time;
-    fn main() {
-        println!("{}", time::now().rfc822z());
-    }
-    ```
+```rust
+// cargo-deps: time="0.1.25"
+// You can also leave off the version number, in which case, it's assumed
+// to be "*".  Also, the `cargo-deps` comment *must* be a single-line
+// comment, and it *must* be the first thing in the file, after the
+// hashbang.
+extern crate time;
+fn main() {
+    println!("{}", time::now().rfc822z());
+}
+```
 
 `now.crs` (prefix manifest; *these might be removed in the future*):
 
-    ```rust
-    [dependencies]
-    time = "0.1.25"
-    ---
-    extern crate time;
-    fn main() {
-        println!("{}", time::now().rfc822z());
-    }
-    ```
+```rust
+[dependencies]
+time = "0.1.25"
+---
+extern crate time;
+fn main() {
+    println!("{}", time::now().rfc822z());
+}
+```
 
 ```shell
 $ cargo script now
