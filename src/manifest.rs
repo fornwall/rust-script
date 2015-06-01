@@ -98,6 +98,49 @@ fn find_embedded_manifest(s: &str) -> Option<(&str, &str)> {
     find_prefix_manifest(s)
 }
 
+#[test]
+fn test_find_embedded_manifest() {
+    let fem = find_embedded_manifest;
+
+    assert_eq!(fem("fn main() {}"), None);
+
+    assert_eq!(fem(
+"
+fn main() {}
+"),
+    None);
+
+    assert_eq!(fem(
+"[dependencies]
+time = \"0.1.25\"
+---
+fn main() {}
+"),
+    Some((
+"[dependencies]
+time = \"0.1.25\"
+",
+"
+fn main() {}
+"
+    )));
+
+    assert_eq!(fem(
+"[dependencies]
+time = \"0.1.25\"
+
+fn main() {}
+"),
+    Some((
+"[dependencies]
+time = \"0.1.25\"
+
+",
+"fn main() {}
+"
+    )));
+}
+
 /**
 Locates a "prefix manifest" embedded in a Cargoified Rust Script file.
 */
