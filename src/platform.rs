@@ -4,6 +4,75 @@ This module is for platform-specific stuff.
 
 pub use self::inner::{current_time, file_last_modified, get_cache_dir_for};
 
+#[cfg(any(unix, windows))]
+mod inner_unix_or_windows {
+    extern crate time;
+
+    /**
+    Gets the current system time, in milliseconds since the UNIX epoch.
+    */
+    pub fn current_time() -> u64 {
+        /*
+        This is kinda dicey, since *ideally* both this function and `file_last_modified` would be using the same underlying APIs.  They are not, insofar as I know.
+
+        At least, not when targetting Windows.
+
+        That said, so long as everything is in the same units and uses the same epoch, it should be fine.
+        */
+        let now_1970_utc = time::now_utc().to_timespec();
+        if now_1970_utc.sec < 0 || now_1970_utc.nsec < 0 {
+            // Fuck it.
+            return 0
+        }
+        let now_ms_1970_utc = (now_1970_utc.sec as u64 * 1000)
+            + (now_1970_utc.nsec as u64 / 1_000_000);
+        now_ms_1970_utc
+    }
+}
+
+#[cfg(unix)]
+mod inner {
+    pub use super::inner_unix_or_windows::current_time;
+
+    use std::path::{Path, PathBuf};
+    use std::{cmp, env, fs};
+    use std::os::unix::fs::MetadataExt;
+    use error::{MainError, Blame};
+
+    /**
+    Gets the last-modified time of a file, in milliseconds since the UNIX epoch.
+    */
+    pub fn file_last_modified(file: &fs::File) -> u64 {
+        let mtime_s_1970_utc = file.metadata()
+            .map(|md| md.as_raw().mtime())
+            .unwrap_or(0);
+
+        let mtime_s_1970_utc = cmp::max(0, mtime_s_1970_utc);
+        mtime_s_1970_utc as u64 * 1000
+    }
+
+    /**
+    Get a directory suitable for storing user- and machine-specific data which may or may not be persisted across sessions.
+
+    This is chosen to match the location where Cargo places its cache data.
+    */
+    pub fn get_cache_dir_for<P>(product: P) -> Result<PathBuf, MainError>
+    where P: AsRef<Path> {
+        let home = match env::var_os("HOME") {
+            Some(val) => val,
+            None => return Err((Blame::Human, "$HOME is not defined").into())
+        };
+
+        match product.as_ref().to_str() {
+            Some(s) => {
+                let folder = format!(".{}", s.to_lowercase());
+                Ok(Path::new(&home).join(folder))
+            },
+            None => Err("product for `get_cache_dir_for` was not utf8".into())
+        }
+    }
+}
+
 #[cfg(windows)]
 pub mod inner {
     #![allow(non_snake_case)]
@@ -12,6 +81,8 @@ pub mod inner {
     extern crate shell32;
     extern crate winapi;
     extern crate uuid;
+
+    pub use super::inner_unix_or_windows::current_time;
 
     use std::ffi::OsString;
     use std::fmt;
@@ -41,26 +112,9 @@ pub mod inner {
     }
 
     /**
-    Gets the current system time, in milliseconds since the UNIX epoch.
-    */
-    pub fn current_time() -> u64 {
-        extern crate time;
-
-        /*
-        This is kinda dicey, since *ideally* both this function and `file_last_modified` would be using the same underlying APIs.  They are not, insofar as I know.
-        */
-        let mut now_1970_utc = time::now_utc().to_timespec();
-        if now_1970_utc.sec < 0 || now_1970_utc.nsec < 0 {
-            // Fuck it.
-            now_1970_utc = time::Timespec::new(0, 0);
-        }
-        let now_ms_1970_utc = (now_1970_utc.sec as u64 * 1000)
-            + (now_1970_utc.nsec as u64 / 1_000_000);
-        now_ms_1970_utc
-    }
-
-    /**
     Get a directory suitable for storing user- and machine-specific data which may or may not be persisted across sessions.
+
+    This is *not* chosen to match the location where Cargo places its cache data, because Cargo is *wrong*.  This is at least *less wrong*.
 
     On Windows, LocalAppData is where user- and machine- specific data should go, but it *might* be more appropriate to use whatever the official name for "Program Data" is, though.
     */

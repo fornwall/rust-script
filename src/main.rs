@@ -39,6 +39,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use error::{Blame, MainError};
+use util::Defer;
 
 type Result<T> = std::result::Result<T, MainError>;
 
@@ -51,6 +52,8 @@ struct Args {
     loop_: bool,
     count: bool,
 
+    pkg_path: Option<String>,
+    gen_pkg_only: bool,
     build_only: bool,
     clear_cache: bool,
     debug: bool,
@@ -114,10 +117,24 @@ fn parse_args() -> Args {
                 .long("count")
                 .requires("loop")
             )
+            .arg(Arg::with_name("pkg_path")
+                .help("Specify where to place the generated Cargo package.")
+                .long("pkg-path")
+                .takes_value(true)
+                .requires("script")
+                .conflicts_with_all(csas!["clear_cache", "force"])
+            )
+            .arg(Arg::with_name("gen_pkg_only")
+                .help("Generate the Cargo package, but don't compile or run it.")
+                .long("gen-pkg-only")
+                .requires("script")
+                .conflicts_with_all(csas!["args", "build_only", "debug", "force"])
+            )
             .arg(Arg::with_name("build_only")
                 .help("Build the script, but don't run it.")
                 .long("build-only")
                 .requires("script")
+                .conflicts_with_all(csas!["args"])
             )
             .arg(Arg::with_name("debug")
                 .help("Build a debug executable, not an optimised one.")
@@ -150,6 +167,8 @@ fn parse_args() -> Args {
         loop_: m.is_present("loop"),
         count: m.is_present("count"),
 
+        pkg_path: m.value_of("pkg_path").map(Into::into),
+        gen_pkg_only: m.is_present("gen_pkg_only"),
         build_only: m.is_present("build_only"),
         clear_cache: m.is_present("clear_cache"),
         debug: m.is_present("debug"),
@@ -163,18 +182,19 @@ fn main() {
     env_logger::init().unwrap();
     info!("starting");
     info!("args: {:?}", std::env::args().collect::<Vec<_>>());
+    let mut stderr = &mut std::io::stderr();
     match try_main() {
         Ok(0) => (),
         Ok(code) => {
             std::process::exit(code);
         },
         Err(ref err) if err.is_human() => {
-            // TODO: output to stderr.
-            println!("Error: {}", err);
+            writeln!(stderr, "error: {}", err).unwrap();
             std::process::exit(1);
         },
-        result @ Err(..) => {
-            result.unwrap();
+        Err(ref err) => {
+            writeln!(stderr, "internal error: {}", err).unwrap();
+            std::process::exit(1);
         }
     }
 }
@@ -186,7 +206,7 @@ fn try_main() -> Result<i32> {
     /*
     If we've been asked to clear the cache, do that *now*.  There are two reasons:
 
-    1. Do it *before* we call `cache_action_for` such that this flag *also* acts as a synonym for `--force`.
+    1. Do it *before* we call `decide_action_for` such that this flag *also* acts as a synonym for `--force`.
     2. Do it *before* we start trying to read the input so that, later on, we can make `<script>` optional, but still supply `--clear-cache`.
     */
     if args.clear_cache {
@@ -294,22 +314,24 @@ fn try_main() -> Result<i32> {
     info!("deps: {:?}", deps);
 
     // Work out what to do.
-    let (action, pkg_path, meta) = cache_action_for(&input, args.debug, deps);
+    let action = decide_action_for(
+        &input,
+        deps,
+        args.debug,
+        args.pkg_path,
+        args.gen_pkg_only,
+        args.build_only,
+        args.force,
+    );
     info!("action: {:?}", action);
-    info!("pkg_path: {:?}", pkg_path);
-    info!("meta: {:?}", meta);
 
-    // Compile if we need it.
-    if action == CacheAction::Compile || args.force {
-        info!("compiling...");
-        try!(compile(&input, &meta, &pkg_path));
-    }
+    try!(gen_pkg_and_compile(&input, &action));
 
     // Once we're done, clean out old packages from the cache.  There's no point if we've already done a full clear, though.
     let _defer_clear = {
         // To get around partially moved args problems.
         let cc = args.clear_cache;
-        util::Defer::<_, MainError>::defer(move || {
+        Defer::<_, MainError>::defer(move || {
             if !cc {
                 try!(clean_cache(consts::MAX_CACHE_AGE_MS));
             }
@@ -317,15 +339,20 @@ fn try_main() -> Result<i32> {
         })
     };
 
-    if args.build_only {
-        return Ok(0);
+    // Run it!
+    if action.execute {
+        let exe_path = get_exe_path(&input, &action.pkg_path, &action.metadata);
+        info!("executing {:?}", exe_path);
+        match try!(Command::new(exe_path).args(&args.args).status()
+            .map(|st| st.code().unwrap_or(1)))
+        {
+            0 => (),
+            n => return Ok(n)
+        }
     }
 
-    // Run it!
-    let exe_path = get_exe_path(&input, &pkg_path, &meta);
-    info!("executing {:?}", exe_path);
-    Ok(try!(Command::new(exe_path).args(&args.args).status()
-        .map(|st| st.code().unwrap_or(1))))
+    // If nothing else failed, I suppose we succeeded.
+    Ok(0)
 }
 
 /**
@@ -383,21 +410,31 @@ fn clean_cache(max_age: u64) -> Result<()> {
 }
 
 /**
-Compile a package from the input.
+Generate and compile a package from the input.
 
-Why take `PackageMetadata`?  To ensure that any information we need to depend on for compilation *first* passes through `cache_action_for` *and* is less likely to not be serialised with the rest of the metadata.
+Why take `PackageMetadata`?  To ensure that any information we need to depend on for compilation *first* passes through `decide_action_for` *and* is less likely to not be serialised with the rest of the metadata.
 */
-fn compile<P>(input: &Input, meta: &PackageMetadata, pkg_path: P) -> Result<()>
-where P: AsRef<Path> {
-    let pkg_path = pkg_path.as_ref();
+fn gen_pkg_and_compile(
+    input: &Input,
+    action: &InputAction,
+) -> Result<()> {
+    let pkg_path = &action.pkg_path;
+    let meta = &action.metadata;
 
+    info!("splitting input...");
     let (mani_str, script_str) = try!(split_input(input, &meta.deps));
 
+    info!("creating pkg dir...");
     try!(fs::create_dir_all(pkg_path));
-    let cleanup_dir = util::Defer::defer(|| {
-        fs::remove_dir_all(pkg_path)
+    let cleanup_dir: Defer<_, MainError> = Defer::defer(|| {
+        // DO NOT try deleting ANYTHING if we're not cleaning up inside our own cache.  We *DO NOT* want to risk killing user files.
+        if action.using_cache {
+            try!(fs::remove_dir_all(pkg_path))
+        }
+        Ok(())
     });
 
+    info!("generating Cargo package...");
     let mani_path = {
         let mani_path = pkg_path.join("Cargo.toml");
         let mut mani_f = try!(fs::File::create(&mani_path));
@@ -413,26 +450,33 @@ where P: AsRef<Path> {
         try!(script_f.flush());
     }
 
-    // *bursts through wall* It's Cargo Time!
-    let mut cmd = Command::new("cargo");
-    cmd.arg("build")
-        .arg("--manifest-path")
-        .arg(&*mani_path.to_string_lossy());
+    // *bursts through wall* It's Cargo Time! (Possibly)
+    if action.compile {
+        info!("compiling...");
+        let mut cmd = Command::new("cargo");
+        cmd.arg("build")
+            .arg("--manifest-path")
+            .arg(&*mani_path.to_string_lossy());
 
-    if !meta.debug {
-        cmd.arg("--release");
+        if !meta.debug {
+            cmd.arg("--release");
+        }
+
+        try!(cmd.status().map_err(|e| Into::<MainError>::into(e)).and_then(|st|
+            match st.code() {
+                Some(0) => Ok(()),
+                Some(st) => Err(format!("cargo failed with status {}", st).into()),
+                None => Err("cargo failed".into())
+            }));
     }
 
-    try!(cmd.status().map_err(|e| Into::<MainError>::into(e)).and_then(|st|
-        match st.code() {
-            Some(0) => Ok(()),
-            Some(st) => Err(format!("cargo failed with status {}", st).into()),
-            None => Err("cargo failed".into())
-        }));
-
     // Write out metadata *now*.  Remember that we check the timestamp in the metadata, *not* on the executable.
-    try!(write_pkg_metadata(pkg_path, meta));
+    if action.emit_metadata {
+        info!("emitting metadata...");
+        try!(write_pkg_metadata(pkg_path, meta));
+    }
 
+    info!("disarming pkg dir cleanup...");
     cleanup_dir.disarm();
     Ok(())
 }
@@ -665,12 +709,29 @@ fn merge_manifest(mut into_t: toml::Table, from_t: toml::Table) -> Result<toml::
 /**
 This represents what to do with the input provided by the user.
 */
-#[derive(Clone, Debug, Eq, PartialEq)]
-enum CacheAction {
-    /// Compile the input into a fresh executable.
-    Compile,
-    /// Don't bother compiling; just execute what's in the cache.
-    Execute,
+#[derive(Debug)]
+struct InputAction {
+    /// Compile the input into a fresh executable?
+    compile: bool,
+
+    /// Emit a metadata file?
+    emit_metadata: bool,
+
+    /// Execute the compiled binary?
+    execute: bool,
+
+    /// Directory where the package should live.
+    pkg_path: PathBuf,
+
+    /**
+    Is the package directory in the cache?
+
+    Currently, this can be inferred from `emit_metadata`, but there's no *intrinsic* reason they should be tied together.
+    */
+    using_cache: bool,
+
+    /// The package metadata structure.
+    metadata: PackageMetadata,
 }
 
 /**
@@ -697,24 +758,36 @@ struct PackageMetadata {
 /**
 For the given input, this constructs the package metadata and checks the cache to see what should be done.
 */
-fn cache_action_for(input: &Input, debug: bool, deps: Vec<(String, String)>) -> (CacheAction, PathBuf, PackageMetadata) {
+fn decide_action_for(
+    input: &Input,
+    deps: Vec<(String, String)>,
+    debug: bool,
+    pkg_path: Option<String>,
+    gen_pkg_only: bool,
+    build_only: bool,
+    force: bool,
+) -> InputAction {
     use std::fs::PathExt;
 
-    // This can't fail.  Seriously, we're *fucked* if we can't work this out.
-    let cache_path = get_cache_path().unwrap();
-    info!("cache_path: {:?}", cache_path);
+    let (pkg_path, using_cache) = pkg_path.map(|p| (p.into(), false))
+        .unwrap_or_else(|| {
+            // This can't fail.  Seriously, we're *fucked* if we can't work this out.
+            let cache_path = get_cache_path().unwrap();
+            info!("cache_path: {:?}", cache_path);
 
-    let id = {
-        let deps_iter = deps.iter()
-            .map(|&(ref n, ref v)| (n as &str, v as &str));
+            let id = {
+                let deps_iter = deps.iter()
+                    .map(|&(ref n, ref v)| (n as &str, v as &str));
 
-        // Again, also fucked if we can't work this out.
-        input.compute_id(deps_iter).unwrap()
-    };
-    info!("id: {:?}", id);
+                // Again, also fucked if we can't work this out.
+                input.compute_id(deps_iter).unwrap()
+            };
+            info!("id: {:?}", id);
 
-    let pkg_path = cache_path.join(&id);
+            (cache_path.join(&id), true)
+        });
     info!("pkg_path: {:?}", pkg_path);
+    info!("using_cache: {:?}", using_cache);
 
     // Construct input metadata.
     let input_meta = {
@@ -735,37 +808,54 @@ fn cache_action_for(input: &Input, debug: bool, deps: Vec<(String, String)>) -> 
     info!("input_meta: {:?}", input_meta);
 
     // Lazy powers, ACTIVATE!
+    let action = InputAction {
+        compile: force,
+        emit_metadata: using_cache,
+        execute: !build_only,
+        pkg_path: pkg_path,
+        using_cache: using_cache,
+        metadata: input_meta,
+    };
+
     macro_rules! bail {
-        () => {
-            return (CacheAction::Compile, pkg_path, input_meta)
+        ($($name:ident: $value:expr),*) => {
+            return InputAction {
+                $($name: $value,)*
+                ..action
+            }
         }
     }
 
-    let cache_meta = match get_pkg_metadata(&pkg_path) {
+    // If we were told to only generate the package, we need to stop *now*
+    if gen_pkg_only {
+        bail!(compile: false, execute: false)
+    }
+
+    let cache_meta = match get_pkg_metadata(&action.pkg_path) {
         Ok(meta) => meta,
         Err(err) => {
             info!("recompiling because: failed to load metadata");
             debug!("get_pkg_metadata error: {}", err.description());
-            bail!()
+            bail!(compile: true)
         }
     };
 
-    if cache_meta != input_meta {
+    if cache_meta != action.metadata {
         info!("recompiling because: metadata did not match");
-        debug!("input metadata: {:?}", input_meta);
+        debug!("input metadata: {:?}", action.metadata);
         debug!("cache metadata: {:?}", cache_meta);
-        bail!()
+        bail!(compile: true)
     }
 
     // Next test: does the executable exist at all?
-    let exe_path = get_exe_path(input, &pkg_path, &input_meta);
+    let exe_path = get_exe_path(input, &action.pkg_path, &action.metadata);
     if !exe_path.is_file() {
         info!("recompiling because: executable doesn't exist or isn't a file");
-        bail!()
+        bail!(compile: true)
     }
 
     // That's enough; let's just go with it.
-    (CacheAction::Execute, pkg_path, input_meta)
+    action
 }
 
 /**
