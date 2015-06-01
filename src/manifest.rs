@@ -1,6 +1,7 @@
 /*!
 This module is concerned with how `cargo-script` extracts the manfiest from a script file.
 */
+extern crate hoedown;
 extern crate regex;
 
 use self::regex::Regex;
@@ -163,6 +164,47 @@ fn main() {}
 "#
         )
     );
+
+    assert_eq!(si!(f(
+r#"
+/*!
+Here is a manifest:
+
+```cargo
+[dependencies]
+time = "0.1.25"
+```
+*/
+fn main() {}
+"#
+        )),
+        r!(
+r#"
+[[bin]]
+name = "n"
+path = "n.rs"
+
+[dependencies]
+time = "0.1.25"
+
+[package]
+authors = ["Anonymous"]
+name = "n"
+version = "0.1.0"
+"#,
+r#"
+/*!
+Here is a manifest:
+
+```cargo
+[dependencies]
+time = "0.1.25"
+```
+*/
+fn main() {}
+"#
+        )
+    );
 }
 
 /**
@@ -211,6 +253,9 @@ Represents the kind, and content of, an embedded manifest.
 enum Manifest<'s> {
     /// The manifest is a valid TOML fragment.
     Toml(&'s str),
+    /// The manifest is a valid TOML fragment (owned).
+    // TODO: Change to Cow<'s, str>.
+    TomlOwned(String),
     /// The manifest is a comma-delimited list of dependencies.
     DepList(&'s str),
 }
@@ -220,6 +265,8 @@ impl<'s> Manifest<'s> {
         use self::Manifest::*;
         match self {
             Toml(s) => Ok(try!(toml::Parser::new(s).parse()
+                .ok_or("could not parse embedded manifest"))),
+            TomlOwned(ref s) => Ok(try!(toml::Parser::new(s).parse()
                 .ok_or("could not parse embedded manifest"))),
             DepList(s) => Manifest::dep_list_to_toml(s),
         }
@@ -254,6 +301,7 @@ Returns `Some((manifest, source))` if it finds a manifest, `None` otherwise.
 */
 fn find_embedded_manifest(s: &str) -> Option<(Manifest, &str)> {
     find_short_comment_manifest(s)
+        .or_else(|| find_code_block_manifest(s))
         .or_else(|| find_prefix_manifest(s))
 }
 
@@ -363,6 +411,96 @@ fn main() {}
 fn main() {}
 "),
     None);
+
+    assert_eq!(fem(
+r#"//! [dependencies]
+//! time = "0.1.25"
+fn main() {}
+"#),
+    None);
+
+    assert_eq!(fem(
+r#"//! ```Cargo
+//! [dependencies]
+//! time = "0.1.25"
+//! ```
+fn main() {}
+"#),
+    Some((
+TomlOwned(r#"[dependencies]
+time = "0.1.25"
+"#.into()),
+r#"//! ```Cargo
+//! [dependencies]
+//! time = "0.1.25"
+//! ```
+fn main() {}
+"#
+    )));
+
+    assert_eq!(fem(
+r#"/*!
+[dependencies]
+time = "0.1.25"
+*/
+fn main() {}
+"#),
+    None);
+
+    assert_eq!(fem(
+r#"/*!
+```Cargo
+[dependencies]
+time = "0.1.25"
+```
+*/
+fn main() {}
+"#),
+    Some((
+TomlOwned(r#"[dependencies]
+time = "0.1.25"
+"#.into()),
+r#"/*!
+```Cargo
+[dependencies]
+time = "0.1.25"
+```
+*/
+fn main() {}
+"#
+    )));
+
+    assert_eq!(fem(
+r#"/*!
+ * [dependencies]
+ * time = "0.1.25"
+ */
+fn main() {}
+"#),
+    None);
+
+    assert_eq!(fem(
+r#"/*!
+ * ```Cargo
+ * [dependencies]
+ * time = "0.1.25"
+ * ```
+ */
+fn main() {}
+"#),
+    Some((
+TomlOwned(r#"[dependencies]
+time = "0.1.25"
+"#.into()),
+r#"/*!
+ * ```Cargo
+ * [dependencies]
+ * time = "0.1.25"
+ * ```
+ */
+fn main() {}
+"#
+    )));
 }
 
 /**
@@ -449,6 +587,389 @@ fn find_short_comment_manifest(s: &str) -> Option<(Manifest, &str)> {
         }
     }
     None
+}
+
+/**
+Locates a "code block manifest" in Rust source.
+*/
+fn find_code_block_manifest(s: &str) -> Option<(Manifest, &str)> {
+    /*
+    This has to happen in a few steps.
+
+    First, we will look for and slice out a contiguous, inner doc comment which must be *the very first thing* in the file.  `#[doc(...)]` attributes *are not supported*.  Multiple single-line comments cannot have any blank lines between them.
+
+    Then, we need to strip off the actual comment markers from the content.  Including indentation removal, and taking out the (optional) leading line markers for block comments.  *sigh*
+
+    Then, we need to take the contents of this doc comment and feed it to a Markdown parser.  We are looking for *the first* fenced code block with a language token of `cargo`.  This is extracted and pasted back together into the manifest.
+    */
+    use util::ToMultiPattern;
+
+    let start = match s.find(vec!["/*!", "//!"].to_multi_pattern()) {
+        Some(pos) => pos,
+        None => return None
+    };
+
+    let comment = match extract_comment(&s[start..]) {
+        Ok(s) => s,
+        Err(err) => {
+            error!("error slicing comment: {}", err);
+            return None
+        }
+    };
+
+    scrape_markdown_manifest(&comment)
+        .unwrap_or(None)
+        .map(|m| (Manifest::TomlOwned(m), s))
+}
+
+/**
+Extracts the first `Cargo` fenced code block from a chunk of Markdown.
+*/
+fn scrape_markdown_manifest(content: &str) -> Result<Option<String>> {
+    use self::hoedown::{Buffer, Markdown, Render};
+
+    // To match librustdoc/html/markdown.rs, HOEDOWN_EXTENSIONS.
+    let exts
+        = hoedown::NO_INTRA_EMPHASIS
+        | hoedown::TABLES
+        | hoedown::FENCED_CODE
+        | hoedown::AUTOLINK
+        | hoedown::STRIKETHROUGH
+        | hoedown::SUPERSCRIPT
+        | hoedown::FOOTNOTES;
+
+    let md = Markdown::new(&content).extensions(exts);
+
+    struct ManifestScraper {
+        seen_manifest: bool,
+    }
+
+    impl Render for ManifestScraper {
+        fn code_block(&mut self, output: &mut Buffer, text: &Buffer, lang: &Buffer) {
+            use std::ascii::AsciiExt;
+
+            let lang = lang.to_str().unwrap();
+
+            if !self.seen_manifest && lang.eq_ignore_ascii_case("cargo") {
+                // Pass it through.
+                info!("found code block manifest");
+                output.pipe(text);
+                self.seen_manifest = true;
+            }
+        }
+    }
+
+    let mut ms = ManifestScraper { seen_manifest: false };
+    let mani_buf = ms.render(&md);
+
+    if !ms.seen_manifest { return Ok(None) }
+    mani_buf.to_str().map(|s| Some(s.into()))
+        .map_err(|_| "error decoding manifest as UTF-8".into())
+}
+
+#[test]
+fn test_scrape_markdown_manifest() {
+    macro_rules! smm {
+        ($c:expr) => (scrape_markdown_manifest($c).map_err(|e| e.to_string()));
+    }
+
+    assert_eq!(smm!(
+r#"There is no manifest in this comment.
+"#
+        ),
+Ok(None)
+    );
+
+    assert_eq!(smm!(
+r#"There is no manifest in this comment.
+
+```
+This is not a manifest.
+```
+
+```rust
+println!("Nor is this.");
+```
+
+    Or this.
+"#
+        ),
+Ok(None)
+    );
+
+    assert_eq!(smm!(
+r#"This is a manifest:
+
+```cargo
+dependencies = { time = "*" }
+```
+"#
+        ),
+Ok(Some(r#"dependencies = { time = "*" }
+"#.into()))
+    );
+
+    assert_eq!(smm!(
+r#"This is *not* a manifest:
+
+```
+He's lying, I'm *totally* a manifest!
+```
+
+This *is*:
+
+```cargo
+dependencies = { time = "*" }
+```
+"#
+        ),
+Ok(Some(r#"dependencies = { time = "*" }
+"#.into()))
+    );
+
+    assert_eq!(smm!(
+r#"This is a manifest:
+
+```cargo
+dependencies = { time = "*" }
+```
+
+So is this, but it doesn't count:
+
+```cargo
+dependencies = { explode = true }
+```
+"#
+        ),
+Ok(Some(r#"dependencies = { time = "*" }
+"#.into()))
+    );
+}
+
+/**
+Extracts the contents of a Rust doc comment.
+*/
+fn extract_comment(s: &str) -> Result<String> {
+    use std::cmp::min;
+
+    fn n_leading_spaces(s: &str, n: usize) -> Result<()> {
+        if !s.chars().take(n).all(|c| c == ' ') {
+            return Err(format!("leading {:?} chars aren't all spaces: {:?}", n, s).into())
+        }
+        Ok(())
+    }
+
+    fn extract_block(s: &str) -> Result<String> {
+        /*
+        On every line:
+
+        - update nesting level and detect end-of-comment
+        - if margin is None:
+            - if there appears to be a margin, set margin.
+        - strip off margin marker
+        - update the leading space counter
+        - strip leading space
+        - append content
+        */
+        let mut r = String::new();
+
+        let margin_re = Regex::new(r"^\s*\*( |$)").unwrap();
+        let space_re = Regex::new(r"^(\s+)").unwrap();
+        let nesting_re = Regex::new(r"/\*|\*/").unwrap();
+
+        let mut leading_space = None;
+        let mut margin = None;
+        let mut depth: u32 = 1;
+
+        for line in s.lines_any() {
+            if depth == 0 { break }
+
+            // Update nesting and look for end-of-comment.
+            let mut end_of_comment = None;
+
+            for (end, marker) in nesting_re.find_iter(line).map(|(a,b)| (a, &line[a..b])) {
+                match (marker, depth) {
+                    ("/*", _) => depth += 1,
+                    ("*/", 1) => {
+                        end_of_comment = Some(end);
+                        depth = 0;
+                        break;
+                    },
+                    ("*/", _) => depth -= 1,
+                    _ => panic!("got a comment marker other than /* or */")
+                }
+            }
+
+            let line = end_of_comment.map(|end| &line[..end]).unwrap_or(line);
+
+            // Detect and strip margin.
+            margin = margin
+                .or_else(|| margin_re.find(line)
+                    .and_then(|(b, e)| Some(&line[b..e])));
+
+            let line = if let Some(margin) = margin {
+                let end = line.char_indices().take(margin.len())
+                    .map(|(i,c)| i + c.len_utf8()).last().unwrap_or(0);
+                &line[end..]
+            } else {
+                line
+            };
+
+            // Detect and strip leading indentation.
+            leading_space = leading_space
+                .or_else(|| space_re.find(line)
+                    .map(|(_,n)| n));
+
+            /*
+            Make sure we have only leading spaces.
+
+            If we see a tab, fall over.  I *would* expand them, but that gets into the question of how *many* spaces to expand them to, and *where* is the tab, because tabs are tab stops and not just N spaces.
+
+            Eurgh.
+            */
+            try!(n_leading_spaces(line, leading_space.unwrap_or(0)));
+
+            let strip_len = min(leading_space.unwrap_or(0), line.len());
+            let line = &line[strip_len..];
+
+            // Done.
+            r.push_str(line);
+
+            // `lines_any` removes newlines.  Ideally, it wouldn't do that, but hopefully this shouldn't cause any *real* problems.
+            r.push_str("\n");
+        }
+
+        Ok(r)
+    }
+
+    fn extract_line(s: &str) -> Result<String> {
+        let mut r = String::new();
+
+        let comment_re = Regex::new(r"^\s*//!").unwrap();
+        let space_re = Regex::new(r"^(\s+).*").unwrap();
+
+        let mut leading_space = None;
+
+        for line in s.lines_any() {
+            // Strip leading comment marker.
+            let content = match comment_re.find(line) {
+                Some((_, end)) => &line[end..],
+                None => break
+            };
+
+            // Detect and strip leading indentation.
+            leading_space = leading_space
+                .or_else(|| space_re.captures(content)
+                    .and_then(|c| c.pos(1))
+                    .map(|(_,n)| n));
+
+            /*
+            Make sure we have only leading spaces.
+
+            If we see a tab, fall over.  I *would* expand them, but that gets into the question of how *many* spaces to expand them to, and *where* is the tab, because tabs are tab stops and not just N spaces.
+
+            Eurgh.
+            */
+            try!(n_leading_spaces(content, leading_space.unwrap_or(0)));
+
+            let strip_len = min(leading_space.unwrap_or(0), content.len());
+            let content = &content[strip_len..];
+
+            // Done.
+            r.push_str(content);
+
+            // `lines_any` removes newlines.  Ideally, it wouldn't do that, but hopefully this shouldn't cause any *real* problems.
+            r.push_str("\n");
+        }
+
+        Ok(r)
+    }
+
+    if s.starts_with("/*!") {
+        extract_block(&s[3..])
+    } else if s.starts_with("//!") {
+        extract_line(s)
+    } else {
+        Err("no doc comment found".into())
+    }
+}
+
+#[test]
+fn test_extract_comment() {
+    macro_rules! ec {
+        ($s:expr) => (extract_comment($s).map_err(|e| e.to_string()))
+    }
+
+    assert_eq!(ec!(
+r#"fn main () {}"#
+        ),
+Err("no doc comment found".into())
+    );
+
+    assert_eq!(ec!(
+r#"/*!
+Here is a manifest:
+
+```cargo
+[dependencies]
+time = "*"
+```
+*/
+fn main() {}
+"#
+        ),
+Ok(r#"
+Here is a manifest:
+
+```cargo
+[dependencies]
+time = "*"
+```
+
+"#.into())
+    );
+
+    assert_eq!(ec!(
+r#"/*!
+ * Here is a manifest:
+ *
+ * ```cargo
+ * [dependencies]
+ * time = "*"
+ * ```
+ */
+fn main() {}
+"#
+        ),
+Ok(r#"
+Here is a manifest:
+
+```cargo
+[dependencies]
+time = "*"
+```
+
+"#.into())
+    );
+
+    assert_eq!(ec!(
+r#"//! Here is a manifest:
+//!
+//! ```cargo
+//! [dependencies]
+//! time = "*"
+//! ```
+fn main() {}
+"#
+        ),
+Ok(r#"Here is a manifest:
+
+```cargo
+[dependencies]
+time = "*"
+```
+"#.into())
+    );
 }
 
 /**
