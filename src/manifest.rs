@@ -139,6 +139,26 @@ time = \"0.1.25\"
 "fn main() {}
 "
     )));
+
+    // Make sure we aren't just grabbing the *last* line.
+    assert_eq!(fem(
+"[dependencies]
+time = \"0.1.25\"
+
+fn main() {
+    println!(\"Hi!\");
+}
+"),
+    Some((
+"[dependencies]
+time = \"0.1.25\"
+
+",
+"fn main() {
+    println!(\"Hi!\");
+}
+"
+    )));
 }
 
 /**
