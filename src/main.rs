@@ -38,10 +38,8 @@ use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use error::{Blame, MainError};
+use error::{Blame, MainError, Result};
 use util::Defer;
-
-type Result<T> = std::result::Result<T, MainError>;
 
 #[derive(Debug)]
 struct Args {

@@ -5,6 +5,12 @@ This module contains the definition of the program's main error type.
 use std::error::Error;
 use std::fmt;
 use std::io;
+use std::result::Result as StdResult;
+
+/**
+Shorthand for the program's common result type.
+*/
+pub type Result<T> = StdResult<T, MainError>;
 
 /**
 Represents an error in the program.
@@ -36,7 +42,7 @@ impl MainError {
 }
 
 impl fmt::Display for MainError {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> StdResult<(), fmt::Error> {
         use self::MainError::*;
         use std::fmt::Display;
         match *self {
