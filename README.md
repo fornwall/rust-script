@@ -10,13 +10,17 @@ As such, `cargo-script` does two major things:
 
 2. It caches the generated and compiled packages, regenerating them only if the script or its metadata have changed.
 
-## Installation
+## Compiling and Installation
 
-`cargo-script` requires a nightly build of `rustc` due to the use of several unstable features.  Aside from that, it should build cleanly with `cargo`.
+Clone the repository using `git clone --recursive` in order to pull in the required submodule.  If you've *already* cloned, but didn't use `--recursive`, you can run `git submodule update --init --recursive`.
+
+`cargo-script` requires a nightly build of `rustc` due to the use of several unstable features.  Aside from that, it should build cleanly with `cargo build`.
 
 Once built, you should place the resulting executable somewhere on your `PATH`.  At that point, you should be able to invoke it by using `cargo script`.
 
 Note that you *can* run the executable directly, but the first argument will *need* to be `script`.
+
+If you want to run `cargo script` from a hashbang, you will need to write a shell script to forward to `cargo script`.  We recommend using the name `cargo-script-run`; if an official script is provided, that's what it will likely be called.
 
 ## Usage
 
@@ -33,9 +37,42 @@ Hello, World!
 
 Note that `cargo-script` does not *currently* do anything to suppress the regular output of Cargo.  This is *definitely* on purpose and *not* simply out of abject laziness.
 
-You may also embed a partial Cargo manifest at the start of your script, as shown below.  `cargo-script` specifically supports the `.crs` extension to distinguish such files from regular Rust source, but it will process regular `.rs` files in *exactly* the same manner.
+You may also embed a partial Cargo manifest at the start of your script, as shown below.  `cargo-script` specifically supports the `.crs` extension to distinguish such "Cargoified" files from regular Rust source, but it will process regular `.rs` files in *exactly* the same manner.
 
-`now.crs`:
+Note that all of the following are equivalent:
+
+`now.rs` (code block manifest):
+
+    ```rust
+    //! This is a regular crate doc comment, but it also contains a partial
+    //! Cargo manifest.  Note the use of a *fenced* code block, and the
+    //! `cargo` "language".
+    //!
+    //! ```cargo
+    //! [dependencies]
+    //! time = "0.1.25"
+    //! ```
+    extern crate time;
+    fn main() {
+        println!("{}", time::now().rfc822z());
+    }
+    ```
+
+`now.rs` (dependency-only, short-hand manifest):
+
+    ```rust
+    // cargo-deps: time="0.1.25"
+    // You can also leave off the version number, in which case, it's assumed
+    // to be "*".  Also, the `cargo-deps` comment *must* be a single-line
+    // comment, and it *must* be the first thing in the file, after the
+    // hashbang.
+    extern crate time;
+    fn main() {
+        println!("{}", time::now().rfc822z());
+    }
+    ```
+
+`now.crs` (prefix manifest; *these might be removed in the future*):
 
     ```rust
     [dependencies]
@@ -57,27 +94,26 @@ $ cargo script now
 Sat, 30 May 2015 19:26:57 +1000
 ```
 
-The partial manifest is terminated by a line consisting entirely of whitespace and *at least* three hyphens.  `cargo-script` will also end the manifest if it encounters anything that looks suscpiciously like Rust code, but this should not be relied upon; such detection is *extremely* hacky.
-
 If you are in a hurry, the above can also be accomplished by telling `cargo-script` that you wish to evaluate an *expression*, rather than an actual file:
 
-```shell
-$ cargo script --dep time --expr "{extern crate time; time::now().rfc822z()}"
+```text
+$ cargo script --dep time --expr \
+    "extern crate time; time::now().rfc822z().to_string()"
     Updating registry `https://github.com/rust-lang/crates.io-index`
    Compiling gcc v0.3.5
    Compiling libc v0.1.8
    Compiling time v0.1.25
    Compiling expr v0.1.0 (file:///C:/Users/drk/AppData/Local/Cargo/script-cache/expr-a7ffe37fbe6dccff132f)
-Sat, 30 May 2015 19:32:18 +1000
+"Sat, 30 May 2015 19:32:18 +1000"
 ```
 
 Dependencies can also be specified with specific versions (*e.g.* `--dep time=0.1.25`); when omitted, `cargo-script` will simply use `"*"` for the manifest.
 
 Finally, you can also use `cargo-script` to write a quick stream filter, by specifying a closure to be called for each line read from stdin, like so:
 
-```shell
-$ cat now.crs | cargo script --count --loop \
-    '|l,n| println!("{:>6}: {}", n, l.trim_right())'
+```text
+$ cat now.crs | cargo script --loop \
+    "let mut n=0; move |l| {n+=1; println!(\"{:>6}: {}\",n,l.trim_right())}"
    Compiling loop v0.1.0 (file:///C:/Users/drk/AppData/Local/Cargo/script-cache/loop-58079283761aab8433b1)
      1: [dependencies]
      2: time = "0.1.25"
@@ -88,20 +124,27 @@ $ cat now.crs | cargo script --count --loop \
      7: }
 ```
 
-Without the `--count` argument, only the contents of each line is passed to your closure.  No, there is no easy way to create state that is captured from outside the closure; sorry.
+Note that you can achieve a similar effect to the above by using the `--count` flag, which causes the line number to be passed as a second argument to your closure:
+
+```text
+$ cat now.crs | cargo script --count --loop \
+    "|l,n| println!(\"{:>6}: {}\", n, l.trim_right())"
+   Compiling loop v0.1.0 (file:///C:/Users/drk/AppData/Local/Cargo/script-cache/loop-58079283761aab8433b1)
+     1: [dependencies]
+     2: time = "0.1.25"
+     3: ---
+     4: extern crate time;
+     5: fn main() {
+     6:     println!("{}", time::now().rfc822z());
+     7: }
+```
 
 ## Things That Should Probably Be Done
 
-* `not(windows)` port; see the `platform` module.
-
-* Actually clean up the cache directory, rather than flooding it with megabytes of code and executables.
-
-* *Definitely* clean up after a failed compilation.
-
 * Somehow convince the Cargo devs to add aggressive caching of dependencies so that compiling anything that has dependencies doesn't take an age.
 
-* *Maybe* don't cache based on content; currently, it means that *any* change to a script or expression causes Cargo to re-download and re-compile all dependencies which is *bloody miserable*.
-
-* ...that, or add some sort of `--no-cache` flag that shoves everything into a single folder.
+* Maybe add some sort of `--no-cache` flag that shoves everything into a single folder.
 
 * Gist support?  I mean, if it's good enough for playpen...
+
+* Some kind of install script would be nice.
