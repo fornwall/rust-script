@@ -1,7 +1,9 @@
 /*!
 This module is concerned with how `cargo-script` extracts the manfiest from a script file.
 */
+extern crate regex;
 
+use self::regex::Regex;
 use toml;
 
 use consts;
@@ -16,14 +18,14 @@ pub fn split_input(input: &Input, deps: &[(String, String)]) -> Result<(String, 
         Input::File(_, _, content, _) => {
             let content = strip_hashbang(content);
             let (manifest, source) = find_embedded_manifest(content)
-                .unwrap_or(("", content));
+                .unwrap_or((Manifest::Toml(""), content));
 
             (manifest, source, consts::FILE_TEMPLATE)
         },
-        Input::Expr(content) => ("", content, consts::EXPR_TEMPLATE),
+        Input::Expr(content) => (Manifest::Toml(""), content, consts::EXPR_TEMPLATE),
         Input::Loop(content, count) => {
             let templ = if count { consts::LOOP_COUNT_TEMPLATE } else { consts::LOOP_TEMPLATE };
-            ("", content, templ)
+            (Manifest::Toml(""), content, templ)
         },
     };
 
@@ -32,8 +34,7 @@ pub fn split_input(input: &Input, deps: &[(String, String)]) -> Result<(String, 
     info!("part_mani: {:?}", part_mani);
     info!("source: {:?}", source);
 
-    let part_mani = try!(toml::Parser::new(part_mani).parse()
-        .ok_or("could not parse embedded manifest"));
+    let part_mani = try!(part_mani.into_toml());
     info!("part_mani: {:?}", part_mani);
 
     // It's-a mergin' time!
@@ -48,6 +49,120 @@ pub fn split_input(input: &Input, deps: &[(String, String)]) -> Result<(String, 
     info!("mani_str: {}", mani_str);
 
     Ok((mani_str, source))
+}
+
+#[test]
+fn test_split_input() {
+    macro_rules! si {
+        ($i:expr) => (split_input(&$i, &[]).ok())
+    }
+
+    let dummy_path: ::std::path::PathBuf = "p".into();
+    let dummy_path = &dummy_path;
+    let f = |c| Input::File("n", &dummy_path, c, 0);
+
+    macro_rules! r {
+        ($m:expr, $r:expr) => (Some(($m.into(), $r.into())));
+    }
+
+    assert_eq!(si!(f(
+r#"fn main() {}"#
+        )),
+        r!(
+r#"
+[[bin]]
+name = "n"
+path = "n.rs"
+
+[dependencies]
+
+[package]
+authors = ["Anonymous"]
+name = "n"
+version = "0.1.0"
+"#,
+r#"fn main() {}"#
+        )
+    );
+
+    assert_eq!(si!(f(
+r#"
+---
+fn main() {}
+"#
+        )),
+        r!(
+r#"
+[[bin]]
+name = "n"
+path = "n.rs"
+
+[dependencies]
+
+[package]
+authors = ["Anonymous"]
+name = "n"
+version = "0.1.0"
+"#,
+r#"
+fn main() {}
+"#
+        )
+    );
+
+    assert_eq!(si!(f(
+r#"[dependencies]
+time="0.1.25"
+---
+fn main() {}
+"#
+        )),
+        r!(
+r#"
+[[bin]]
+name = "n"
+path = "n.rs"
+
+[dependencies]
+time = "0.1.25"
+
+[package]
+authors = ["Anonymous"]
+name = "n"
+version = "0.1.0"
+"#,
+r#"
+fn main() {}
+"#
+        )
+    );
+
+    assert_eq!(si!(f(
+r#"
+// Cargo-Deps: time="0.1.25"
+fn main() {}
+"#
+        )),
+        r!(
+r#"
+[[bin]]
+name = "n"
+path = "n.rs"
+
+[dependencies]
+time = "0.1.25"
+
+[package]
+authors = ["Anonymous"]
+name = "n"
+version = "0.1.0"
+"#,
+r#"
+// Cargo-Deps: time="0.1.25"
+fn main() {}
+"#
+        )
+    );
 }
 
 /**
@@ -90,16 +205,62 @@ and the rest
 }
 
 /**
+Represents the kind, and content of, an embedded manifest.
+*/
+#[derive(Debug, Eq, PartialEq)]
+enum Manifest<'s> {
+    /// The manifest is a valid TOML fragment.
+    Toml(&'s str),
+    /// The manifest is a comma-delimited list of dependencies.
+    DepList(&'s str),
+}
+
+impl<'s> Manifest<'s> {
+    pub fn into_toml(self) -> Result<toml::Table> {
+        use self::Manifest::*;
+        match self {
+            Toml(s) => Ok(try!(toml::Parser::new(s).parse()
+                .ok_or("could not parse embedded manifest"))),
+            DepList(s) => Manifest::dep_list_to_toml(s),
+        }
+    }
+
+    fn dep_list_to_toml(s: &str) -> Result<toml::Table> {
+        let mut r = String::new();
+        r.push_str("[dependencies]\n");
+        for dep in s.trim().split(',') {
+            // If there's no version specified, add one.
+            match dep.contains('=') {
+                true => {
+                    r.push_str(dep);
+                    r.push_str("\n");
+                },
+                false => {
+                    r.push_str(dep);
+                    r.push_str("=\"*\"\n");
+                }
+            }
+        }
+
+        Ok(try!(toml::Parser::new(&r).parse()
+            .ok_or("could not parse embedded manifest")))
+    }
+}
+
+/**
 Locates a manifest embedded in Rust source.
 
 Returns `Some((manifest, source))` if it finds a manifest, `None` otherwise.
 */
-fn find_embedded_manifest(s: &str) -> Option<(&str, &str)> {
-    find_prefix_manifest(s)
+fn find_embedded_manifest(s: &str) -> Option<(Manifest, &str)> {
+    find_short_comment_manifest(s)
+        .or_else(|| find_prefix_manifest(s))
 }
 
 #[test]
 fn test_find_embedded_manifest() {
+    use self::Manifest::*;
+
     let fem = find_embedded_manifest;
 
     assert_eq!(fem("fn main() {}"), None);
@@ -111,15 +272,28 @@ fn main() {}
     None);
 
     assert_eq!(fem(
+r#"
+---
+fn main() {}
+"#),
+    Some((
+Toml(r#"
+"#),
+r#"
+fn main() {}
+"#
+    )));
+
+    assert_eq!(fem(
 "[dependencies]
 time = \"0.1.25\"
 ---
 fn main() {}
 "),
     Some((
-"[dependencies]
+Toml("[dependencies]
 time = \"0.1.25\"
-",
+"),
 "
 fn main() {}
 "
@@ -132,10 +306,10 @@ time = \"0.1.25\"
 fn main() {}
 "),
     Some((
-"[dependencies]
+Toml("[dependencies]
 time = \"0.1.25\"
 
-",
+"),
 "fn main() {}
 "
     )));
@@ -150,21 +324,51 @@ fn main() {
 }
 "),
     Some((
-"[dependencies]
+Toml("[dependencies]
 time = \"0.1.25\"
 
-",
+"),
 "fn main() {
     println!(\"Hi!\");
 }
 "
     )));
+
+    assert_eq!(fem(
+"// cargo-deps: time=\"0.1.25\"
+fn main() {}
+"),
+    Some((
+DepList(" time=\"0.1.25\""),
+"// cargo-deps: time=\"0.1.25\"
+fn main() {}
+"
+    )));
+
+    assert_eq!(fem(
+"
+  // cargo-deps: time=\"0.1.25\"  \n\
+fn main() {}
+"),
+    Some((
+DepList(" time=\"0.1.25\"  "),
+"
+  // cargo-deps: time=\"0.1.25\"  \n\
+fn main() {}
+"
+    )));
+
+    assert_eq!(fem(
+"/* cargo-deps: time=\"0.1.25\" */
+fn main() {}
+"),
+    None);
 }
 
 /**
 Locates a "prefix manifest" embedded in a Cargoified Rust Script file.
 */
-fn find_prefix_manifest(content: &str) -> Option<(&str, &str)> {
+fn find_prefix_manifest(content: &str) -> Option<(Manifest, &str)> {
     /*
     The trick with this is that we *will not* assume the input is correctly formed, or that we've been passed a file that even *has* an embedded manifest; *i.e.* we might have been run with a plain Rust source file.
 
@@ -178,8 +382,9 @@ fn find_prefix_manifest(content: &str) -> Option<(&str, &str)> {
 
     let mut manifest_end = None;
     let mut source_start = None;
+    let mut got_manifest_for_certain = false;
 
-    for line in lines {
+    'scan_lines: for line in lines {
         // Did we get a dash separator?
         let mut dashes = 0;
         if line.chars().all(|c| {
@@ -189,6 +394,7 @@ fn find_prefix_manifest(content: &str) -> Option<(&str, &str)> {
             info!("splitting because of dash divider in line {:?}", line);
             manifest_end = Some(&line[0..0]);
             source_start = Some(&line[line.len()..]);
+            got_manifest_for_certain = true;
             break;
         }
 
@@ -207,7 +413,7 @@ fn find_prefix_manifest(content: &str) -> Option<(&str, &str)> {
                 info!("splitting because of marker '{:?}'", marker);
                 manifest_end = Some(&line[0..]);
                 source_start = Some(&line[0..]);
-                break;
+                break 'scan_lines;
             }
         }
     }
@@ -221,12 +427,28 @@ fn find_prefix_manifest(content: &str) -> Option<(&str, &str)> {
     };
 
     // If the manifest doesn't contain anything but whitespace... then we can't really say we *found* a manifest...
-    if manifest.chars().all(char::is_whitespace) {
+    if !got_manifest_for_certain && manifest.chars().all(char::is_whitespace) {
         return None;
     }
 
     // Found one!
-    Some((manifest, source))
+    Some((Manifest::Toml(manifest), source))
+}
+
+/**
+Locates a "short comment manifest" in Rust source.
+*/
+fn find_short_comment_manifest(s: &str) -> Option<(Manifest, &str)> {
+    /*
+    This is pretty simple: the only valid syntax for this is for the first, non-blank line to contain a single-line comment whose first token is `cargo-deps:`.  That's it.
+    */
+    let re = Regex::new(r"^(?i)\s*//\s*cargo-deps\s*:(.*)(\r\n|\n)").unwrap();
+    if let Some(cap) = re.captures(s) {
+        if let Some((a, b)) = cap.pos(1) {
+            return Some((Manifest::DepList(&s[a..b]), &s[..]))
+        }
+    }
+    None
 }
 
 /**
