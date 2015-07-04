@@ -44,7 +44,7 @@ mod inner {
     */
     pub fn file_last_modified(file: &fs::File) -> u64 {
         let mtime_s_1970_utc = file.metadata()
-            .map(|md| md.as_raw().mtime())
+            .map(|md| md.mtime())
             .unwrap_or(0);
 
         let mtime_s_1970_utc = cmp::max(0, mtime_s_1970_utc);
