@@ -9,6 +9,7 @@ use toml;
 
 use consts;
 use error::{Blame, Result};
+use util::SubsliceOffset;
 use Input;
 
 /**
@@ -558,8 +559,9 @@ fn find_prefix_manifest(content: &str) -> Option<(Manifest, &str)> {
 
     let (manifest, source) = match (manifest_end, source_start) {
         (Some(me), Some(ss)) => {
-            (&content[..content.subslice_offset(me)],
-                &content[content.subslice_offset(ss)..])
+            // subslices can only be None if me/ss are *not* substrings of content.
+            (&content[..content.subslice_offset_stable(me).unwrap()],
+                &content[content.subslice_offset_stable(ss).unwrap()..])
         },
         _ => return None
     };

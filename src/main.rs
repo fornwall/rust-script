@@ -10,7 +10,6 @@ As such, `cargo-script` does two major things:
 2. It caches the generated and compiled packages, regenerating them only if the script or its metadata have changed.
 */
 #![feature(path_ext)]
-#![feature(subslice_offset)]
 #![feature(pattern)]
 
 extern crate clap;
