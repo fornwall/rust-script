@@ -15,17 +15,17 @@ USAGE:
 For more information try --help";
 
 /*
-What follows are the templates used to wrap script input.  The input provided by the user is inserted in place of `%%`.  *Proper* templates of some kind would be nice, but damnit, I'm lazy.
+What follows are the templates used to wrap script input.  The input provided by the user is inserted in place of `%b`.  *Proper* templates of some kind would be nice, but damnit, I'm lazy.
 */
 
 /// The template used for script file inputs.
-pub const FILE_TEMPLATE: &'static str = r#"%%"#;
+pub const FILE_TEMPLATE: &'static str = r#"%b"#;
 
 /// The template used for `--expr` input.
 pub const EXPR_TEMPLATE: &'static str = r#"
 fn main() {
     println!("{:?}", 
-{%%}
+{%b}
     );
 }
 "#;
@@ -44,7 +44,7 @@ use std::io::prelude::*;
 
 fn main() {
     let mut closure = enforce_closure(
-{%%}
+{%b}
     );
     let mut line_buffer = String::new();
     let mut stdin = std::io::stdin();
@@ -78,7 +78,7 @@ use std::io::prelude::*;
 
 fn main() {
     let mut closure = enforce_closure(
-{%%}
+{%b}
     );
     let mut line_buffer = String::new();
     let mut stdin = std::io::stdin();

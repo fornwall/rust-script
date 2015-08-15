@@ -31,7 +31,7 @@ pub fn split_input(input: &Input, deps: &[(String, String)]) -> Result<(String, 
         },
     };
 
-    let source = template.replace("%%", source);
+    let source = template.replace("%b", source);
 
     info!("part_mani: {:?}", part_mani);
     info!("source: {:?}", source);
