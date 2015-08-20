@@ -354,10 +354,10 @@ fn try_main() -> Result<i32> {
                 true => Cow::from(d.replace("-", "_")),
                 false => Cow::from(d)
             })
-            .map(|d| format!("extern crate {};", d));
+            .map(|d| format!("#[macro_use] extern crate {};", d));
 
         let externs = args.extern_.iter()
-            .map(|n| format!("extern crate {};", n));
+            .map(|n| format!("#[macro_use] extern crate {};", n));
 
         let mut items: Vec<_> = dep_externs.chain(externs).collect();
         items.sort();
