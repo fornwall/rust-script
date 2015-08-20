@@ -14,24 +14,52 @@ use Input;
 
 /**
 Splits input into a complete Cargo manifest and unadultered Rust source.
+
+Unless we have prelude items to inject, in which case it will be *slightly* adulterated.
 */
-pub fn split_input(input: &Input, deps: &[(String, String)]) -> Result<(String, String)> {
-    let (part_mani, source, template) = match *input {
+pub fn split_input(input: &Input, deps: &[(String, String)], prelude_items: &[String]) -> Result<(String, String)> {
+    let (part_mani, source, template, sub_prelude) = match *input {
         Input::File(_, _, content, _) => {
+            assert_eq!(prelude_items.len(), 0);
             let content = strip_hashbang(content);
             let (manifest, source) = find_embedded_manifest(content)
                 .unwrap_or((Manifest::Toml(""), content));
 
-            (manifest, source, consts::FILE_TEMPLATE)
+            (manifest, source, consts::FILE_TEMPLATE, false)
         },
-        Input::Expr(content) => (Manifest::Toml(""), content, consts::EXPR_TEMPLATE),
+        Input::Expr(content) => {
+            (Manifest::Toml(""), content, consts::EXPR_TEMPLATE, true)
+        },
         Input::Loop(content, count) => {
             let templ = if count { consts::LOOP_COUNT_TEMPLATE } else { consts::LOOP_TEMPLATE };
-            (Manifest::Toml(""), content, templ)
+            (Manifest::Toml(""), content, templ, true)
         },
     };
 
     let source = template.replace("%b", source);
+
+    /*
+    We are doing it this way because we can guarantee that %p *always* appears before %b, *and* that we don't attempt this when we don't want to allow prelude substitution.
+
+    The problem with doing it the other way around is that the user could specify a prelude item that contains `%b` (which would do *weird things*).
+
+    Also, don't use `str::replace` because it replaces *all* occurrences, not just the first.
+    */
+    let source = match sub_prelude {
+        false => source,
+        true => {
+            const PRELUDE_PAT: &'static str = "%p";
+            let offset = source.find(PRELUDE_PAT).expect("template doesn't have %p");
+            let mut new_source = String::new();
+            new_source.push_str(&source[..offset]);
+            for i in prelude_items {
+                new_source.push_str(i);
+                new_source.push_str("\n");
+            }
+            new_source.push_str(&source[offset + PRELUDE_PAT.len()..]);
+            new_source
+        }
+    };
 
     info!("part_mani: {:?}", part_mani);
     info!("source: {:?}", source);
@@ -56,7 +84,7 @@ pub fn split_input(input: &Input, deps: &[(String, String)]) -> Result<(String, 
 #[test]
 fn test_split_input() {
     macro_rules! si {
-        ($i:expr) => (split_input(&$i, &[]).ok())
+        ($i:expr) => (split_input(&$i, &[], &[]).ok())
     }
 
     let dummy_path: ::std::path::PathBuf = "p".into();

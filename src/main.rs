@@ -30,6 +30,7 @@ mod manifest;
 mod platform;
 mod util;
 
+use std::borrow::Cow;
 use std::error::Error;
 use std::ffi::OsString;
 use std::fs;
@@ -55,11 +56,13 @@ struct Args {
     clear_cache: bool,
     debug: bool,
     dep: Vec<String>,
+    dep_extern: Vec<String>,
+    extern_: Vec<String>,
     force: bool,
 }
 
 fn parse_args() -> Args {
-    use clap::{App, Arg, SubCommand};
+    use clap::{App, Arg, ArgGroup, SubCommand};
     let version = option_env!("CARGO_PKG_VERSION").unwrap_or("unknown");
     let about = r#"Compiles and runs "Cargoified Rust scripts"."#;
 
@@ -107,6 +110,9 @@ fn parse_args() -> Args {
                 .conflicts_with_all(csas!["expr"])
                 .requires("script")
             )
+            .arg_group(ArgGroup::with_name("expr_or_loop")
+                .add_all(vec!["expr", "loop"])
+            )
             .arg(Arg::with_name("clear_cache")
                 .help("Clears out the script cache.")
                 .long("clear-cache")
@@ -148,6 +154,24 @@ fn parse_args() -> Args {
                 .multiple(true)
                 .requires("script")
             )
+            .arg(Arg::with_name("dep_extern")
+                .help("Like `dep`, except that it *also* adds a `#[macro_use] extern crate name;` item for expression and loop scripts.  Note that this only works if the name of the dependency and the name of the library it generates are exactly the same.")
+                .long("dep-extern")
+                .short("D")
+                .takes_value(true)
+                .multiple(true)
+                // .requires("script")
+                .requires("expr_or_loop")
+            )
+            .arg(Arg::with_name("extern")
+                .help("Adds an `#[macro_use] extern crate name;` item for expressions and loop scripts.")
+                .long("extern")
+                .short("x")
+                .takes_value(true)
+                .multiple(true)
+                // .requires("script")
+                .requires("expr_or_loop")
+            )
             .arg(Arg::with_name("force")
                 .help("Force the script to be rebuilt.")
                 .long("force")
@@ -173,6 +197,10 @@ fn parse_args() -> Args {
         clear_cache: m.is_present("clear_cache"),
         debug: m.is_present("debug"),
         dep: m.values_of("dep").unwrap_or(vec![]).into_iter()
+            .map(Into::into).collect(),
+        dep_extern: m.values_of("dep_extern").unwrap_or(vec![]).into_iter()
+            .map(Into::into).collect(),
+        extern_: m.values_of("extern").unwrap_or(vec![]).into_iter()
             .map(Into::into).collect(),
         force: m.is_present("force"),
     }
@@ -270,7 +298,7 @@ fn try_main() -> Result<i32> {
         use std::collections::hash_map::Entry::{Occupied, Vacant};
 
         let mut deps: HashMap<String, String> = HashMap::new();
-        for dep in args.dep {
+        for dep in args.dep.iter().chain(args.dep_extern.iter()).cloned() {
             // Append '=*' if it needs it.
             let dep = match dep.find('=') {
                 Some(_) => dep,
@@ -313,10 +341,35 @@ fn try_main() -> Result<i32> {
     };
     info!("deps: {:?}", deps);
 
+    /*
+    Generate the prelude items, if we need any.  Again, ensure consistent and *valid* sorting.
+    */
+    let prelude_items = {
+        let dep_externs = args.dep_extern.iter()
+            .map(|d| match d.find('=') {
+                Some(i) => &d[..i],
+                None => &d[..]
+            })
+            .map(|d| match d.contains('-') {
+                true => Cow::from(d.replace("-", "_")),
+                false => Cow::from(d)
+            })
+            .map(|d| format!("extern crate {};", d));
+
+        let externs = args.extern_.iter()
+            .map(|n| format!("extern crate {};", n));
+
+        let mut items: Vec<_> = dep_externs.chain(externs).collect();
+        items.sort();
+        items
+    };
+    info!("prelude_items: {:?}", prelude_items);
+
     // Work out what to do.
     let action = decide_action_for(
         &input,
         deps,
+        prelude_items,
         args.debug,
         args.pkg_path,
         args.gen_pkg_only,
@@ -422,7 +475,7 @@ fn gen_pkg_and_compile(
     let meta = &action.metadata;
 
     info!("splitting input...");
-    let (mani_str, script_str) = try!(manifest::split_input(input, &meta.deps));
+    let (mani_str, script_str) = try!(manifest::split_input(input, &meta.deps, &meta.prelude));
 
     info!("creating pkg dir...");
     try!(fs::create_dir_all(pkg_path));
@@ -528,6 +581,9 @@ struct PackageMetadata {
 
     /// Sorted list of dependencies.
     deps: Vec<(String, String)>,
+
+    /// Sorted list of injected prelude items.
+    prelude: Vec<String>,
 }
 
 /**
@@ -536,6 +592,7 @@ For the given input, this constructs the package metadata and checks the cache t
 fn decide_action_for(
     input: &Input,
     deps: Vec<(String, String)>,
+    prelude: Vec<String>,
     debug: bool,
     pkg_path: Option<String>,
     gen_pkg_only: bool,
@@ -578,6 +635,7 @@ fn decide_action_for(
             modified: mtime,
             debug: debug,
             deps: deps,
+            prelude: prelude,
         }
     };
     info!("input_meta: {:?}", input_meta);

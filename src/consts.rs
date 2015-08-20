@@ -23,6 +23,7 @@ pub const FILE_TEMPLATE: &'static str = r#"%b"#;
 
 /// The template used for `--expr` input.
 pub const EXPR_TEMPLATE: &'static str = r#"
+%p
 fn main() {
     println!("{:?}", 
 {%b}
@@ -39,6 +40,7 @@ Regarding the loop templates: what I *want* is for the result of the closure to 
 
 /// The template used for `--loop` input, assuming no `--count` flag is also given.
 pub const LOOP_TEMPLATE: &'static str = r#"
+%p
 use std::any::Any;
 use std::io::prelude::*;
 
@@ -73,6 +75,7 @@ where F: FnMut(&str) -> T, T: 'static {
 
 /// The template used for `--count --loop` input.
 pub const LOOP_COUNT_TEMPLATE: &'static str = r#"
+%p
 use std::any::Any;
 use std::io::prelude::*;
 
