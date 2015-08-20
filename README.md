@@ -107,7 +107,16 @@ $ cargo script --dep time --expr \
 "Sat, 30 May 2015 19:32:18 +1000"
 ```
 
-Dependencies can also be specified with specific versions (*e.g.* `--dep time=0.1.25`); when omitted, `cargo-script` will simply use `"*"` for the manifest.
+Dependencies can also be specified with specific versions (*e.g.* `--dep time=0.1.25`); when omitted, `cargo-script` will simply use `"*"` for the manifest.  The above can *also* be written variously as:
+
+* `cargo script -d time -e "extern crate time; ..."`
+* `cargo script -d time -x time -e "..."`
+* `cargo script --dep-extern time --expr "..."`
+* `cargo script -D time -e "..."`
+
+The `--dep-extern`/`-D` option can be used to insert an automatic `extern crate` item into an expression (or loop, as shown below) script.  This *only* works when the package name and compiled crate name match.
+
+If you wish to use a dependency where the package and crate names *do not* match, you can specify the dependency with `--dep`/`-d`, and the extern crate name with `--extern`/`-x`.
 
 Finally, you can also use `cargo-script` to write a quick stream filter, by specifying a closure to be called for each line read from stdin, like so:
 
@@ -141,9 +150,11 @@ $ cat now.crs | cargo script --count --loop \
 
 ## Things That Should Probably Be Done
 
-* Somehow convince the Cargo devs to add aggressive caching of dependencies so that compiling anything that has dependencies doesn't take an age.
+* Write a front-end suitable for use with both UNIX hashbangs and file associations.
 
-* Maybe add some sort of `--no-cache` flag that shoves everything into a single folder.
+* Suppress Cargo/rustc output unless there's actually a problem.  Downside: scripts that require lots of network access and dependency compilation will appear to hang for a while with no feedback.
+
+* Somehow convince the Cargo devs to add aggressive caching of dependencies so that compiling anything that has dependencies doesn't take an age.
 
 * Gist support?  I mean, if it's good enough for playpen...
 

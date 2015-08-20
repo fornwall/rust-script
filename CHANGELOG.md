@@ -1,4 +1,14 @@
 
+# v0.1.2
+
+**New:**
+
+* Added `-e` and `-l` as shorthands for `--expr` and `--loop`.
+
+* Added `--dep-extern`/`-D`.  This introduces a dependency and causes an appropriate `#[macro_use] extern crate $name;` item to be added.  This only applies to expression and loop scripts.
+
+* Added `--extern`/`-x`.  This adds a explicit `#[macro_use] extern crate $name` item.  This only applies to expression and loop scripts.
+
 # v0.1.1
 
 **New:**
