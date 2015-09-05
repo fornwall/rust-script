@@ -58,9 +58,13 @@ mod inner {
     */
     pub fn get_cache_dir_for<P>(product: P) -> Result<PathBuf, MainError>
     where P: AsRef<Path> {
-        let home = match env::var_os("HOME") {
+        // try $CARGO_HOME then fall back to $HOME
+        let home = match env::var_os("CARGO_HOME") {
             Some(val) => val,
-            None => return Err((Blame::Human, "$HOME is not defined").into())
+            None => match env::var_os("HOME") {
+                Some(val) => val,
+                None => return Err((Blame::Human, "neither $CARGO_HOME nor $HOME is defined").into())
+            }
         };
 
         match product.as_ref().to_str() {
