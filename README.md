@@ -14,13 +14,13 @@ As such, `cargo-script` does two major things:
 
 Clone the repository using `git clone --recursive` in order to pull in the required submodule.  If you've *already* cloned, but didn't use `--recursive`, you can run `git submodule update --init --recursive`.
 
-`cargo-script` requires a nightly build of `rustc` due to the use of several unstable features.  Aside from that, it should build cleanly with `cargo build`.
+`cargo-script` requires a nightly build of `rustc` due to the use of several unstable features.  Aside from that, it should build cleanly with `cargo build --release`.
 
 Once built, you should place the resulting executable somewhere on your `PATH`.  At that point, you should be able to invoke it by using `cargo script`.
 
 Note that you *can* run the executable directly, but the first argument will *need* to be `script`.
 
-If you want to run `cargo script` from a hashbang, you will need to write a shell script to forward to `cargo script`.  We recommend using the name `cargo-script-run`; if an official script is provided, that's what it will likely be called.
+If you want to run `cargo script` from a hashbang, you should also install the `cargo-script-run` program.  We *strongly* recommend installing this program to the `PATH` and using `#!/usr/bin/env cargo-script-run` as the hashbang line.
 
 ## Usage
 
@@ -41,9 +41,10 @@ You may also embed a partial Cargo manifest at the start of your script, as show
 
 Note that all of the following are equivalent:
 
-`now.rs` (code block manifest):
+`now.rs` (code block manifest *and* UNIX hashbang):
 
 ```rust
+#!/usr/bin/env cargo-script-run
 //! This is a regular crate doc comment, but it also contains a partial
 //! Cargo manifest.  Note the use of a *fenced* code block, and the
 //! `cargo` "language".
@@ -149,8 +150,6 @@ $ cat now.crs | cargo script --count --loop \
 ```
 
 ## Things That Should Probably Be Done
-
-* Write a front-end suitable for use with both UNIX hashbangs and file associations.
 
 * Suppress Cargo/rustc output unless there's actually a problem.  Downside: scripts that require lots of network access and dependency compilation will appear to hang for a while with no feedback.
 
