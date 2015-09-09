@@ -31,3 +31,6 @@ ole32-sys = "0.1.0"
 shell32-sys = "0.1.1"
 winapi = "0.2.2"
 uuid-sys = "0.1.2"
+
+[profile.release]
+lto = true
