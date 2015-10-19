@@ -545,7 +545,7 @@ fn find_prefix_manifest(content: &str) -> Option<(Manifest, &str)> {
 
     Once we've done that, we just chop the script content up in the appropriate places.
     */
-    let lines = content.lines_any();
+    let lines = content.lines();
 
     let mut manifest_end = None;
     let mut source_start = None;
@@ -811,7 +811,7 @@ fn extract_comment(s: &str) -> Result<String> {
         let mut margin = None;
         let mut depth: u32 = 1;
 
-        for line in s.lines_any() {
+        for line in s.lines() {
             if depth == 0 { break }
 
             // Update nesting and look for end-of-comment.
@@ -865,7 +865,7 @@ fn extract_comment(s: &str) -> Result<String> {
             // Done.
             r.push_str(line);
 
-            // `lines_any` removes newlines.  Ideally, it wouldn't do that, but hopefully this shouldn't cause any *real* problems.
+            // `lines` removes newlines.  Ideally, it wouldn't do that, but hopefully this shouldn't cause any *real* problems.
             r.push_str("\n");
         }
 
@@ -880,7 +880,7 @@ fn extract_comment(s: &str) -> Result<String> {
 
         let mut leading_space = None;
 
-        for line in s.lines_any() {
+        for line in s.lines() {
             // Strip leading comment marker.
             let content = match comment_re.find(line) {
                 Some((_, end)) => &line[end..],
@@ -908,7 +908,7 @@ fn extract_comment(s: &str) -> Result<String> {
             // Done.
             r.push_str(content);
 
-            // `lines_any` removes newlines.  Ideally, it wouldn't do that, but hopefully this shouldn't cause any *real* problems.
+            // `lines` removes newlines.  Ideally, it wouldn't do that, but hopefully this shouldn't cause any *real* problems.
             r.push_str("\n");
         }
 
