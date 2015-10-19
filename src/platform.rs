@@ -84,7 +84,6 @@ pub mod inner {
     extern crate ole32;
     extern crate shell32;
     extern crate winapi;
-    extern crate uuid;
 
     pub use super::inner_unix_or_windows::current_time;
 
@@ -94,8 +93,11 @@ pub mod inner {
     use std::path::{Path, PathBuf};
     use std::mem;
     use std::os::windows::ffi::OsStringExt;
-    use self::uuid::FOLDERID_LocalAppData;
     use error::MainError;
+
+    // This *is* in `uuid-sys` ≤ 0.1.2, but that's broken at time of writing.  Once its fixed, change it back.
+    #[link(name="uuid")]
+    extern { pub static FOLDERID_LocalAppData: winapi::KNOWNFOLDERID; }
 
     /**
     Gets the last-modified time of a file, in milliseconds since the UNIX epoch.
