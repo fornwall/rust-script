@@ -3,6 +3,12 @@ name = "cargo-script"
 version = "0.1.3"
 authors = ["Daniel Keep <daniel.keep@gmail.com>"]
 
+description = "A Cargo subcommand designed to let people quickly and easily run Rust \"scripts\" which can make use of Cargo's package ecosystem."
+repository = "https://github.com/DanielKeep/cargo-script"
+readme = "README.md"
+license = "MIT"
+keywords = ["cargo", "script"]
+
 [dependencies]
 env_logger = "0.3.1"
 hoedown = "3.0.3"
