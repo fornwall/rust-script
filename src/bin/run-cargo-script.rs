@@ -1,5 +1,5 @@
 /*!
-`cargo-script-run` is a trampoline program designed to be used as the target of hashbangs and/or file associations to allow Rust source files to be executed as scripts.
+`run-cargo-script` is a trampoline program designed to be used as the target of hashbangs and/or file associations to allow Rust source files to be executed as scripts.
 
 The invocation is simple: it expects *at least* one argument, which is passed to `cargo-script` as the name of a script file to execute.  All other arguments are passed *after* a `--` argument to ensure they are interpreted as arguments to the *script* as opposed to this program, `cargo` or `cargo-script`.
 
@@ -16,7 +16,7 @@ use std::process::Command;
 
 fn main() {
     let mut args = std::env::args();
-    let exe = args.next().unwrap_or_else(|| "cargo-script-run".into());
+    let exe = args.next().unwrap_or_else(|| "run-cargo-script".into());
     let path = match args.next() {
         Some(v) => v,
         None => {

@@ -20,7 +20,7 @@ Once built, you should place the resulting executable somewhere on your `PATH`. 
 
 Note that you *can* run the executable directly, but the first argument will *need* to be `script`.
 
-If you want to run `cargo script` from a hashbang, you should also install the `cargo-script-run` program.  We *strongly* recommend installing this program to the `PATH` and using `#!/usr/bin/env cargo-script-run` as the hashbang line.
+If you want to run `cargo script` from a hashbang, you should also install the `run-cargo-script` program.  We *strongly* recommend installing this program to the `PATH` and using `#!/usr/bin/env run-cargo-script` as the hashbang line.
 
 ## Usage
 
@@ -44,7 +44,7 @@ Note that all of the following are equivalent:
 `now.rs` (code block manifest *and* UNIX hashbang):
 
 ```rust
-#!/usr/bin/env cargo-script-run
+#!/usr/bin/env run-cargo-script
 //! This is a regular crate doc comment, but it also contains a partial
 //! Cargo manifest.  Note the use of a *fenced* code block, and the
 //! `cargo` "language".

@@ -257,7 +257,7 @@ fn strip_hashbang(s: &str) -> &str {
 #[test]
 fn test_strip_hashbang() {
     assert_eq!(strip_hashbang("\
-#!/usr/bin/env cargo-script-run
+#!/usr/bin/env run-cargo-script
 and the rest
 \
         "), "\
