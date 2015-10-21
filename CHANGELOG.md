@@ -1,4 +1,16 @@
 
+# v0.1.3
+
+**New:**
+
+* `run-cargo-script` trampoline program for use with hashbangs.
+
+**Changed:**
+
+* On UNIX, `cargo-script` will now try to place its cache in `$CARGO_HOME`, falling back to `$HOME`.  Behaviour on Windows is unchanged.
+
+* Various internal fixes and updates.
+
 # v0.1.2
 
 **New:**
