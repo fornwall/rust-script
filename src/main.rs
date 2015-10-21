@@ -9,7 +9,6 @@ As such, `cargo-script` does two major things:
 
 2. It caches the generated and compiled packages, regenerating them only if the script or its metadata have changed.
 */
-#![feature(path_ext)]
 #![feature(pattern)]
 
 extern crate clap;
@@ -34,12 +33,12 @@ use std::borrow::Cow;
 use std::error::Error;
 use std::ffi::OsString;
 use std::fs;
-use std::io::prelude::*;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use error::{Blame, MainError, Result};
-use util::Defer;
+use util::{Defer, PathExt};
 
 #[derive(Debug)]
 struct Args {
@@ -599,8 +598,6 @@ fn decide_action_for(
     build_only: bool,
     force: bool,
 ) -> InputAction {
-    use std::fs::PathExt;
-
     let (pkg_path, using_cache) = pkg_path.map(|p| (p.into(), false))
         .unwrap_or_else(|| {
             // This can't fail.  Seriously, we're *fucked* if we can't work this out.

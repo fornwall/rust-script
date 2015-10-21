@@ -191,3 +191,23 @@ impl SubsliceOffset for str {
         }
     }
 }
+
+use std::path::Path;
+
+/**
+Stable replacement for unstable `std::fs::PathExt`.
+*/
+pub trait PathExt {
+    /**
+    Returns whether this metadata is for a regular file.
+    */
+    fn is_file(&self) -> bool;
+}
+
+impl PathExt for Path {
+    fn is_file(&self) -> bool {
+        ::std::fs::metadata(self)
+            .map(|md| md.is_file())
+            .unwrap_or(false)
+    }
+}
