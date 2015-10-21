@@ -83,7 +83,7 @@ fn parse_args() -> Args {
         .about(about)
         .arg_required_else_help(true)
         .subcommand_required_else_help(true)
-        .subcommand(SubCommand::new("script")
+        .subcommand(SubCommand::with_name("script")
             .version(version)
             .about(about)
             .usage("cargo script [FLAGS OPTIONS] [--] <script> <args>...")
@@ -111,7 +111,7 @@ fn parse_args() -> Args {
                 .requires("script")
             )
             .arg_group(ArgGroup::with_name("expr_or_loop")
-                .add_all(vec!["expr", "loop"])
+                .add_all(&["expr", "loop"])
             )
             .arg(Arg::with_name("clear_cache")
                 .help("Clears out the script cache.")
@@ -182,10 +182,13 @@ fn parse_args() -> Args {
 
     let m = m.subcommand_matches("script").unwrap();
 
+    fn owned_vec_string<'a>(v: Option<Vec<&'a str>>) -> Vec<String> {
+        v.unwrap_or(vec![]).into_iter().map(Into::into).collect()
+    }
+
     Args {
         script: m.value_of("script").map(Into::into),
-        args: m.values_of("args").unwrap_or(vec![]).into_iter()
-            .map(Into::into).collect(),
+        args: owned_vec_string(m.values_of("args")),
 
         expr: m.is_present("expr"),
         loop_: m.is_present("loop"),
@@ -196,12 +199,9 @@ fn parse_args() -> Args {
         build_only: m.is_present("build_only"),
         clear_cache: m.is_present("clear_cache"),
         debug: m.is_present("debug"),
-        dep: m.values_of("dep").unwrap_or(vec![]).into_iter()
-            .map(Into::into).collect(),
-        dep_extern: m.values_of("dep_extern").unwrap_or(vec![]).into_iter()
-            .map(Into::into).collect(),
-        extern_: m.values_of("extern").unwrap_or(vec![]).into_iter()
-            .map(Into::into).collect(),
+        dep: owned_vec_string(m.values_of("dep")),
+        dep_extern: owned_vec_string(m.values_of("dep_extern")),
+        extern_: owned_vec_string(m.values_of("extern")),
         force: m.is_present("force"),
     }
 }

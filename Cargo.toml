@@ -14,7 +14,7 @@ time = "0.1.25"
 toml = "0.1.20"
 
 [dependencies.clap]
-version = "0.10.2"
+version = "1.4.5"
 
 # Disable the "color" feature because it just outputs garbage on Windows.
 default-features = false
