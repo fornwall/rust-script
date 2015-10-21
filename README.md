@@ -10,9 +10,15 @@ As such, `cargo-script` does two major things:
 
 2. It caches the generated and compiled packages, regenerating them only if the script or its metadata have changed.
 
-## Compiling and Installation
+## Installation
 
-Clone the repository using `git clone --recursive` in order to pull in the required submodule.  If you've *already* cloned, but didn't use `--recursive`, you can run `git submodule update --init --recursive`.
+If you are using Rust 1.5 or higher, you can install `cargo-script` using Cargo's `install` subcommand:
+
+```sh
+cargo install cargo-script
+```
+
+### Manually Compiling and Installing
 
 `cargo-script` requires a nightly build of `rustc` due to the use of several unstable features.  Aside from that, it should build cleanly with `cargo build --release`.
 
