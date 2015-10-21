@@ -4,7 +4,7 @@ version = "0.1.3"
 dependencies = [
  "clap 1.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "hoedown 3.0.2",
+ "hoedown 3.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "ole32-sys 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.1.41 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -67,7 +67,8 @@ dependencies = [
 
 [[package]]
 name = "hoedown"
-version = "3.0.2"
+version = "3.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bitflags 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "gcc 0.3.19 (registry+https://github.com/rust-lang/crates.io-index)",
