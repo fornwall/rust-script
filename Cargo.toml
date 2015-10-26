@@ -12,6 +12,7 @@ keywords = ["cargo", "script"]
 [dependencies]
 env_logger = "0.3.1"
 hoedown = "3.0.3"
+lazy_static = "0.1.15"
 log = "0.3.1"
 regex = "0.1.33"
 rustc-serialize = "0.3.14"

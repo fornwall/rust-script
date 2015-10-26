@@ -1,6 +1,10 @@
 
 # v0.1.4
 
+**Fixed:**
+
+* `cargo-script` should now build with Rust 1.3 stable.  There is a known issue with multirust-rs that prevents it from building; this should be fixed by updating to Rust 1.4 or not using multirust-rs.
+
 # v0.1.3
 
 **New:**

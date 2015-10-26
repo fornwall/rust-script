@@ -12,6 +12,25 @@ use error::{Blame, Result};
 use util::SubsliceOffset;
 use Input;
 
+lazy_static! {
+    static ref RE_SHORT_MANIFEST: Regex = Regex::new(
+        r"^(?i)\s*//\s*cargo-deps\s*:(.*?)(\r\n|\n)").unwrap();
+    static ref RE_MARGIN: Regex = Regex::new(r"^\s*\*( |$)").unwrap();
+    static ref RE_SPACE: Regex = Regex::new(r"^(\s+)").unwrap();
+    static ref RE_NESTING: Regex = Regex::new(r"/\*|\*/").unwrap();
+    static ref RE_COMMENT: Regex = Regex::new(r"^\s*//!").unwrap();
+    static ref RE_HASHBANG: Regex = Regex::new(r"^#![^[].*?(\r\n|\n)").unwrap();
+    static ref RE_CRATE_COMMENT: Regex = {
+        Regex::new(
+            r"(?x)
+                # We need to find the first `/*!` or `//!` that *isn't* preceeded by something that would make it apply to anything other than the crate itself.  Because we can't do this accurately, we'll just require that the doc comment is the *first* thing in the file (after the optional hashbang, which should already have been stripped).
+                ^\s*
+                (/\*!|//!)
+            "
+        ).unwrap()
+    };
+}
+
 /**
 Splits input into a complete Cargo manifest and unadultered Rust source.
 
@@ -240,17 +259,9 @@ fn main() {}
 Returns a slice of the input string with the leading hashbang, if there is one, omitted.
 */
 fn strip_hashbang(s: &str) -> &str {
-    use std::str::pattern::{Pattern, Searcher};
-    use util::ToMultiPattern;
-
-    if s.starts_with("#!") && !s.starts_with("#![") {
-        let mut search = vec!["\r\n", "\n"].to_multi_pattern().into_searcher(s);
-        match search.next_match() {
-            Some((_, b)) => &s[b..],
-            None => s
-        }
-    } else {
-        s
+    match RE_HASHBANG.find(s) {
+        Some((_, end)) => &s[end..],
+        None => s
     }
 }
 
@@ -610,7 +621,7 @@ fn find_short_comment_manifest(s: &str) -> Option<(Manifest, &str)> {
     /*
     This is pretty simple: the only valid syntax for this is for the first, non-blank line to contain a single-line comment whose first token is `cargo-deps:`.  That's it.
     */
-    let re = Regex::new(r"^(?i)\s*//\s*cargo-deps\s*:(.*)(\r\n|\n)").unwrap();
+    let re = &*RE_SHORT_MANIFEST;
     if let Some(cap) = re.captures(s) {
         if let Some((a, b)) = cap.pos(1) {
             return Some((Manifest::DepList(&s[a..b]), &s[..]))
@@ -632,10 +643,11 @@ fn find_code_block_manifest(s: &str) -> Option<(Manifest, &str)> {
 
     Then, we need to take the contents of this doc comment and feed it to a Markdown parser.  We are looking for *the first* fenced code block with a language token of `cargo`.  This is extracted and pasted back together into the manifest.
     */
-    use util::ToMultiPattern;
-
-    let start = match s.find(vec!["/*!", "//!"].to_multi_pattern()) {
-        Some(pos) => pos,
+    let start = match RE_CRATE_COMMENT.captures(s) {
+        Some(cap) => match cap.pos(1) {
+            Some((a, _)) => a,
+            None => return None
+        },
         None => return None
     };
 
@@ -803,9 +815,9 @@ fn extract_comment(s: &str) -> Result<String> {
         */
         let mut r = String::new();
 
-        let margin_re = Regex::new(r"^\s*\*( |$)").unwrap();
-        let space_re = Regex::new(r"^(\s+)").unwrap();
-        let nesting_re = Regex::new(r"/\*|\*/").unwrap();
+        let margin_re = &*RE_MARGIN;
+        let space_re = &*RE_SPACE;
+        let nesting_re = &*RE_NESTING;
 
         let mut leading_space = None;
         let mut margin = None;
@@ -875,8 +887,8 @@ fn extract_comment(s: &str) -> Result<String> {
     fn extract_line(s: &str) -> Result<String> {
         let mut r = String::new();
 
-        let comment_re = Regex::new(r"^\s*//!").unwrap();
-        let space_re = Regex::new(r"^(\s+).*").unwrap();
+        let comment_re = &*RE_COMMENT;
+        let space_re = &*RE_SPACE;
 
         let mut leading_space = None;
 
