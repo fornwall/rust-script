@@ -43,6 +43,7 @@ use util::{Defer, PathExt};
 struct Args {
     script: Option<String>,
     args: Vec<String>,
+    features: Option<String>,
 
     expr: bool,
     loop_: bool,
@@ -94,6 +95,11 @@ fn parse_args() -> Args {
                 .index(2)
                 .multiple(true)
             )
+            .arg(Arg::with_name("features")
+                 .help("Cargo features to pass when building and running")
+                 .long("features")
+                 .takes_value(true)
+             )
             .arg(Arg::with_name("expr")
                 .help("Execute <script> as a literal expression and display the result.")
                 .long("expr")
@@ -187,6 +193,7 @@ fn parse_args() -> Args {
     Args {
         script: m.value_of("script").map(Into::into),
         args: owned_vec_string(m.values_of("args")),
+        features: m.value_of("features").map(Into::into),
 
         expr: m.is_present("expr"),
         loop_: m.is_present("loop"),
@@ -373,6 +380,7 @@ fn try_main() -> Result<i32> {
         args.gen_pkg_only,
         args.build_only,
         args.force,
+        args.features,
     );
     info!("action: {:?}", action);
 
@@ -513,6 +521,11 @@ fn gen_pkg_and_compile(
             cmd.arg("--release");
         }
 
+        if meta.features.is_some() {
+            cmd.arg("--features");
+            cmd.arg(meta.features.as_ref().unwrap()); // can't fail because we just checked
+        }
+
         try!(cmd.status().map_err(|e| Into::<MainError>::into(e)).and_then(|st|
             match st.code() {
                 Some(0) => Ok(()),
@@ -582,6 +595,9 @@ struct PackageMetadata {
 
     /// Sorted list of injected prelude items.
     prelude: Vec<String>,
+
+    /// Cargo features
+    features: Option<String>,
 }
 
 /**
@@ -596,6 +612,7 @@ fn decide_action_for(
     gen_pkg_only: bool,
     build_only: bool,
     force: bool,
+    features: Option<String>,
 ) -> InputAction {
     let (pkg_path, using_cache) = pkg_path.map(|p| (p.into(), false))
         .unwrap_or_else(|| {
@@ -632,6 +649,7 @@ fn decide_action_for(
             debug: debug,
             deps: deps,
             prelude: prelude,
+            features: features,
         }
     };
     info!("input_meta: {:?}", input_meta);
