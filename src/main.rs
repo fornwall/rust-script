@@ -521,9 +521,9 @@ fn gen_pkg_and_compile(
             cmd.arg("--release");
         }
 
-        if meta.features.is_some() {
+        if let Some(ref features) = meta.features {
             cmd.arg("--features");
-            cmd.arg(meta.features.as_ref().unwrap()); // can't fail because we just checked
+            cmd.arg(features);
         }
 
         try!(cmd.status().map_err(|e| Into::<MainError>::into(e)).and_then(|st|
