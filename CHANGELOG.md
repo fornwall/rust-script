@@ -1,6 +1,10 @@
 
 # v0.1.4
 
+**New:**
+
+* Added `--features` option.  This allows you to specify the features that should be enabled.
+
 **Fixed:**
 
 * `cargo-script` should now build with Rust 1.3 stable.  There is a known issue with multirust-rs that prevents it from building; this should be fixed by updating to Rust 1.4 or not using multirust-rs.
