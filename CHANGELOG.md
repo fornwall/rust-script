@@ -7,7 +7,7 @@
 
 **Fixed:**
 
-* `cargo-script` should now build with Rust 1.3 stable.  There is a known issue with multirust-rs that prevents it from building; this should be fixed by updating to Rust 1.4 or not using multirust-rs.
+* `cargo-script` should now build with Rust 1.4 stable or higher.  Rust 1.3 is incompatible due to the breaking change to the behaviour of `str::lines`.
 
 # v0.1.3
 
