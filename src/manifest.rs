@@ -224,6 +224,34 @@ fn main() {}
 
     assert_eq!(si!(f(
 r#"
+// Cargo-Deps: time="0.1.25", libc="0.2.5"
+fn main() {}
+"#
+        )),
+        r!(
+r#"
+[[bin]]
+name = "n"
+path = "n.rs"
+
+[dependencies]
+libc = "0.2.5"
+time = "0.1.25"
+
+[package]
+authors = ["Anonymous"]
+name = "n"
+version = "0.1.0"
+"#,
+r#"
+// Cargo-Deps: time="0.1.25", libc="0.2.5"
+fn main() {}
+"#
+        )
+    );
+
+    assert_eq!(si!(f(
+r#"
 /*!
 Here is a manifest:
 
@@ -438,6 +466,17 @@ fn main() {}
     Some((
 DepList(" time=\"0.1.25\""),
 "// cargo-deps: time=\"0.1.25\"
+fn main() {}
+"
+    )));
+
+    assert_eq!(fem(
+"// cargo-deps: time=\"0.1.25\", libc=\"0.2.5\"
+fn main() {}
+"),
+    Some((
+DepList(" time=\"0.1.25\", libc=\"0.2.5\""),
+"// cargo-deps: time=\"0.1.25\", libc=\"0.2.5\"
 fn main() {}
 "
     )));

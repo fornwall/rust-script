@@ -79,6 +79,8 @@ fn main() {
 }
 ```
 
+> **Note**: you can write multiple dependencies by separating them with commas.  *E.g.* `time="0.1.25", libc="0.2.5"`.
+
 `now.crs` (prefix manifest; *these might be removed in the future*):
 
 ```rust
