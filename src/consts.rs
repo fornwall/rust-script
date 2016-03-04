@@ -34,9 +34,10 @@ pub const FILE_TEMPLATE: &'static str = r#"%b"#;
 pub const EXPR_TEMPLATE: &'static str = r#"
 %p
 fn main() {
-    println!("{:?}", 
+    let __cargo_script_expr = {
 {%b}
-    );
+    };
+    println!("{:?}",  __cargo_script_expr);
 }
 "#;
 
