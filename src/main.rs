@@ -67,6 +67,7 @@ struct Args {
     dep_extern: Vec<String>,
     extern_: Vec<String>,
     force: bool,
+    unstable_features: Vec<String>,
 }
 
 fn parse_args() -> Args {
@@ -190,6 +191,14 @@ fn parse_args() -> Args {
                 .long("force")
                 .requires("script")
             )
+            .arg(Arg::with_name("unstable_features")
+                .help("Add a #![feature] declaration to the crate.")
+                .long("unstable-feature")
+                .short("u")
+                .takes_value(true)
+                .multiple(true)
+                .requires("expr_or_loop")
+            )
         )
         .get_matches();
 
@@ -217,6 +226,7 @@ fn parse_args() -> Args {
         dep_extern: owned_vec_string(m.values_of("dep_extern")),
         extern_: owned_vec_string(m.values_of("extern")),
         force: m.is_present("force"),
+        unstable_features: owned_vec_string(m.values_of("unstable_features")),
     }
 }
 
@@ -359,6 +369,8 @@ fn try_main() -> Result<i32> {
     Generate the prelude items, if we need any.  Again, ensure consistent and *valid* sorting.
     */
     let prelude_items = {
+        let unstable_features = args.unstable_features.iter()
+            .map(|uf| format!("#![feature({})]", uf));
         let dep_externs = args.dep_extern.iter()
             .map(|d| match d.find('=') {
                 Some(i) => &d[..i],
@@ -373,7 +385,7 @@ fn try_main() -> Result<i32> {
         let externs = args.extern_.iter()
             .map(|n| format!("#[macro_use] extern crate {};", n));
 
-        let mut items: Vec<_> = dep_externs.chain(externs).collect();
+        let mut items: Vec<_> = unstable_features.chain(dep_externs).chain(externs).collect();
         items.sort();
         items
     };
