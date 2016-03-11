@@ -530,7 +530,16 @@ fn gen_pkg_and_compile(
         try!(script_f.flush());
     }
 
-    // *bursts through wall* It's Cargo Time! (Possibly)
+    /*
+    *bursts through wall* It's Cargo Time! (Possibly)
+
+    Note that there's a complication here: we want to *temporarily* continue *even if compilation fails*.  This is because if we don't, then every time you run `cargo script` on a script you're currently modifying, and it fails to compile, your compiled dependencies get obliterated.
+
+    This is *really* annoying.
+
+    As such, we want to ignore any compilation problems until *after* we've written the metadata and disarmed the cleanup callback.
+    */
+    let mut compile_err = Ok(());
     if action.compile {
         info!("compiling...");
         let mut cmd = Command::new("cargo");
@@ -547,12 +556,13 @@ fn gen_pkg_and_compile(
             cmd.arg(features);
         }
 
-        try!(cmd.status().map_err(|e| Into::<MainError>::into(e)).and_then(|st|
-            match st.code() {
-                Some(0) => Ok(()),
-                Some(st) => Err(format!("cargo failed with status {}", st).into()),
-                None => Err("cargo failed".into())
-            }));
+        compile_err = cmd.status().map_err(|e| Into::<MainError>::into(e))
+            .and_then(|st|
+                match st.code() {
+                    Some(0) => Ok(()),
+                    Some(st) => Err(format!("cargo failed with status {}", st).into()),
+                    None => Err("cargo failed".into())
+                });
     }
 
     // Write out metadata *now*.  Remember that we check the timestamp in the metadata, *not* on the executable.
@@ -563,7 +573,8 @@ fn gen_pkg_and_compile(
 
     info!("disarming pkg dir cleanup...");
     cleanup_dir.disarm();
-    Ok(())
+
+    compile_err
 }
 
 /**
