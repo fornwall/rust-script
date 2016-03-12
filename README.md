@@ -20,7 +20,7 @@ cargo install cargo-script
 
 ### Manually Compiling and Installing
 
-`cargo-script` requires a nightly build of `rustc` due to the use of several unstable features.  Aside from that, it should build cleanly with `cargo build --release`.
+`cargo-script` requires Rust 1.4.0 or higher to build.
 
 Once built, you should place the resulting executable somewhere on your `PATH`.  At that point, you should be able to invoke it by using `cargo script`.
 
@@ -164,8 +164,6 @@ $ cat now.crs | cargo script --count --loop \
 * Somehow convince the Cargo devs to add aggressive caching of dependencies so that compiling anything that has dependencies doesn't take an age.
 
 * Gist support?  I mean, if it's good enough for playpen...
-
-* Some kind of install script would be nice.
 
 ## License
 
