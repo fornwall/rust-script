@@ -71,7 +71,8 @@ pub struct Output {
 impl Output {
     pub fn stdout_output(&self) -> &str {
         assert!(self.success());
-        for (i, _) in self.stdout.match_indices(OUTPUT_MARKER) {
+        for marker in self.stdout.matches(OUTPUT_MARKER) {
+            let i = subslice_offset(&self.stdout, marker).unwrap();
             let before_cp = self.stdout[..i].chars().rev().next().unwrap();
             if !(before_cp == '\r' || before_cp == '\n') { continue; }
             let after = &self.stdout[i+OUTPUT_MARKER.len()..];
@@ -94,5 +95,15 @@ impl From<::std::process::Output> for Output {
             stdout: String::from_utf8(v.stdout).unwrap(),
             stderr: String::from_utf8(v.stderr).unwrap(),
         }
+    }
+}
+
+fn subslice_offset(outer: &str, inner: &str) -> Option<usize> {
+    let outer_beg = outer.as_ptr() as usize;
+    let inner = inner.as_ptr() as usize;
+    if inner < outer_beg || inner > outer_beg.wrapping_add(outer.len()) {
+        None
+    } else {
+        Some(inner.wrapping_sub(outer_beg))
     }
 }
