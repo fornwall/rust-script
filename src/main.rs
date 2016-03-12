@@ -31,6 +31,11 @@ If this is set to `true`, the digests used for package IDs will be replaced with
 */
 const STUB_HASHES: bool = false;
 
+/**
+If this is set to `false`, then code that automatically deletes stuff *won't*.
+*/
+const ALLOW_AUTO_REMOVE: bool = true;
+
 mod consts;
 mod error;
 mod manifest;
@@ -68,6 +73,7 @@ struct Args {
     extern_: Vec<String>,
     force: bool,
     unstable_features: Vec<String>,
+    use_bincache: Option<bool>,
 }
 
 fn parse_args() -> Args {
@@ -209,6 +215,12 @@ fn parse_args() -> Args {
                 .requires("script")
                 .conflicts_with_all(csas!["clear_cache", "force"])
             )
+            .arg(Arg::with_name("use_bincache")
+                .help("Override whether or not the shared binary cache will be used for compilation.")
+                .long("use-shared-binary-cache")
+                .takes_value(true)
+                .possible_values(csas!["no", "yes"])
+            )
         )
         .get_matches();
 
@@ -216,6 +228,14 @@ fn parse_args() -> Args {
 
     fn owned_vec_string<'a>(v: Option<Vec<&'a str>>) -> Vec<String> {
         v.unwrap_or(vec![]).into_iter().map(Into::into).collect()
+    }
+
+    fn yes_or_no(v: Option<&str>) -> Option<bool> {
+        v.map(|v| match v {
+            "yes" => true,
+            "no" => false,
+            _ => unreachable!()
+        })
     }
 
     Args {
@@ -237,6 +257,7 @@ fn parse_args() -> Args {
         extern_: owned_vec_string(m.values_of("extern")),
         force: m.is_present("force"),
         unstable_features: owned_vec_string(m.values_of("unstable_features")),
+        use_bincache: yes_or_no(m.value_of("use_bincache")),
     }
 }
 
@@ -402,7 +423,7 @@ fn try_main() -> Result<i32> {
     info!("prelude_items: {:?}", prelude_items);
 
     // Work out what to do.
-    let action = decide_action_for(
+    let action = try!(decide_action_for(
         &input,
         deps,
         prelude_items,
@@ -412,7 +433,8 @@ fn try_main() -> Result<i32> {
         args.build_only,
         args.force,
         args.features,
-    );
+        args.use_bincache,
+    ));
     info!("action: {:?}", action);
 
     try!(gen_pkg_and_compile(&input, &action));
@@ -431,7 +453,7 @@ fn try_main() -> Result<i32> {
 
     // Run it!
     if action.execute {
-        let exe_path = get_exe_path(&input, &action.pkg_path, &action.metadata);
+        let exe_path = try!(get_exe_path(&input, action.use_bincache, &action.pkg_path, &action.metadata));
         info!("executing {:?}", exe_path);
         match try!(Command::new(exe_path).args(&args.args).status()
             .map(|st| st.code().unwrap_or(1)))
@@ -452,6 +474,16 @@ Looks for all folders whose metadata says they were created at least `max_age` i
 */
 fn clean_cache(max_age: u64) -> Result<()> {
     info!("cleaning cache with max_age: {:?}", max_age);
+
+    if max_age == 0 {
+        info!("max_age is 0, clearing binary cache...");
+        let cache_dir = try!(get_binary_cache_path());
+        if ALLOW_AUTO_REMOVE {
+            if let Err(err) = fs::remove_dir_all(&cache_dir) {
+                error!("failed to remove binary cache {:?}: {}", cache_dir, err);
+            }
+        }
+    }
 
     let cutoff = platform::current_time() - max_age;
     info!("cutoff:     {:>20?} ms", cutoff);
@@ -490,8 +522,12 @@ fn clean_cache(max_age: u64) -> Result<()> {
 
         if remove_dir() {
             info!("removing {:?}", path);
-            if let Err(err) = fs::remove_dir_all(&path) {
-                error!("failed to remove {:?} from cache: {}", path, err);
+            if ALLOW_AUTO_REMOVE {
+                if let Err(err) = fs::remove_dir_all(&path) {
+                    error!("failed to remove {:?} from cache: {}", path, err);
+                }
+            } else {
+                info!("(suppressed remove)");
             }
         }
     }
@@ -510,35 +546,61 @@ fn gen_pkg_and_compile(
 ) -> Result<()> {
     let pkg_path = &action.pkg_path;
     let meta = &action.metadata;
+    let old_meta = action.old_metadata.as_ref();
 
-    info!("splitting input...");
-    let (mani_str, script_str) = try!(manifest::split_input(input, &meta.deps, &meta.prelude));
+    let mani_str = &action.manifest;
+    let script_str = &action.script;
 
     info!("creating pkg dir...");
     try!(fs::create_dir_all(pkg_path));
     let cleanup_dir: Defer<_, MainError> = Defer::defer(|| {
         // DO NOT try deleting ANYTHING if we're not cleaning up inside our own cache.  We *DO NOT* want to risk killing user files.
         if action.using_cache {
-            try!(fs::remove_dir_all(pkg_path))
+            info!("cleaning up cache directory {:?}", pkg_path);
+            if ALLOW_AUTO_REMOVE {
+                try!(fs::remove_dir_all(pkg_path));
+            } else {
+                info!("(suppressed remove)");
+            }
         }
         Ok(())
     });
 
+    let mut meta = meta.clone();
+
     info!("generating Cargo package...");
     let mani_path = {
         let mani_path = pkg_path.join("Cargo.toml");
-        let mut mani_f = try!(fs::File::create(&mani_path));
-        try!(write!(&mut mani_f, "{}", mani_str));
-        try!(mani_f.flush());
+        let mani_hash = old_meta.map(|m| &*m.manifest_hash);
+        match try!(overwrite_file(&mani_path, mani_str, mani_hash)) {
+            FileOverwrite::Same => (),
+            FileOverwrite::Changed { new_hash } => {
+                meta.manifest_hash = new_hash;
+            },
+        }
         mani_path
     };
 
     {
         let script_path = pkg_path.join(input.safe_name()).with_extension("rs");
-        let mut script_f = try!(fs::File::create(script_path));
-        try!(write!(&mut script_f, "{}", script_str));
-        try!(script_f.flush());
+        /*
+        There are times (particularly involving shared target dirs) where we can't rely on Cargo to correctly detect invalidated builds.  As such, if we've been told to *force* a recompile, we'll deliberately force the script to be overwritten, which will invalidate the timestamp, which will lead to a recompile.
+        */
+        let script_hash = if action.force_compile {
+            debug!("told to force compile, ignoring script hash");
+            None
+        } else {
+            old_meta.map(|m| &*m.script_hash)
+        };
+        match try!(overwrite_file(&script_path, script_str, script_hash)) {
+            FileOverwrite::Same => (),
+            FileOverwrite::Changed { new_hash } => {
+                meta.script_hash = new_hash;
+            },
+        }
     }
+
+    let meta = meta;
 
     /*
     *bursts through wall* It's Cargo Time! (Possibly)
@@ -555,7 +617,12 @@ fn gen_pkg_and_compile(
         let mut cmd = Command::new("cargo");
         cmd.arg("build")
             .arg("--manifest-path")
-            .arg(&*mani_path.to_string_lossy());
+            .arg(&*mani_path.to_string_lossy())
+            ;
+
+        if action.use_bincache {
+            cmd.env("CARGO_TARGET_DIR", try!(get_binary_cache_path()));
+        }
 
         if !meta.debug {
             cmd.arg("--release");
@@ -573,12 +640,22 @@ fn gen_pkg_and_compile(
                     Some(st) => Err(format!("cargo failed with status {}", st).into()),
                     None => Err("cargo failed".into())
                 });
+
+        if compile_err.is_ok() && action.use_bincache {
+            // Write out the metadata hash to tie this executable to a particular chunk of metadata.  This is to avoid issues with multiple scripts with the same name being compiled to a common target directory.
+            let meta_hash = action.metadata.sha1_hash();
+            info!("writing meta hash: {:?}...", meta_hash);
+            let exe_path = get_exe_path(input, action.use_bincache, &action.pkg_path, &action.metadata).unwrap();
+            let exe_meta_hash_path = exe_path.with_extension("meta-hash");
+            let mut f = try!(fs::File::create(&exe_meta_hash_path));
+            try!(write!(&mut f, "{}", meta_hash));
+        }
     }
 
     // Write out metadata *now*.  Remember that we check the timestamp in the metadata, *not* on the executable.
     if action.emit_metadata {
         info!("emitting metadata...");
-        try!(write_pkg_metadata(pkg_path, meta));
+        try!(write_pkg_metadata(pkg_path, &meta));
     }
 
     info!("disarming pkg dir cleanup...");
@@ -594,6 +671,13 @@ This represents what to do with the input provided by the user.
 struct InputAction {
     /// Compile the input into a fresh executable?
     compile: bool,
+
+    /**
+    Force Cargo to do a recompile, even if it thinks it doesn't have to.
+
+    `compile` must be `true` for this to have any effect.
+    */
+    force_compile: bool,
 
     /// Emit a metadata file?
     emit_metadata: bool,
@@ -611,8 +695,20 @@ struct InputAction {
     */
     using_cache: bool,
 
-    /// The package metadata structure.
+    /// Use shared binary cache?
+    use_bincache: bool,
+
+    /// The package metadata structure for the current invocation.
     metadata: PackageMetadata,
+
+    /// The package metadata structure for the *previous* invocation, if it exists.
+    old_metadata: Option<PackageMetadata>,
+
+    /// The package manifest contents.
+    manifest: String,
+
+    /// The script source.
+    script: String,
 }
 
 /**
@@ -640,6 +736,19 @@ struct PackageMetadata {
 
     /// Cargo features
     features: Option<String>,
+
+    /// Hash of the generated `Cargo.toml` file.
+    manifest_hash: String,
+
+    /// Hash of the generated source file.
+    script_hash: String,
+}
+
+impl PackageMetadata {
+    pub fn sha1_hash(&self) -> String {
+        // Yes, I *do* feel dirty for doing it like this.  :D
+        hash_str(&format!("{:?}", self))
+    }
 }
 
 /**
@@ -655,7 +764,8 @@ fn decide_action_for(
     build_only: bool,
     force: bool,
     features: Option<String>,
-) -> InputAction {
+    use_bincache: Option<bool>,
+) -> Result<InputAction> {
     let (pkg_path, using_cache) = pkg_path.map(|p| (p.into(), false))
         .unwrap_or_else(|| {
             // This can't fail.  Seriously, we're *fucked* if we can't work this out.
@@ -676,6 +786,9 @@ fn decide_action_for(
     info!("pkg_path: {:?}", pkg_path);
     info!("using_cache: {:?}", using_cache);
 
+    info!("splitting input...");
+    let (mani_str, script_str) = try!(manifest::split_input(input, &deps, &prelude));
+
     // Construct input metadata.
     let input_meta = {
         let (path, mtime) = match *input {
@@ -692,26 +805,33 @@ fn decide_action_for(
             deps: deps,
             prelude: prelude,
             features: features,
+            manifest_hash: hash_str(&mani_str),
+            script_hash: hash_str(&script_str),
         }
     };
     info!("input_meta: {:?}", input_meta);
 
     // Lazy powers, ACTIVATE!
-    let action = InputAction {
+    let mut action = InputAction {
         compile: force,
-        emit_metadata: using_cache,
+        force_compile: force,
+        emit_metadata: true,
         execute: !build_only,
         pkg_path: pkg_path,
         using_cache: using_cache,
+        use_bincache: use_bincache.unwrap_or(using_cache),
         metadata: input_meta,
+        old_metadata: None,
+        manifest: mani_str,
+        script: script_str,
     };
 
     macro_rules! bail {
         ($($name:ident: $value:expr),*) => {
-            return InputAction {
+            return Ok(InputAction {
                 $($name: $value,)*
                 ..action
-            }
+            })
         }
     }
 
@@ -733,18 +853,44 @@ fn decide_action_for(
         info!("recompiling because: metadata did not match");
         debug!("input metadata: {:?}", action.metadata);
         debug!("cache metadata: {:?}", cache_meta);
-        bail!(compile: true)
+        bail!(old_metadata: Some(cache_meta), compile: true)
     }
 
+    action.old_metadata = Some(cache_meta);
+
     // Next test: does the executable exist at all?
-    let exe_path = get_exe_path(input, &action.pkg_path, &action.metadata);
+    let exe_path = get_exe_path(input, action.use_bincache, &action.pkg_path, &action.metadata).unwrap();
     if !exe_path.is_file() {
         info!("recompiling because: executable doesn't exist or isn't a file");
         bail!(compile: true)
     }
 
+    /*
+    Finally: check to see if `{exe_path}.meta-hash` exists and contains a hash that matches the metadata.  Yes, this is somewhat round-about, but we need to do this to account for cases where Cargo's target directory has been set to a fixed, shared location.
+
+    Note that we *do not* do this if we aren't using the cache.
+    */
+    if action.use_bincache {
+        let exe_meta_hash_path = exe_path.clone().with_extension("meta-hash");
+        if !exe_meta_hash_path.is_file() {
+            info!("recompiling because: meta hash doesn't exist or isn't a file");
+            bail!(compile: true, force_compile: true)
+        }
+        let exe_meta_hash = {
+            let mut f = try!(fs::File::open(&exe_meta_hash_path));
+            let mut s = String::new();
+            try!(f.read_to_string(&mut s));
+            s
+        };
+        let meta_hash = action.metadata.sha1_hash();
+        if meta_hash != exe_meta_hash {
+            info!("recompiling because: meta hash doesn't match");
+            bail!(compile: true, force_compile: true)
+        }
+    }
+
     // That's enough; let's just go with it.
-    action
+    Ok(action)
 }
 
 /**
@@ -752,15 +898,20 @@ Figures out where the output executable for the input should be.
 
 Note that this depends on Cargo *not* suddenly changing its mind about where stuff lives.  In theory, I should be able to just *ask* Cargo for this information, but damned if I can't find an easy way to do it...
 */
-fn get_exe_path<P>(input: &Input, pkg_path: P, meta: &PackageMetadata) -> PathBuf
+fn get_exe_path<P>(input: &Input, use_bincache: bool, pkg_path: P, meta: &PackageMetadata) -> Result<PathBuf>
 where P: AsRef<Path> {
     let profile = match meta.debug {
         true => "debug",
         false => "release"
     };
-    let mut exe_path = pkg_path.as_ref().join("target").join(profile).join(&input.safe_name()).into_os_string();
+    let target_path = if use_bincache {
+        try!(get_binary_cache_path())
+    } else {
+        pkg_path.as_ref().join("target")
+    };
+    let mut exe_path = target_path.join(profile).join(&input.safe_name()).into_os_string();
     exe_path.push(std::env::consts::EXE_SUFFIX);
-    exe_path.into()
+    Ok(exe_path.into())
 }
 
 /**
@@ -812,6 +963,14 @@ Returns the path to the cache directory.
 fn get_cache_path() -> Result<PathBuf> {
     let cache_path = try!(platform::get_cache_dir_for("Cargo"));
     Ok(cache_path.join("script-cache"))
+}
+
+/**
+Returns the path to the binary cache directory.
+*/
+fn get_binary_cache_path() -> Result<PathBuf> {
+    let cache_path = try!(platform::get_cache_dir_for("Cargo"));
+    Ok(cache_path.join("binary-cache"))
 }
 
 /**
@@ -953,4 +1112,39 @@ impl<'a> Input<'a> {
             },
         }
     }
+}
+
+/**
+Shorthand for hashing a string.
+*/
+fn hash_str(s: &str) -> String {
+    use shaman::digest::Digest;
+    use shaman::sha1::Sha1;
+    let mut hasher = Sha1::new();
+    hasher.input_str(s);
+    hasher.result_str()
+}
+
+enum FileOverwrite {
+    Same,
+    Changed { new_hash: String },
+}
+
+/**
+Overwrite a file if and only if the contents have changed.
+*/
+fn overwrite_file<P>(path: P, content: &str, hash: Option<&str>) -> Result<FileOverwrite>
+where P: AsRef<Path> {
+    debug!("overwrite_file({:?}, _, {:?})", path.as_ref(), hash);
+    let new_hash = hash_str(content);
+    if Some(&*new_hash) == hash {
+        debug!(".. hashes match");
+        return Ok(FileOverwrite::Same);
+    }
+
+    debug!(".. hashes differ; new_hash: {:?}", new_hash);
+    let mut file = try!(fs::File::create(path));
+    try!(write!(&mut file, "{}", content));
+    try!(file.flush());
+    Ok(FileOverwrite::Changed { new_hash: new_hash })
 }
