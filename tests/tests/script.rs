@@ -7,6 +7,17 @@ fn test_script_explicit() {
 }
 
 #[test]
+fn test_script_features() {
+    let out = cargo_script!("--features", "dont-panic", "tests/data/script-features.rs").unwrap();
+    scan!(out.stdout_output();
+        ("Keep calm and borrow check.") => ()
+    ).unwrap();
+
+    let out = cargo_script!("tests/data/script-features.rs").unwrap();
+    assert!(!out.success());
+}
+
+#[test]
 fn test_script_full_block() {
     let out = cargo_script!("tests/data/script-full-block.rs").unwrap();
     scan!(out.stdout_output();

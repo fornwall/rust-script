@@ -45,6 +45,10 @@ macro_rules! cargo_script {
 }
 
 macro_rules! with_output_marker {
+    (prelude $p:expr; $e:expr) => {
+        format!(concat!($p, "{}", $e), ::util::OUTPUT_MARKER_CODE)
+    };
+
     ($e:expr) => {
         format!(concat!("{}", $e), ::util::OUTPUT_MARKER_CODE)
     };
