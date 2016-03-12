@@ -1,0 +1,12 @@
+language: rust
+script: cargo build --verbose && cargo test --verbose
+rust:
+  - stable
+  - beta
+  - nightly
+matrix:
+  allow_failures:
+    - rust: nightly
+branches:
+  except:
+    - /^issue-.*$/
