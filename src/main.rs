@@ -77,7 +77,7 @@ struct Args {
 }
 
 fn parse_args() -> Args {
-    use clap::{App, Arg, ArgGroup, SubCommand};
+    use clap::{App, Arg, ArgGroup, SubCommand, AppSettings};
     let version = option_env!("CARGO_PKG_VERSION").unwrap_or("unknown");
     let about = r#"Compiles and runs "Cargoified Rust scripts"."#;
 
@@ -96,8 +96,7 @@ fn parse_args() -> Args {
         .bin_name("cargo")
         .version(version)
         .about(about)
-        .arg_required_else_help(true)
-        .subcommand_required_else_help(true)
+        .setting(AppSettings::SubcommandRequiredElseHelp)
         .subcommand(SubCommand::with_name("script")
             .version(version)
             .about(about)
@@ -129,8 +128,8 @@ fn parse_args() -> Args {
                 .conflicts_with_all(csas!["expr"])
                 .requires("script")
             )
-            .arg_group(ArgGroup::with_name("expr_or_loop")
-                .add_all(&["expr", "loop"])
+            .group(ArgGroup::with_name("expr_or_loop")
+                .args(&["expr", "loop"])
             )
 
             /*
@@ -152,6 +151,7 @@ fn parse_args() -> Args {
                 .short("d")
                 .takes_value(true)
                 .multiple(true)
+                .number_of_values(1)
                 .requires("script")
             )
             .arg(Arg::with_name("dep_extern")
@@ -226,8 +226,9 @@ fn parse_args() -> Args {
 
     let m = m.subcommand_matches("script").unwrap();
 
-    fn owned_vec_string<'a>(v: Option<Vec<&'a str>>) -> Vec<String> {
-        v.unwrap_or(vec![]).into_iter().map(Into::into).collect()
+    fn owned_vec_string<'a, I>(v: Option<I>) -> Vec<String>
+    where I: ::std::iter::Iterator<Item=&'a str> {
+        v.map(|itr| itr.map(Into::into).collect()).unwrap_or(vec![])
     }
 
     fn yes_or_no(v: Option<&str>) -> Option<bool> {

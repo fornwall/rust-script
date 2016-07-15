@@ -15,6 +15,7 @@ exclude = [
 ]
 
 [dependencies]
+clap = "2.9.2"
 env_logger = "0.3.1"
 hoedown = "3.0.3"
 lazy_static = "0.1.15"
@@ -24,13 +25,6 @@ rustc-serialize = "0.3.16"
 shaman = "0.1.0"
 time = "0.1.25"
 toml = "0.1.20"
-
-[dependencies.clap]
-version = "1.5.5"
-
-# Disable the "color" feature because it just outputs garbage on Windows.
-default-features = false
-features = ["suggestions"]
 
 [target.i686-pc-windows-gnu.dependencies]
 ole32-sys = "0.1.0"
