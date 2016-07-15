@@ -11,12 +11,16 @@ macro_rules! cargo_script {
             let temp_dir = tempdir::TempDir::new("cargo-script-test").unwrap();
             let cmd_str;
             let out = {
-                let mut cmd = Command::new("target/debug/cargo-script");
+                let target_dir = ::std::env::var("CARGO_TARGET_DIR")
+                    .unwrap_or_else(|_| String::from("target"));
+                let mut cmd = Command::new(format!("{}/debug/cargo-script", target_dir));
                 cmd.arg("script");
                 cmd.arg("--pkg-path").arg(temp_dir.path());
                 $(
                     cmd.arg($args);
                 )*
+
+                cmd.env_remove("CARGO_TARGET_DIR");
 
                 cmd_str = format!("{:?}", cmd);
 
