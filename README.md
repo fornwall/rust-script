@@ -12,7 +12,7 @@ As such, `cargo-script` does two major things:
 
 ## Installation
 
-If you are using Rust 1.5 or higher, you can install `cargo-script` using Cargo's `install` subcommand:
+You can install `cargo-script` using Cargo's `install` subcommand:
 
 ```sh
 cargo install cargo-script
@@ -20,7 +20,7 @@ cargo install cargo-script
 
 ### Manually Compiling and Installing
 
-`cargo-script` requires Rust 1.4.0 or higher to build.
+`cargo-script` requires Rust 1.6 or higher to build.  Rust 1.4+ was supported prior to version 0.2.
 
 Once built, you should place the resulting executable somewhere on your `PATH`.  At that point, you should be able to invoke it by using `cargo script`.
 

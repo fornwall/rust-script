@@ -1,4 +1,10 @@
 
+# v0.2.0
+
+**Changed:**
+
+* `cargo-script` now requires Rust 1.6 to build.
+
 # v0.1.5
 
 **New:**
