@@ -72,11 +72,14 @@ impl Output {
     pub fn stdout_output(&self) -> &str {
         assert!(self.success());
         for marker in self.stdout.matches(OUTPUT_MARKER) {
-            let i = subslice_offset(&self.stdout, marker).unwrap();
-            let before_cp = self.stdout[..i].chars().rev().next().unwrap();
+            let i = subslice_offset(&self.stdout, marker)
+                .expect("couldn't find marker in output");
+            let before_cp = self.stdout[..i].chars().rev().next()
+                .unwrap_or('\n');
             if !(before_cp == '\r' || before_cp == '\n') { continue; }
             let after = &self.stdout[i+OUTPUT_MARKER.len()..];
-            let after_cp = after.chars().next().unwrap();
+            let after_cp = after.chars().next()
+                .expect("couldn't find cp after marker");
             if !(after_cp == '\r' || after_cp == '\n') { continue; }
             return after;
         }
