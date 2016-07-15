@@ -1,4 +1,20 @@
 
+# v0.1.5
+
+**New:**
+
+* `cargo-script` now (typically) defaults to using a shared build location.  This means that, provided you're using the same compiler, dependencies won't need to be constantly re-built.  This can be explicitly controlled by setting the `--use-shared-binary-cache` option to `yes` or `no`.
+
+* Added `--unstable-feature` option.  This allows you to specify unstable language features that should be enabled.
+
+**Changed:**
+
+* The build cache will be retained when the build fails.  This means that dependencies don't have to be re-built when the script itself has an error in it.
+
+**Fixed:**
+
+* Fixed issue with evaluating an expression containing macros that capture.
+
 # v0.1.4
 
 **New:**
