@@ -492,7 +492,7 @@ fn clean_cache(max_age: u64) -> Result<()> {
     for child in try!(fs::read_dir(cache_dir)) {
         let child = try!(child);
         let path = child.path();
-        if path.is_file() { continue }
+        if path.is_file_polyfill() { continue }
 
         info!("checking: {:?}", path);
 
@@ -860,7 +860,7 @@ fn decide_action_for(
 
     // Next test: does the executable exist at all?
     let exe_path = get_exe_path(input, action.use_bincache, &action.pkg_path, &action.metadata).unwrap();
-    if !exe_path.is_file() {
+    if !exe_path.is_file_polyfill() {
         info!("recompiling because: executable doesn't exist or isn't a file");
         bail!(compile: true)
     }
@@ -872,7 +872,7 @@ fn decide_action_for(
     */
     if action.use_bincache {
         let exe_meta_hash_path = exe_path.clone().with_extension("meta-hash");
-        if !exe_meta_hash_path.is_file() {
+        if !exe_meta_hash_path.is_file_polyfill() {
             info!("recompiling because: meta hash doesn't exist or isn't a file");
             bail!(compile: true, force_compile: true)
         }
