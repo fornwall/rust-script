@@ -18,7 +18,6 @@ use toml;
 
 use consts;
 use error::{Blame, Result};
-use util::SubsliceOffset;
 use Input;
 
 lazy_static! {
@@ -143,6 +142,7 @@ r#"fn main() {}"#
         )
     );
 
+    // Ensure removed prefix manifests don't work.
     assert_eq!(si!(f(
 r#"
 ---
@@ -163,6 +163,7 @@ name = "n"
 version = "0.1.0"
 "#,
 r#"
+---
 fn main() {}
 "#
         )
@@ -182,14 +183,15 @@ name = "n"
 path = "n.rs"
 
 [dependencies]
-time = "0.1.25"
 
 [package]
 authors = ["Anonymous"]
 name = "n"
 version = "0.1.0"
 "#,
-r#"
+r#"[dependencies]
+time="0.1.25"
+---
 fn main() {}
 "#
         )
@@ -379,7 +381,6 @@ Returns `Some((manifest, source))` if it finds a manifest, `None` otherwise.
 fn find_embedded_manifest(s: &str) -> Option<(Manifest, &str)> {
     find_short_comment_manifest(s)
         .or_else(|| find_code_block_manifest(s))
-        .or_else(|| find_prefix_manifest(s))
 }
 
 #[test]
@@ -396,18 +397,13 @@ fn main() {}
 "),
     None);
 
+    // Ensure removed prefix manifests don't work.
     assert_eq!(fem(
 r#"
 ---
 fn main() {}
 "#),
-    Some((
-Toml(r#"
-"#),
-r#"
-fn main() {}
-"#
-    )));
+    None);
 
     assert_eq!(fem(
 "[dependencies]
@@ -415,14 +411,7 @@ time = \"0.1.25\"
 ---
 fn main() {}
 "),
-    Some((
-Toml("[dependencies]
-time = \"0.1.25\"
-"),
-"
-fn main() {}
-"
-    )));
+    None);
 
     assert_eq!(fem(
 "[dependencies]
@@ -430,14 +419,7 @@ time = \"0.1.25\"
 
 fn main() {}
 "),
-    Some((
-Toml("[dependencies]
-time = \"0.1.25\"
-
-"),
-"fn main() {}
-"
-    )));
+    None);
 
     // Make sure we aren't just grabbing the *last* line.
     assert_eq!(fem(
@@ -448,16 +430,7 @@ fn main() {
     println!(\"Hi!\");
 }
 "),
-    Some((
-Toml("[dependencies]
-time = \"0.1.25\"
-
-"),
-"fn main() {
-    println!(\"Hi!\");
-}
-"
-    )));
+    None);
 
     assert_eq!(fem(
 "// cargo-deps: time=\"0.1.25\"
@@ -589,77 +562,6 @@ r#"/*!
 fn main() {}
 "#
     )));
-}
-
-/**
-Locates a "prefix manifest" embedded in a Cargoified Rust Script file.
-*/
-fn find_prefix_manifest(content: &str) -> Option<(Manifest, &str)> {
-    /*
-    The trick with this is that we *will not* assume the input is correctly formed, or that we've been passed a file that even *has* an embedded manifest; *i.e.* we might have been run with a plain Rust source file.
-
-    We look for something which indicates the end of the embedded manifest.  *Officially*, this is a line which contains nothing but whitespace and *at least* three hyphens.  In *truth*, we will also look for anything that looks like Rust code.
-
-    Specifically, we check for a line starting with any of the strings in `SPLIT_MARKERS`.  This should *hopefully* cover every possible valid Rust program.
-
-    Once we've done that, we just chop the script content up in the appropriate places.
-    */
-    let lines = content.lines();
-
-    let mut manifest_end = None;
-    let mut source_start = None;
-    let mut got_manifest_for_certain = false;
-
-    'scan_lines: for line in lines {
-        // Did we get a dash separator?
-        let mut dashes = 0;
-        if line.chars().all(|c| {
-            if c == '-' { dashes += 1 }
-            c.is_whitespace() || c == '-'
-        }) && dashes >= 3 {
-            info!("splitting because of dash divider in line {:?}", line);
-            manifest_end = Some(&line[0..0]);
-            source_start = Some(&line[line.len()..]);
-            got_manifest_for_certain = true;
-            break;
-        }
-
-        // Ok, it's-a guessin' time!  Yes, this is *evil*.
-        const SPLIT_MARKERS: &'static [&'static str] = &[
-            "//", "/*", "#![", "#[", "pub ",
-            "extern ", "use ", "mod ", "type ",
-            "struct ", "enum ", "fn ", "impl ", "impl<",
-            "static ", "const ",
-        ];
-
-        let line_trimmed = line.trim_left();
-
-        for marker in SPLIT_MARKERS {
-            if line_trimmed.starts_with(marker) {
-                info!("splitting because of marker '{:?}'", marker);
-                manifest_end = Some(&line[0..]);
-                source_start = Some(&line[0..]);
-                break 'scan_lines;
-            }
-        }
-    }
-
-    let (manifest, source) = match (manifest_end, source_start) {
-        (Some(me), Some(ss)) => {
-            // subslices can only be None if me/ss are *not* substrings of content.
-            (&content[..content.subslice_offset_stable(me).unwrap()],
-                &content[content.subslice_offset_stable(ss).unwrap()..])
-        },
-        _ => return None
-    };
-
-    // If the manifest doesn't contain anything but whitespace... then we can't really say we *found* a manifest...
-    if !got_manifest_for_certain && manifest.chars().all(char::is_whitespace) {
-        return None;
-    }
-
-    // Found one!
-    Some((Manifest::Toml(manifest), source))
 }
 
 /**

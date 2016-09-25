@@ -81,18 +81,6 @@ fn main() {
 
 > **Note**: you can write multiple dependencies by separating them with commas.  *E.g.* `time="0.1.25", libc="0.2.5"`.
 
-`now.crs` (prefix manifest; *these might be removed in the future*):
-
-```rust
-[dependencies]
-time = "0.1.25"
----
-extern crate time;
-fn main() {
-    println!("{}", time::now().rfc822z());
-}
-```
-
 ```shell
 $ cargo script now
     Updating registry `https://github.com/rust-lang/crates.io-index`
@@ -133,13 +121,11 @@ Finally, you can also use `cargo-script` to write a quick stream filter, by spec
 $ cat now.crs | cargo script --loop \
     "let mut n=0; move |l| {n+=1; println!(\"{:>6}: {}\",n,l.trim_right())}"
    Compiling loop v0.1.0 (file:///C:/Users/drk/AppData/Local/Cargo/script-cache/loop-58079283761aab8433b1)
-     1: [dependencies]
-     2: time = "0.1.25"
-     3: ---
-     4: extern crate time;
-     5: fn main() {
-     6:     println!("{}", time::now().rfc822z());
-     7: }
+     1: // cargo-deps: time="0.1.25"
+     2: extern crate time;
+     3: fn main() {
+     4:     println!("{}", time::now().rfc822z());
+     5: }
 ```
 
 Note that you can achieve a similar effect to the above by using the `--count` flag, which causes the line number to be passed as a second argument to your closure:
@@ -148,13 +134,11 @@ Note that you can achieve a similar effect to the above by using the `--count` f
 $ cat now.crs | cargo script --count --loop \
     "|l,n| println!(\"{:>6}: {}\", n, l.trim_right())"
    Compiling loop v0.1.0 (file:///C:/Users/drk/AppData/Local/Cargo/script-cache/loop-58079283761aab8433b1)
-     1: [dependencies]
-     2: time = "0.1.25"
-     3: ---
-     4: extern crate time;
-     5: fn main() {
-     6:     println!("{}", time::now().rfc822z());
-     7: }
+     1: // cargo-deps: time="0.1.25"
+     2: extern crate time;
+     3: fn main() {
+     4:     println!("{}", time::now().rfc822z());
+     5: }
 ```
 
 ## Things That Should Probably Be Done

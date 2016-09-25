@@ -5,6 +5,8 @@
 
 * `cargo-script` now requires Rust 1.6 to build.
 
+* Removed prefix manifests.  All other forms are still supported.
+
 # v0.1.5
 
 **New:**
