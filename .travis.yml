@@ -12,6 +12,3 @@ rust:
 matrix:
   allow_failures:
     - rust: nightly
-branches:
-  except:
-    - /^issue-.*$/
