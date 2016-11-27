@@ -13,6 +13,12 @@ fn test_expr_dnc() {
 }
 
 #[test]
+fn test_expr_temporary() {
+    let out = cargo_script!("-e", "[1].iter().max()").unwrap();
+    assert!(out.success());
+}
+
+#[test]
 fn test_expr_dep() {
     let out = cargo_script!("-D", "boolinator=0.1.0",
         "-e", with_output_marker!(
