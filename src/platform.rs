@@ -104,9 +104,26 @@ pub mod inner {
     use std::os::windows::ffi::OsStringExt;
     use error::MainError;
 
-    // This *is* in `uuid-sys` ≤ 0.1.2, but that's broken at time of writing.  Once its fixed, change it back.
-    #[link(name="uuid")]
-    extern { pub static FOLDERID_LocalAppData: winapi::KNOWNFOLDERID; }
+    #[cfg(old_rustc_windows_linking_behaviour)]
+    mod uuid {
+        // This *is* in `uuid-sys` ≤ 0.1.2, but it doesn't work in Rust < 1.15.
+        #[link(name="uuid")]
+        extern { static FOLDERID_LocalAppData: super::winapi::KNOWNFOLDERID; }
+
+        pub unsafe fn local_app_data() -> &'static super::winapi::KNOWNFOLDERID {
+            &FOLDERID_LocalAppData
+        }
+    }
+
+    #[cfg(not(old_rustc_windows_linking_behaviour))]
+    mod uuid {
+        // WARNING: do not use with rustc < 1.15; it will cause linking errors.
+        extern crate uuid;
+
+        pub unsafe fn local_app_data() -> &'static super::winapi::KNOWNFOLDERID {
+            &uuid::FOLDERID_LocalAppData
+        }
+    }
 
     /**
     Gets the last-modified time of a file, in milliseconds since the UNIX epoch.
@@ -135,7 +152,8 @@ pub mod inner {
     */
     pub fn get_cache_dir_for<P>(product: P) -> Result<PathBuf, MainError>
     where P: AsRef<Path> {
-        let dir = try!(SHGetKnownFolderPath(&FOLDERID_LocalAppData, 0, ::std::ptr::null_mut())
+        let rfid = unsafe { uuid::local_app_data() };
+        let dir = try!(SHGetKnownFolderPath(rfid, 0, ::std::ptr::null_mut())
             .map_err(|e| e.to_string()));
         Ok(Path::new(&dir).to_path_buf().join(product))
     }
