@@ -64,3 +64,12 @@ fn test_expr_panic() {
     let out = cargo_script!("-e", with_output_marker!("panic!()")).unwrap();
     assert!(!out.success());
 }
+
+#[test]
+fn test_expr_qmark() {
+    let out = cargo_script!("-e", with_output_marker!("\"42\".parse::<i32>()?.wrapping_add(1)")).unwrap();
+    scan!(out.stdout_output();
+        ("43") => ()
+    ).unwrap();
+}
+
