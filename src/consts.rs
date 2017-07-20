@@ -34,9 +34,16 @@ pub const FILE_TEMPLATE: &'static str = r#"%b"#;
 pub const EXPR_TEMPLATE: &'static str = r#"
 %p
 fn main() {
+    if let Err(e) = try_main() {
+        println!("ERROR: script panicked: {:?}", e);
+    }
+}
+
+fn try_main() -> Result<(), Box<std::error::Error>> {
     match ({%b}) {
         __cargo_script_expr => println!("{:?}", __cargo_script_expr)
     }
+    Ok(())
 }
 "#;
 
