@@ -40,7 +40,7 @@ fn main() {
 }
 
 fn try_main() -> Result<(), Box<std::error::Error>> {
-    match ({%b}) {
+    match {%b} {
         __cargo_script_expr => println!("{:?}", __cargo_script_expr)
     }
     Ok(())
