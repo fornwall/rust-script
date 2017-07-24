@@ -7,6 +7,14 @@ fn test_expr_0() {
 }
 
 #[test]
+fn test_expr_comma() {
+    let out = cargo_script!("-e", with_output_marker!("[1, 2, 3]")).unwrap();
+    scan!(out.stdout_output();
+        ("[1, 2, 3]") => ()
+    ).unwrap()
+}
+
+#[test]
 fn test_expr_dnc() {
     let out = cargo_script!("-e", "swing begin").unwrap();
     assert!(!out.success());

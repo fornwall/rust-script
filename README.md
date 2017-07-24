@@ -20,7 +20,7 @@ cargo install cargo-script
 
 ### Manually Compiling and Installing
 
-`cargo-script` requires Rust 1.6 or higher to build.  Rust 1.4+ was supported prior to version 0.2.
+`cargo-script` requires Rust 1.11 or higher to build.  Rust 1.4+ was supported prior to version 0.2.
 
 Once built, you should place the resulting executable somewhere on your `PATH`.  At that point, you should be able to invoke it by using `cargo script`.
 

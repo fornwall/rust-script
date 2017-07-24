@@ -1,5 +1,5 @@
 /*
-Copyright ⓒ 2015 cargo-script contributors.
+Copyright ⓒ 2017 cargo-script contributors.
 
 Licensed under the MIT license (see LICENSE or <http://opensource.org
 /licenses/MIT>) or the Apache License, Version 2.0 (see LICENSE of
@@ -27,7 +27,7 @@ lazy_static! {
     static ref RE_SPACE: Regex = Regex::new(r"^(\s+)").unwrap();
     static ref RE_NESTING: Regex = Regex::new(r"/\*|\*/").unwrap();
     static ref RE_COMMENT: Regex = Regex::new(r"^\s*//!").unwrap();
-    static ref RE_HASHBANG: Regex = Regex::new(r"^#![^[].*?(\r\n|\n)").unwrap();
+    static ref RE_HASHBANG: Regex = Regex::new(r"^#![^\[].*?(\r\n|\n)").unwrap();
     static ref RE_CRATE_COMMENT: Regex = {
         Regex::new(
             r"(?x)
@@ -126,8 +126,7 @@ fn test_split_input() {
 r#"fn main() {}"#
         )),
         r!(
-r#"
-[[bin]]
+r#"[[bin]]
 name = "n"
 path = "n.rs"
 
@@ -150,8 +149,7 @@ fn main() {}
 "#
         )),
         r!(
-r#"
-[[bin]]
+r#"[[bin]]
 name = "n"
 path = "n.rs"
 
@@ -177,8 +175,7 @@ fn main() {}
 "#
         )),
         r!(
-r#"
-[[bin]]
+r#"[[bin]]
 name = "n"
 path = "n.rs"
 
@@ -204,8 +201,7 @@ fn main() {}
 "#
         )),
         r!(
-r#"
-[[bin]]
+r#"[[bin]]
 name = "n"
 path = "n.rs"
 
@@ -231,8 +227,7 @@ fn main() {}
 "#
         )),
         r!(
-r#"
-[[bin]]
+r#"[[bin]]
 name = "n"
 path = "n.rs"
 
@@ -266,8 +261,7 @@ fn main() {}
 "#
         )),
         r!(
-r#"
-[[bin]]
+r#"[[bin]]
 name = "n"
 path = "n.rs"
 
@@ -299,7 +293,7 @@ Returns a slice of the input string with the leading hashbang, if there is one, 
 */
 fn strip_hashbang(s: &str) -> &str {
     match RE_HASHBANG.find(s) {
-        Some((_, end)) => &s[end..],
+        Some(m) => &s[m.end()..],
         None => s
     }
 }
@@ -573,8 +567,8 @@ fn find_short_comment_manifest(s: &str) -> Option<(Manifest, &str)> {
     */
     let re = &*RE_SHORT_MANIFEST;
     if let Some(cap) = re.captures(s) {
-        if let Some((a, b)) = cap.pos(1) {
-            return Some((Manifest::DepList(&s[a..b]), &s[..]))
+        if let Some(m) = cap.get(1) {
+            return Some((Manifest::DepList(m.as_str()), &s[..]))
         }
     }
     None
@@ -594,8 +588,8 @@ fn find_code_block_manifest(s: &str) -> Option<(Manifest, &str)> {
     Then, we need to take the contents of this doc comment and feed it to a Markdown parser.  We are looking for *the first* fenced code block with a language token of `cargo`.  This is extracted and pasted back together into the manifest.
     */
     let start = match RE_CRATE_COMMENT.captures(s) {
-        Some(cap) => match cap.pos(1) {
-            Some((a, _)) => a,
+        Some(cap) => match cap.get(1) {
+            Some(m) => m.start(),
             None => return None
         },
         None => return None
@@ -637,15 +631,17 @@ fn scrape_markdown_manifest(content: &str) -> Result<Option<String>> {
     }
 
     impl Render for ManifestScraper {
-        fn code_block(&mut self, output: &mut Buffer, text: &Buffer, lang: &Buffer) {
+        fn code_block(&mut self, output: &mut Buffer, text: Option<&Buffer>, lang: Option<&Buffer>) {
             use std::ascii::AsciiExt;
 
-            let lang = lang.to_str().unwrap();
+            let lang = lang.map(|b| b.to_str().unwrap()).unwrap_or("");
 
             if !self.seen_manifest && lang.eq_ignore_ascii_case("cargo") {
                 // Pass it through.
                 info!("found code block manifest");
-                output.pipe(text);
+                if let Some(text) = text {
+                    output.pipe(text);
+                }
                 self.seen_manifest = true;
             }
         }
@@ -779,7 +775,10 @@ fn extract_comment(s: &str) -> Result<String> {
             // Update nesting and look for end-of-comment.
             let mut end_of_comment = None;
 
-            for (end, marker) in nesting_re.find_iter(line).map(|(a,b)| (a, &line[a..b])) {
+            for (end, marker) in {
+                nesting_re.find_iter(line)
+                    .map(|m| (m.start(), m.as_str()))
+            } {
                 match (marker, depth) {
                     ("/*", _) => depth += 1,
                     ("*/", 1) => {
@@ -797,7 +796,7 @@ fn extract_comment(s: &str) -> Result<String> {
             // Detect and strip margin.
             margin = margin
                 .or_else(|| margin_re.find(line)
-                    .and_then(|(b, e)| Some(&line[b..e])));
+                    .and_then(|m| Some(m.as_str())));
 
             let line = if let Some(margin) = margin {
                 let end = line.char_indices().take(margin.len())
@@ -810,7 +809,7 @@ fn extract_comment(s: &str) -> Result<String> {
             // Detect and strip leading indentation.
             leading_space = leading_space
                 .or_else(|| space_re.find(line)
-                    .map(|(_,n)| n));
+                    .map(|m| m.end()));
 
             /*
             Make sure we have only leading spaces.
@@ -845,15 +844,15 @@ fn extract_comment(s: &str) -> Result<String> {
         for line in s.lines() {
             // Strip leading comment marker.
             let content = match comment_re.find(line) {
-                Some((_, end)) => &line[end..],
+                Some(m) => &line[m.end()..],
                 None => break
             };
 
             // Detect and strip leading indentation.
             leading_space = leading_space
                 .or_else(|| space_re.captures(content)
-                    .and_then(|c| c.pos(1))
-                    .map(|(_,n)| n));
+                    .and_then(|c| c.get(1))
+                    .map(|m| m.end()));
 
             /*
             Make sure we have only leading spaces.
