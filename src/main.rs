@@ -1,5 +1,5 @@
 /*
-Copyright ⓒ 2015 cargo-script contributors.
+Copyright ⓒ 2015-2017 cargo-script contributors.
 
 Licensed under the MIT license (see LICENSE or <http://opensource.org
 /licenses/MIT>) or the Apache License, Version 2.0 (see LICENSE of
@@ -51,6 +51,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use error::{Blame, MainError, Result};
+use platform::MigrationKind;
 use util::{Defer, PathExt};
 
 #[derive(Debug)]
@@ -74,6 +75,7 @@ struct Args {
     force: bool,
     unstable_features: Vec<String>,
     use_bincache: Option<bool>,
+    migrate_data: Option<MigrationKind>,
 }
 
 fn parse_args() -> Args {
@@ -221,6 +223,12 @@ fn parse_args() -> Args {
                 .takes_value(true)
                 .possible_values(csas!["no", "yes"])
             )
+            .arg(Arg::with_name("migrate_data")
+                .help("Migrate data from older versions.")
+                .long("migrate-data")
+                .takes_value(true)
+                .possible_values(csas!["dry-run", "for-real"])
+            )
         )
         .get_matches();
 
@@ -235,6 +243,14 @@ fn parse_args() -> Args {
         v.map(|v| match v {
             "yes" => true,
             "no" => false,
+            _ => unreachable!()
+        })
+    }
+
+    fn run_kind(v: Option<&str>) -> Option<MigrationKind> {
+        v.map(|v| match v {
+            "dry-run" => MigrationKind::DryRun,
+            "for-real" => MigrationKind::ForReal,
             _ => unreachable!()
         })
     }
@@ -259,6 +275,7 @@ fn parse_args() -> Args {
         force: m.is_present("force"),
         unstable_features: owned_vec_string(m.values_of("unstable_features")),
         use_bincache: yes_or_no(m.value_of("use_bincache")),
+        migrate_data: run_kind(m.value_of("migrate_data")),
     }
 }
 
@@ -286,6 +303,32 @@ fn main() {
 fn try_main() -> Result<i32> {
     let args = parse_args();
     info!("Arguments: {:?}", args);
+
+    /*
+    Do data migration before anything else, since it can cause the location of stuff to change.
+    */
+    if let Some(run_kind) = args.migrate_data {
+        println!("Migrating data...");
+        let (log, res) = platform::migrate_old_data(run_kind);
+        match (log.len(), res) {
+            (0, Ok(())) => {
+                println!("Nothing to do.");
+                return Ok(0);
+            },
+            (_, Ok(())) => {
+                for entry in log {
+                    println!("- {}", entry);
+                }
+                return Ok(0);
+            },
+            (_, Err(err)) => {
+                for entry in log {
+                    println!("- {}", entry);
+                }
+                return Err(err);
+            }
+        }
+    }
 
     /*
     If we've been asked to clear the cache, do that *now*.  There are two reasons:
