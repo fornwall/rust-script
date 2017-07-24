@@ -3,9 +3,13 @@
 
 **Changed:**
 
-* `cargo-script` now requires Rust 1.6 to build.
+* `cargo-script` now requires Rust 1.11 to build.
 
 * Removed prefix manifests.  All other forms are still supported.
+
+**Fixed:**
+
+* Fixed issue with expressions containing commas on the command line.
 
 # v0.1.5
 
