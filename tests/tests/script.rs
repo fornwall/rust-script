@@ -34,6 +34,14 @@ fn test_script_full_line() {
 }
 
 #[test]
+fn test_script_invalid_doc_comment() {
+    let out = cargo_script!("tests/data/script-invalid-doc-comment.rs").unwrap();
+    scan!(out.stdout_output();
+        ("Hello, World!") => ()
+    ).unwrap()
+}
+
+#[test]
 fn test_script_no_deps() {
     let out = cargo_script!("tests/data/script-no-deps.rs").unwrap();
     scan!(out.stdout_output();
