@@ -1,13 +1,21 @@
 
 # v0.2.0
 
+**New:**
+
+* Added `--test` and `--bench` flags.  These can be used to run a script's tests and benchmarks.
+
 **Changed:**
 
 * `cargo-script` now requires Rust 1.11 to build.
 
 * Removed prefix manifests.  All other forms are still supported.
 
+* The cache location on not-Windows when `CARGO_HOME` is defined is now `$CARGO_HOME`, rather than `$CARGO_HOME/.cargo`.  Existing data may be migrated to the new location using the `--migrate-data` option.
+
 **Fixed:**
+
+* The result of an `--expr` invocation now lives longer, allowing borrowed values to be displayed more easily.
 
 * Fixed issue with expressions containing commas on the command line.
 
