@@ -12,7 +12,7 @@ This module is for platform-specific stuff.
 */
 
 pub use self::inner::{
-    current_time, file_last_modified, get_cache_dir_for,
+    current_time, file_last_modified, get_cache_dir,
     migrate_old_data,
 };
 
@@ -81,7 +81,7 @@ mod inner {
 
     This is chosen to match the location where Cargo places its cache data.
     */
-    pub fn get_cache_dir_for() -> Result<PathBuf, MainError> {
+    pub fn get_cache_dir() -> Result<PathBuf, MainError> {
         // try $CARGO_HOME then fall back to $HOME
         if let Some(home) = env::var_os("CARGO_HOME") {
             let home = Path::new(&home);
@@ -99,7 +99,7 @@ mod inner {
         }
 
         if let Some(home) = env::var_os("HOME") {
-            return Ok(Path::new(home).join(".cargo"));
+            return Ok(Path::new(&home).join(".cargo"));
         }
 
         Err((Blame::Human, "neither $CARGO_HOME nor $HOME is defined").into())
@@ -107,7 +107,7 @@ mod inner {
 
     pub fn migrate_old_data(kind: MigrationKind) -> (Vec<String>, Result<(), MainError>) {
         let mut log = vec![];
-        match migrate_0_2_0(kind, &log) {
+        match migrate_0_2_0(kind, &mut log) {
             Ok(()) => (),
             Err(e) => return (log, Err(e)),
         }
@@ -170,7 +170,7 @@ mod inner {
                 if try!(fs::read_dir(&old_base)).next().is_none() {
                     info!("{:?} is empty; removing", old_base);
                     if kind.for_real() {
-                        fs::remove_dir(&old_base);
+                        fs::remove_dir(&old_base)?;
                     }
                     log.push(format!("Removed empty directory {:?}", old_base));
                 } else {
@@ -251,12 +251,12 @@ pub mod inner {
 
     On Windows, LocalAppData is where user- and machine- specific data should go, but it *might* be more appropriate to use whatever the official name for "Program Data" is, though.
     */
-    pub fn get_cache_dir_for<P>(product: P) -> Result<PathBuf, MainError>
+    pub fn get_cache_dir() -> Result<PathBuf, MainError>
     where P: AsRef<Path> {
         let rfid = unsafe { uuid::local_app_data() };
         let dir = try!(SHGetKnownFolderPath(rfid, 0, ::std::ptr::null_mut())
             .map_err(|e| e.to_string()));
-        Ok(Path::new(&dir).to_path_buf().join(product))
+        Ok(Path::new(&dir).to_path_buf().join("Cargo"))
     }
 
     type WinResult<T> = Result<T, WinError>;

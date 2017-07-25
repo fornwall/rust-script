@@ -330,6 +330,13 @@ fn try_main() -> Result<i32> {
         }
     }
 
+    if log_enabled!(log::LogLevel::Debug) {
+        let scp = get_script_cache_path()?;
+        let bcp = get_binary_cache_path()?;
+        debug!("script-cache path: {:?}", scp);
+        debug!("binary-cache path: {:?}", bcp);
+    }
+
     /*
     If we've been asked to clear the cache, do that *now*.  There are two reasons:
 
@@ -532,7 +539,7 @@ fn clean_cache(max_age: u64) -> Result<()> {
     let cutoff = platform::current_time() - max_age;
     info!("cutoff:     {:>20?} ms", cutoff);
 
-    let cache_dir = try!(get_cache_path());
+    let cache_dir = try!(get_script_cache_path());
     for child in try!(fs::read_dir(cache_dir)) {
         let child = try!(child);
         let path = child.path();
@@ -813,7 +820,7 @@ fn decide_action_for(
     let (pkg_path, using_cache) = pkg_path.map(|p| (p.into(), false))
         .unwrap_or_else(|| {
             // This can't fail.  Seriously, we're *fucked* if we can't work this out.
-            let cache_path = get_cache_path().unwrap();
+            let cache_path = get_script_cache_path().unwrap();
             info!("cache_path: {:?}", cache_path);
 
             let id = {
@@ -1004,8 +1011,8 @@ where P: AsRef<Path> {
 /**
 Returns the path to the cache directory.
 */
-fn get_cache_path() -> Result<PathBuf> {
-    let cache_path = try!(platform::get_cache_dir_for("Cargo"));
+fn get_script_cache_path() -> Result<PathBuf> {
+    let cache_path = try!(platform::get_cache_dir());
     Ok(cache_path.join("script-cache"))
 }
 
@@ -1013,7 +1020,7 @@ fn get_cache_path() -> Result<PathBuf> {
 Returns the path to the binary cache directory.
 */
 fn get_binary_cache_path() -> Result<PathBuf> {
-    let cache_path = try!(platform::get_cache_dir_for("Cargo"));
+    let cache_path = try!(platform::get_cache_dir());
     Ok(cache_path.join("binary-cache"))
 }
 
