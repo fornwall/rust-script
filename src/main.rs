@@ -76,6 +76,40 @@ struct Args {
     unstable_features: Vec<String>,
     use_bincache: Option<bool>,
     migrate_data: Option<MigrationKind>,
+    build_kind: BuildKind,
+}
+
+#[derive(Copy, Clone, Debug)]
+enum BuildKind {
+    Normal,
+    Test,
+    Bench,
+}
+
+impl BuildKind {
+    fn can_exec_directly(&self) -> bool {
+        match *self {
+            BuildKind::Normal => true,
+            BuildKind::Test | BuildKind::Bench => false,
+        }
+    }
+
+    fn exec_command(&self) -> &'static str {
+        match *self {
+            BuildKind::Normal => panic!("asked for exec command for normal build"),
+            BuildKind::Test => "test",
+            BuildKind::Bench => "bench",
+        }
+    }
+
+    fn from_flags(test: bool, bench: bool) -> Self {
+        match (test, bench) {
+            (false, false) => BuildKind::Normal,
+            (true, false) => BuildKind::Test,
+            (false, true) => BuildKind::Bench,
+            _ => panic!("got both test and bench")
+        }
+    }
 }
 
 fn parse_args() -> Args {
@@ -208,7 +242,7 @@ fn parse_args() -> Args {
                 .help("Generate the Cargo package, but don't compile or run it.")
                 .long("gen-pkg-only")
                 .requires("script")
-                .conflicts_with_all(csas!["args", "build_only", "debug", "force"])
+                .conflicts_with_all(csas!["args", "build_only", "debug", "force", "test", "bench"])
             )
             .arg(Arg::with_name("pkg_path")
                 .help("Specify where to place the generated Cargo package.")
@@ -228,6 +262,16 @@ fn parse_args() -> Args {
                 .long("migrate-data")
                 .takes_value(true)
                 .possible_values(csas!["dry-run", "for-real"])
+            )
+            .arg(Arg::with_name("test")
+                .help("Compile and run tests.")
+                .long("test")
+                .conflicts_with_all(csas!["bench", "debug", "args", "force"])
+            )
+            .arg(Arg::with_name("bench")
+                .help("Compile and run benchmarks.  Requires a nightly toolchain.")
+                .long("bench")
+                .conflicts_with_all(csas!["test", "debug", "args", "force"])
             )
         )
         .get_matches();
@@ -276,6 +320,7 @@ fn parse_args() -> Args {
         unstable_features: owned_vec_string(m.values_of("unstable_features")),
         use_bincache: yes_or_no(m.value_of("use_bincache")),
         migrate_data: run_kind(m.value_of("migrate_data")),
+        build_kind: BuildKind::from_flags(m.is_present("test"), m.is_present("bench")),
     }
 }
 
@@ -485,6 +530,7 @@ fn try_main() -> Result<i32> {
         args.force,
         args.features,
         args.use_bincache,
+        args.build_kind,
     ));
     info!("action: {:?}", action);
 
@@ -504,13 +550,23 @@ fn try_main() -> Result<i32> {
 
     // Run it!
     if action.execute {
-        let exe_path = try!(get_exe_path(&input, action.use_bincache, &action.pkg_path, &action.metadata));
-        info!("executing {:?}", exe_path);
-        match try!(Command::new(exe_path).args(&args.args).status()
-            .map(|st| st.code().unwrap_or(1)))
-        {
-            0 => (),
-            n => return Ok(n)
+        if action.build_kind.can_exec_directly() {
+            let exe_path = try!(get_exe_path(&input, action.build_kind, action.use_bincache, &action.pkg_path, &action.metadata));
+            info!("executing {:?}", exe_path);
+            match try!(Command::new(exe_path).args(&args.args).status()
+                .map(|st| st.code().unwrap_or(1)))
+            {
+                0 => (),
+                n => return Ok(n)
+            }
+        } else {
+            let cmd_name = action.build_kind.exec_command();
+            info!("running `cargo {}`", cmd_name);
+            let mut cmd = try!(action.cargo(cmd_name));
+            match try!(cmd.status().map(|st| st.code().unwrap_or(1))) {
+                0 => (),
+                n => return Ok(n)
+            }
         }
     }
 
@@ -621,7 +677,7 @@ fn gen_pkg_and_compile(
 
     info!("generating Cargo package...");
     let mani_path = {
-        let mani_path = pkg_path.join("Cargo.toml");
+        let mani_path = action.manifest_path();
         let mani_hash = old_meta.map(|m| &*m.manifest_hash);
         match try!(overwrite_file(&mani_path, mani_str, mani_hash)) {
             FileOverwrite::Same => (),
@@ -665,24 +721,7 @@ fn gen_pkg_and_compile(
     let mut compile_err = Ok(());
     if action.compile {
         info!("compiling...");
-        let mut cmd = Command::new("cargo");
-        cmd.arg("build")
-            .arg("--manifest-path")
-            .arg(&*mani_path.to_string_lossy())
-            ;
-
-        if action.use_bincache {
-            cmd.env("CARGO_TARGET_DIR", try!(get_binary_cache_path()));
-        }
-
-        if !meta.debug {
-            cmd.arg("--release");
-        }
-
-        if let Some(ref features) = meta.features {
-            cmd.arg("--features");
-            cmd.arg(features);
-        }
+        let mut cmd = try!(cargo("build", &*mani_path.to_string_lossy(), action.use_bincache, &meta));
 
         compile_err = cmd.status().map_err(|e| Into::<MainError>::into(e))
             .and_then(|st|
@@ -696,7 +735,7 @@ fn gen_pkg_and_compile(
             // Write out the metadata hash to tie this executable to a particular chunk of metadata.  This is to avoid issues with multiple scripts with the same name being compiled to a common target directory.
             let meta_hash = action.metadata.sha1_hash();
             info!("writing meta hash: {:?}...", meta_hash);
-            let exe_path = get_exe_path(input, action.use_bincache, &action.pkg_path, &action.metadata).unwrap();
+            let exe_path = get_exe_path(input, action.build_kind, action.use_bincache, &action.pkg_path, &action.metadata).unwrap();
             let exe_meta_hash_path = exe_path.with_extension("meta-hash");
             let mut f = try!(fs::File::create(&exe_meta_hash_path));
             try!(write!(&mut f, "{}", meta_hash));
@@ -760,6 +799,19 @@ struct InputAction {
 
     /// The script source.
     script: String,
+
+    /// Did the user ask to run tests or benchmarks?
+    build_kind: BuildKind,
+}
+
+impl InputAction {
+    fn manifest_path(&self) -> PathBuf {
+        self.pkg_path.join("Cargo.toml")
+    }
+
+    fn cargo(&self, cmd: &str) -> Result<Command> {
+        cargo(cmd, &*self.manifest_path().to_string_lossy(), self.use_bincache, &self.metadata)
+    }
 }
 
 /**
@@ -816,6 +868,7 @@ fn decide_action_for(
     force: bool,
     features: Option<String>,
     use_bincache: Option<bool>,
+    build_kind: BuildKind,
 ) -> Result<InputAction> {
     let (pkg_path, using_cache) = pkg_path.map(|p| (p.into(), false))
         .unwrap_or_else(|| {
@@ -839,6 +892,13 @@ fn decide_action_for(
 
     info!("splitting input...");
     let (mani_str, script_str) = try!(manifest::split_input(input, &deps, &prelude));
+
+    // Forcibly override some flags based on build kind.
+    let (debug, force, build_only) = match build_kind {
+        BuildKind::Normal => (debug, force, build_only),
+        BuildKind::Test => (true, false, false),
+        BuildKind::Bench => (false, false, false),
+    };
 
     // Construct input metadata.
     let input_meta = {
@@ -875,6 +935,7 @@ fn decide_action_for(
         old_metadata: None,
         manifest: mani_str,
         script: script_str,
+        build_kind: build_kind,
     };
 
     macro_rules! bail {
@@ -889,6 +950,15 @@ fn decide_action_for(
     // If we were told to only generate the package, we need to stop *now*
     if gen_pkg_only {
         bail!(compile: false, execute: false)
+    }
+
+    // If we're not doing a regular build, stop.
+    match action.build_kind {
+        BuildKind::Normal => (),
+        BuildKind::Test | BuildKind::Bench => {
+            info!("not recompiling because: user asked for test/bench");
+            bail!(compile: false, force_compile: false)
+        }
     }
 
     let cache_meta = match get_pkg_metadata(&action.pkg_path) {
@@ -909,8 +979,10 @@ fn decide_action_for(
 
     action.old_metadata = Some(cache_meta);
 
-    // Next test: does the executable exist at all?
-    let exe_path = get_exe_path(input, action.use_bincache, &action.pkg_path, &action.metadata).unwrap();
+    /*
+    Next test: does the executable exist at all?
+    */
+    let exe_path = get_exe_path(input, action.build_kind, action.use_bincache, &action.pkg_path, &action.metadata).unwrap();
     if !exe_path.is_file_polyfill() {
         info!("recompiling because: executable doesn't exist or isn't a file");
         bail!(compile: true)
@@ -922,7 +994,7 @@ fn decide_action_for(
     Note that we *do not* do this if we aren't using the cache.
     */
     if action.use_bincache {
-        let exe_meta_hash_path = exe_path.clone().with_extension("meta-hash");
+        let exe_meta_hash_path = get_meta_hash_path(input, action.use_bincache, &action.pkg_path, &action.metadata).unwrap();
         if !exe_meta_hash_path.is_file_polyfill() {
             info!("recompiling because: meta hash doesn't exist or isn't a file");
             bail!(compile: true, force_compile: true)
@@ -949,8 +1021,16 @@ Figures out where the output executable for the input should be.
 
 Note that this depends on Cargo *not* suddenly changing its mind about where stuff lives.  In theory, I should be able to just *ask* Cargo for this information, but damned if I can't find an easy way to do it...
 */
-fn get_exe_path<P>(input: &Input, use_bincache: bool, pkg_path: P, meta: &PackageMetadata) -> Result<PathBuf>
+fn get_exe_path<P>(input: &Input, build_kind: BuildKind, use_bincache: bool, pkg_path: P, meta: &PackageMetadata) -> Result<PathBuf>
 where P: AsRef<Path> {
+    // Because Cargo insists on adding crap to filenames, we can't safely predict what the output filename will be when building for tests or benchmarks.
+    match build_kind {
+        BuildKind::Normal => (),
+        BuildKind::Test | BuildKind::Bench => {
+            return Err("tried to get executable path for test/bench build".into());
+        },
+    }
+
     let profile = match meta.debug {
         true => "debug",
         false => "release"
@@ -963,6 +1043,18 @@ where P: AsRef<Path> {
     let mut exe_path = target_path.join(profile).join(&input.safe_name()).into_os_string();
     exe_path.push(std::env::consts::EXE_SUFFIX);
     Ok(exe_path.into())
+}
+
+/**
+Figures out where the `meta-hash` file should be.
+*/
+fn get_meta_hash_path<P>(input: &Input, use_bincache: bool, pkg_path: P, meta: &PackageMetadata) -> Result<PathBuf>
+where P: AsRef<Path> {
+    if !use_bincache {
+        panic!("tried to get meta-hash path when not using binary cache");
+    }
+    let exe_path = try!(get_exe_path(input, BuildKind::Normal, use_bincache, pkg_path, meta));
+    Ok(exe_path.with_extension("meta-hash"))
 }
 
 /**
@@ -1198,4 +1290,28 @@ where P: AsRef<Path> {
     try!(write!(&mut file, "{}", content));
     try!(file.flush());
     Ok(FileOverwrite::Changed { new_hash: new_hash })
+}
+
+/**
+Constructs a Cargo command that runs on the script package.
+*/
+fn cargo(cmd_name: &str, manifest: &str, use_bincache: bool, meta: &PackageMetadata) -> Result<Command> {
+    let mut cmd = Command::new("cargo");
+    cmd.arg(cmd_name)
+        .arg("--manifest-path").arg(manifest);
+
+    if use_bincache {
+        cmd.env("CARGO_TARGET_DIR", try!(get_binary_cache_path()));
+    }
+
+    // Block `--release` on `bench`.
+    if !meta.debug && cmd_name != "bench" {
+        cmd.arg("--release");
+    }
+
+    if let Some(ref features) = meta.features {
+        cmd.arg("--features").arg(features);
+    }
+
+    Ok(cmd)
 }

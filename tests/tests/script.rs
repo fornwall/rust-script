@@ -56,3 +56,9 @@ fn test_script_short() {
         ("Some(1)") => ()
     ).unwrap()
 }
+
+#[test]
+fn test_script_test() {
+    let out = cargo_script!("--test", "tests/data/script-test.rs").unwrap();
+    assert!(out.success());
+}
