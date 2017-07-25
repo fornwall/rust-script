@@ -170,7 +170,7 @@ mod inner {
                 if try!(fs::read_dir(&old_base)).next().is_none() {
                     info!("{:?} is empty; removing", old_base);
                     if kind.for_real() {
-                        fs::remove_dir(&old_base)?;
+                        try!(fs::remove_dir(&old_base));
                     }
                     log.push(format!("Removed empty directory {:?}", old_base));
                 } else {

@@ -331,8 +331,8 @@ fn try_main() -> Result<i32> {
     }
 
     if log_enabled!(log::LogLevel::Debug) {
-        let scp = get_script_cache_path()?;
-        let bcp = get_binary_cache_path()?;
+        let scp = try!(get_script_cache_path());
+        let bcp = try!(get_binary_cache_path());
         debug!("script-cache path: {:?}", scp);
         debug!("binary-cache path: {:?}", bcp);
     }
