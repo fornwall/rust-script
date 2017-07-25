@@ -34,7 +34,7 @@ pub const FILE_TEMPLATE: &'static str = r#"%b"#;
 pub const EXPR_TEMPLATE: &'static str = r#"
 %p
 fn main() {
-    match ({%b}) {
+    match {%b} {
         __cargo_script_expr => println!("{:?}", __cargo_script_expr)
     }
 }
