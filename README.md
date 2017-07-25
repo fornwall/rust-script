@@ -10,6 +10,8 @@ As such, `cargo-script` does two major things:
 
 2. It caches the generated and compiled packages, regenerating them only if the script or its metadata have changed.
 
+**Note**: `cargo-script` *does not* work when Cargo is instructed to use a target architecture different to the default host architecture.
+
 ## Installation
 
 You can install `cargo-script` using Cargo's `install` subcommand:
