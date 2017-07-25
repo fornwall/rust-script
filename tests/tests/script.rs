@@ -62,3 +62,14 @@ fn test_script_test() {
     let out = cargo_script!("--test", "tests/data/script-test.rs").unwrap();
     assert!(out.success());
 }
+
+#[test]
+fn test_script_hyphens() {
+    use scan_rules::scanner::QuotedString;
+    let out = cargo_script!("--", "tests/data/script-args.rs", "-NotAnArg").unwrap();
+    scan!(out.stdout_output();
+        ("[0]:", let _: QuotedString, "[1]:", let arg: QuotedString) => {
+            assert_eq!(arg, "-NotAnArg");
+        }
+    ).unwrap()
+}
