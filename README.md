@@ -30,6 +30,12 @@ Note that you *can* run the executable directly, but the first argument will *ne
 
 If you want to run `cargo script` from a hashbang, you should also install the `run-cargo-script` program.  We *strongly* recommend installing this program to the `PATH` and using `#!/usr/bin/env run-cargo-script` as the hashbang line.
 
+### File Associations
+
+If you are using Windows, you can associate the `.crs` extension (which is simply a renamed `.rs` file) with `run-cargo-script`.  This allows you to execute Rust scripts simply by naming them like any other executable or script.
+
+This can be done using the `cargo-script file-association` command (note the hyphen in `cargo-script`).  This command can also remove the file association.  If you pass `--amend-pathext` to the `file-assocation install` command, it will also allow you to execute `.crs` scripts *without* having to specify the file extension, in the same way that `.exe` and `.bat` files can be used.
+
 ## Usage
 
 The simplest way to use `cargo-script` is to simply pass it the name of the Rust script you want to execute:

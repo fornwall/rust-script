@@ -14,6 +14,18 @@ use std::error::Error;
 use std::marker::PhantomData;
 
 /**
+A really, really hacky way of avoiding a variable binding.
+*/
+pub trait ChainMap: Sized {
+    fn chain_map<F>(self, f: F) -> Self
+    where F: FnOnce(Self) -> Self {
+        f(self)
+    }
+}
+
+impl<T> ChainMap for T {}
+
+/**
 Used to defer a closure until the value is dropped.
 
 The closure *must* return a `Result<(), _>`, as a reminder to *not* panic; doing so will abort your whole program if it happens during another panic.  If the closure returns an `Err`, then it is logged as an `error`.

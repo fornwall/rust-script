@@ -36,11 +36,29 @@ If this is set to `false`, then code that automatically deletes stuff *won't*.
 */
 const ALLOW_AUTO_REMOVE: bool = true;
 
+// This macro exists for 1.11 support.
+#[cfg(windows)]
+macro_rules! if_windows {
+    (@as_expr $e:expr) => { $e };
+    ($($tts:tt)*) => { if_windows! { @as_expr { $($tts)* } } };
+}
+
+#[cfg(not(windows))]
+macro_rules! if_windows {
+    ($($tts:tt)*) => { {} };
+}
+
 mod consts;
 mod error;
 mod manifest;
 mod platform;
 mod util;
+
+#[cfg(windows)]
+mod file_assoc;
+
+#[cfg(not(windows))]
+mod file_assoc {}
 
 use std::borrow::Cow;
 use std::error::Error;
@@ -52,7 +70,14 @@ use std::process::Command;
 
 use error::{Blame, MainError, Result};
 use platform::MigrationKind;
-use util::{Defer, PathExt};
+use util::{ChainMap, Defer, PathExt};
+
+#[derive(Debug)]
+enum SubCommand {
+    Script(Args),
+    #[cfg(windows)]
+    FileAssoc(file_assoc::Args),
+}
 
 #[derive(Debug)]
 struct Args {
@@ -112,7 +137,7 @@ impl BuildKind {
     }
 }
 
-fn parse_args() -> Args {
+fn parse_args() -> SubCommand {
     use clap::{App, Arg, ArgGroup, SubCommand, AppSettings};
     let version = option_env!("CARGO_PKG_VERSION").unwrap_or("unknown");
     let about = r#"Compiles and runs "Cargoified Rust scripts"."#;
@@ -274,7 +299,19 @@ fn parse_args() -> Args {
                 .conflicts_with_all(csas!["test", "debug", "args", "force"])
             )
         )
+        .chain_map(|mut app| {
+            if_windows! {
+                app = app.subcommand(file_assoc::Args::subcommand());
+            }
+            app
+        })
         .get_matches();
+
+    if_windows! {
+        if let Some(m) = m.subcommand_matches("file-association") {
+            return ::SubCommand::FileAssoc(file_assoc::Args::parse(m));
+        }
+    }
 
     let m = m.subcommand_matches("script").unwrap();
 
@@ -299,7 +336,7 @@ fn parse_args() -> Args {
         })
     }
 
-    Args {
+    ::SubCommand::Script(Args {
         script: m.value_of("script").map(Into::into),
         args: owned_vec_string(m.values_of("args")),
         features: m.value_of("features").map(Into::into),
@@ -321,7 +358,7 @@ fn parse_args() -> Args {
         use_bincache: yes_or_no(m.value_of("use_bincache")),
         migrate_data: run_kind(m.value_of("migrate_data")),
         build_kind: BuildKind::from_flags(m.is_present("test"), m.is_present("bench")),
-    }
+    })
 }
 
 fn main() {
@@ -348,6 +385,12 @@ fn main() {
 fn try_main() -> Result<i32> {
     let args = parse_args();
     info!("Arguments: {:?}", args);
+
+    let args = match args {
+        SubCommand::Script(args) => args,
+        #[cfg(windows)]
+        SubCommand::FileAssoc(args) => return file_assoc::try_main(args),
+    };
 
     /*
     Do data migration before anything else, since it can cause the location of stuff to change.
