@@ -251,8 +251,7 @@ pub mod inner {
 
     On Windows, LocalAppData is where user- and machine- specific data should go, but it *might* be more appropriate to use whatever the official name for "Program Data" is, though.
     */
-    pub fn get_cache_dir() -> Result<PathBuf, MainError>
-    where P: AsRef<Path> {
+    pub fn get_cache_dir() -> Result<PathBuf, MainError> {
         let rfid = unsafe { uuid::local_app_data() };
         let dir = try!(SHGetKnownFolderPath(rfid, 0, ::std::ptr::null_mut())
             .map_err(|e| e.to_string()));
