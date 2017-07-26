@@ -1,5 +1,5 @@
 /*
-Copyright ⓒ 2017 cargo-script contributors.
+Copyright ⓒ 2015-2017 cargo-script contributors.
 
 Licensed under the MIT license (see LICENSE or <http://opensource.org
 /licenses/MIT>) or the Apache License, Version 2.0 (see LICENSE of
