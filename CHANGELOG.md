@@ -5,6 +5,8 @@
 
 * Added `--test` and `--bench` flags.  These can be used to run a script's tests and benchmarks.
 
+* Added `cargo-script file-association` subcommand for managing file associations on Windows.
+
 **Changed:**
 
 * `cargo-script` now requires Rust 1.11 to build.
