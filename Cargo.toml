@@ -16,7 +16,12 @@ exclude = [
     ".travis.yml",
 ]
 
+[features]
+default = ["suppress-cargo-output"]
+suppress-cargo-output = ["chan"]
+
 [dependencies]
+chan = { version = "0.1.19", optional = true }
 clap = "2.23.2"
 env_logger = "0.4.2"
 hoedown = "6.0.0"

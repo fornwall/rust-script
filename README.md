@@ -20,6 +20,12 @@ You can install `cargo-script` using Cargo's `install` subcommand:
 cargo install cargo-script
 ```
 
+### Features
+
+The following features are defined:
+
+- `suppress-cargo-output` (default): if building the script takes less than 2 seconds and succeeds, `cargo-script` will suppress Cargo's output.
+
 ### Manually Compiling and Installing
 
 `cargo-script` requires Rust 1.11 or higher to build.  Rust 1.4+ was supported prior to version 0.2.

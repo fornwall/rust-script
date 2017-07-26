@@ -7,6 +7,8 @@
 
 * Added `cargo-script file-association` subcommand for managing file associations on Windows.
 
+* If compiled with the `suppress-cargo-output` feature, `cargo-script` will hide output from Cargo if the build takes less than 2 seconds and succeeds.
+
 **Changed:**
 
 * `cargo-script` now requires Rust 1.11 to build.

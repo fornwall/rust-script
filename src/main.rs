@@ -26,6 +26,9 @@ extern crate rustc_serialize;
 extern crate shaman;
 extern crate toml;
 
+#[cfg(feature="chan")]
+#[macro_use] extern crate chan;
+
 /**
 If this is set to `true`, the digests used for package IDs will be replaced with "stub" to make testing a bit easier.  Obviously, you don't want this `true` for release...
 */
@@ -35,6 +38,12 @@ const STUB_HASHES: bool = false;
 If this is set to `false`, then code that automatically deletes stuff *won't*.
 */
 const ALLOW_AUTO_REMOVE: bool = true;
+
+/**
+Length of time to suppress Cargo output.
+*/
+#[cfg(feature="suppress-cargo-output")]
+const CARGO_OUTPUT_TIMEOUT: u64 = 2_000/*ms*/;
 
 // This macro exists for 1.11 support.
 #[cfg(windows)]
@@ -766,7 +775,25 @@ fn gen_pkg_and_compile(
         info!("compiling...");
         let mut cmd = try!(cargo("build", &*mani_path.to_string_lossy(), action.use_bincache, &meta));
 
-        compile_err = cmd.status().map_err(|e| Into::<MainError>::into(e))
+        #[cfg(feature="suppress-cargo-output")]
+        macro_rules! get_status {
+            ($cmd:expr) => {
+                try!(util::suppress_child_output(
+                    &mut $cmd,
+                    ::std::time::Duration::from_millis(CARGO_OUTPUT_TIMEOUT)
+                ))
+                    .status()
+            }
+        }
+
+        #[cfg(not(feature="suppress-cargo-output"))]
+        macro_rules! get_status {
+            ($cmd:expr) => {
+                $cmd.status()
+            }
+        }
+
+        compile_err = get_status!(cmd).map_err(|e| Into::<MainError>::into(e))
             .and_then(|st|
                 match st.code() {
                     Some(0) => Ok(()),

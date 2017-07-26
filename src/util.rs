@@ -71,6 +71,95 @@ where
     }
 }
 
+#[cfg(feature="suppress-cargo-output")]
+pub use self::suppress_child_output::{ChildToken, suppress_child_output};
+
+#[cfg(feature="suppress-cargo-output")]
+mod suppress_child_output {
+    use std::io;
+    use std::process::{self, Command};
+    use std::thread;
+    use std::time::Duration;
+    use chan;
+    use ::Result;
+
+    /**
+    Suppresses the stderr output of a child process, unless:
+
+    - the process takes longer than `timeout` to complete, or
+    - the process exits and signals a failure.
+
+    In either of those cases, the existing output is flushes to the current process' stderr, and all further output from the child is passed through.
+
+    In other words: if the child successfully completes quickly, it's stderr output is suppressed.  Otherwise, it's let through.
+    */
+    pub fn suppress_child_output(cmd: &mut Command, timeout: Duration) -> Result<ChildToken> {
+        cmd.stderr(process::Stdio::piped());
+
+        let mut child = try!(cmd.spawn());
+        let stderr = child.stderr.take().expect("no stderr pipe found");
+
+        let timeout_chan = chan::after(timeout);
+        let (done_sig, done_gate) = chan::sync(0);
+
+        let _ = thread::spawn(move || {
+            let show_stderr;
+            let mut recv_done = false;
+            chan_select! {
+                timeout_chan.recv() => {
+                    show_stderr = true;
+                },
+                done_gate.recv() -> success => {
+                    show_stderr = !success.unwrap_or(true);
+                    recv_done = true;
+                },
+            }
+            if show_stderr {
+                let mut stderr = stderr;
+                io::copy(&mut stderr, &mut io::stderr())
+                    .expect("could not copy child stderr");
+            }
+            if !recv_done {
+                done_gate.recv();
+            }
+        });
+
+        Ok(ChildToken {
+            child: child,
+            done_sig: Some(done_sig),
+            // stderr_join: stderr_join,
+        })
+    }
+
+    pub struct ChildToken {
+        child: process::Child,
+        done_sig: Option<chan::Sender<bool>>,
+        // stderr_join: Option<thread::JoinHandle<()>>,
+    }
+
+    impl ChildToken {
+        pub fn status(&mut self) -> io::Result<process::ExitStatus> {
+            let st = match self.child.wait() {
+                Ok(r) => r,
+                Err(e) => {
+                    if let Some(done_sig) = self.done_sig.take() {
+                        done_sig.send(false);
+                    }
+                    return Err(e.into());
+                }
+            };
+            if let Some(done_sig) = self.done_sig.take() {
+                done_sig.send(st.success());
+            }
+            // if let Some(stderr_join) = self.stderr_join.take() {
+            //     stderr_join.join()
+            //         .expect("child stderr thread failed");
+            // }
+            Ok(st)
+        }
+    }
+}
+
 /**
 This *used* to be in the stdlib, until it was deprecated and removed after being replaced by better, pattern-based methods.
 
