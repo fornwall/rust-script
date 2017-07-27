@@ -157,8 +157,6 @@ $ cat now.crs | cargo script --count --loop \
 
 ## Things That Should Probably Be Done
 
-* Suppress Cargo/rustc output unless there's actually a problem.  Downside: scripts that require lots of network access and dependency compilation will appear to hang for a while with no feedback.
-
 * Somehow convince the Cargo devs to add aggressive caching of dependencies so that compiling anything that has dependencies doesn't take an age.
 
 * Gist support?  I mean, if it's good enough for playpen...
