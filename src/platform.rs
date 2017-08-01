@@ -13,7 +13,7 @@ This module is for platform-specific stuff.
 
 pub use self::inner::{
     current_time, file_last_modified, get_cache_dir,
-    migrate_old_data,
+    migrate_old_data, write_path, read_path,
 };
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -59,7 +59,8 @@ mod inner {
     pub use super::inner_unix_or_windows::current_time;
 
     use std::path::{Path, PathBuf};
-    use std::{cmp, env, fs};
+    use std::{cmp, env, fs, io};
+    use std::os::unix::ffi::OsStrExt;
     use std::os::unix::fs::MetadataExt;
     use error::{MainError, Blame};
     use super::MigrationKind;
@@ -184,6 +185,19 @@ mod inner {
 
         Ok(())
     }
+
+    pub fn write_path<W>(w: &mut W, path: &Path) -> io::Result<()>
+    where W: io::Write {
+        w.write_all(path.as_os_str().as_bytes())
+    }
+
+    pub fn read_path<R>(r: &mut R) -> io::Result<PathBuf>
+    where R: io::Read {
+        use std::ffi::OsStr;
+        let mut buf = vec![];
+        try!(r.read_to_end(&mut buf));
+        Ok(OsStr::from_bytes(&buf).into())
+    }
 }
 
 #[cfg(windows)]
@@ -199,9 +213,10 @@ pub mod inner {
     use std::ffi::OsString;
     use std::fmt;
     use std::fs;
+    use std::io;
     use std::path::{Path, PathBuf};
     use std::mem;
-    use std::os::windows::ffi::OsStringExt;
+    use std::os::windows::ffi::{OsStrExt, OsStringExt};
     use error::MainError;
     use super::MigrationKind;
 
@@ -306,5 +321,30 @@ pub mod inner {
         // Avoid unused code/variable warnings.
         let _ = kind.for_real();
         (vec![], Ok(()))
+    }
+
+    pub fn write_path<W>(w: &mut W, path: &Path) -> io::Result<()>
+    where W: io::Write {
+        for word in path.as_os_str().encode_wide() {
+            let lo = (word & 0xff) as u8;
+            let hi = (word >> 8) as u8;
+            try!(w.write_all(&[lo, hi]));
+        }
+        Ok(())
+    }
+
+    pub fn read_path<R>(r: &mut R) -> io::Result<PathBuf>
+    where R: io::Read {
+        let mut buf = vec![];
+        try!(r.read_to_end(&mut buf));
+
+        let mut words = Vec::with_capacity(buf.len() / 2);
+        let mut it = buf.iter().cloned();
+        while let Some(lo) = it.next() {
+            let hi = it.next().unwrap();
+            words.push(lo as u16 | ((hi as u16) << 8));
+        }
+
+        return Ok(OsString::from_wide(&words).into())
     }
 }

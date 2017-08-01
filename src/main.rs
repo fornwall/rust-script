@@ -22,7 +22,9 @@ extern crate clap;
 extern crate env_logger;
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate log;
+extern crate regex;
 extern crate rustc_serialize;
+extern crate semver;
 extern crate shaman;
 extern crate toml;
 
@@ -75,9 +77,10 @@ use std::ffi::OsString;
 use std::fs;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{self, Command};
+use semver::Version;
 
-use error::{Blame, MainError, Result};
+use error::{Blame, MainError, Result, ResultExt};
 use platform::MigrationKind;
 use util::{ChainMap, Defer, PathExt};
 
@@ -309,6 +312,7 @@ fn parse_args() -> SubCommand {
             )
         )
         .chain_map(|mut app| {
+            drop(&mut app); // avoid warning
             if_windows! {
                 app = app.subcommand(file_assoc::Args::subcommand());
             }
@@ -603,7 +607,7 @@ fn try_main() -> Result<i32> {
     // Run it!
     if action.execute {
         if action.build_kind.can_exec_directly() {
-            let exe_path = try!(get_exe_path(&input, action.build_kind, action.use_bincache, &action.pkg_path, &action.metadata));
+            let exe_path = try!(get_exe_path(action.build_kind, &action.pkg_path));
             info!("executing {:?}", exe_path);
             match try!(Command::new(exe_path).args(&args.args).status()
                 .map(|st| st.code().unwrap_or(1)))
@@ -804,12 +808,14 @@ fn gen_pkg_and_compile(
                     None => Err("cargo failed".into())
                 });
 
+        // Find out and cache what the executable was called.
+        let _ = try!(cargo_target(input, pkg_path, &*mani_path.to_string_lossy(), action.use_bincache, &meta));
+
         if compile_err.is_ok() && action.use_bincache {
             // Write out the metadata hash to tie this executable to a particular chunk of metadata.  This is to avoid issues with multiple scripts with the same name being compiled to a common target directory.
             let meta_hash = action.metadata.sha1_hash();
             info!("writing meta hash: {:?}...", meta_hash);
-            let exe_path = get_exe_path(input, action.build_kind, action.use_bincache, &action.pkg_path, &action.metadata).unwrap();
-            let exe_meta_hash_path = exe_path.with_extension("meta-hash");
+            let exe_meta_hash_path = try!(get_meta_hash_path(action.use_bincache, pkg_path));
             let mut f = try!(fs::File::create(&exe_meta_hash_path));
             try!(write!(&mut f, "{}", meta_hash));
         }
@@ -1055,8 +1061,11 @@ fn decide_action_for(
     /*
     Next test: does the executable exist at all?
     */
-    let exe_path = get_exe_path(input, action.build_kind, action.use_bincache, &action.pkg_path, &action.metadata).unwrap();
-    if !exe_path.is_file_polyfill() {
+    let exe_exists = match get_exe_path(action.build_kind, &action.pkg_path) {
+        Ok(exe_path) => exe_path.is_file_polyfill(),
+        Err(_) => false,
+    };
+    if !exe_exists {
         info!("recompiling because: executable doesn't exist or isn't a file");
         bail!(compile: true)
     }
@@ -1067,7 +1076,7 @@ fn decide_action_for(
     Note that we *do not* do this if we aren't using the cache.
     */
     if action.use_bincache {
-        let exe_meta_hash_path = get_meta_hash_path(input, action.use_bincache, &action.pkg_path, &action.metadata).unwrap();
+        let exe_meta_hash_path = get_meta_hash_path(action.use_bincache, &action.pkg_path).unwrap();
         if !exe_meta_hash_path.is_file_polyfill() {
             info!("recompiling because: meta hash doesn't exist or isn't a file");
             bail!(compile: true, force_compile: true)
@@ -1092,11 +1101,13 @@ fn decide_action_for(
 /**
 Figures out where the output executable for the input should be.
 
-Note that this depends on Cargo *not* suddenly changing its mind about where stuff lives.  In theory, I should be able to just *ask* Cargo for this information, but damned if I can't find an easy way to do it...
+This *requires* that `cargo_target` has already been called on the package.
 */
-fn get_exe_path<P>(input: &Input, build_kind: BuildKind, use_bincache: bool, pkg_path: P, meta: &PackageMetadata) -> Result<PathBuf>
+fn get_exe_path<P>(build_kind: BuildKind, pkg_path: P) -> Result<PathBuf>
 where P: AsRef<Path> {
-    // Because Cargo insists on adding crap to filenames, we can't safely predict what the output filename will be when building for tests or benchmarks.
+    use std::fs::File;
+
+    // We don't directly run tests and benchmarks.
     match build_kind {
         BuildKind::Normal => (),
         BuildKind::Test | BuildKind::Bench => {
@@ -1104,30 +1115,24 @@ where P: AsRef<Path> {
         },
     }
 
-    let profile = match meta.debug {
-        true => "debug",
-        false => "release"
-    };
-    let target_path = if use_bincache {
-        try!(get_binary_cache_path())
-    } else {
-        pkg_path.as_ref().join("target")
-    };
-    let mut exe_path = target_path.join(profile).join(&input.safe_name()).into_os_string();
-    exe_path.push(std::env::consts::EXE_SUFFIX);
-    Ok(exe_path.into())
+    let package_path = pkg_path.as_ref();
+    let cache_path = package_path.join("target.exe_path");
+
+    let mut f = try!(File::open(&cache_path));
+    let exe_path = try!(platform::read_path(&mut f));
+
+    Ok(exe_path)
 }
 
 /**
 Figures out where the `meta-hash` file should be.
 */
-fn get_meta_hash_path<P>(input: &Input, use_bincache: bool, pkg_path: P, meta: &PackageMetadata) -> Result<PathBuf>
+fn get_meta_hash_path<P>(use_bincache: bool, pkg_path: P) -> Result<PathBuf>
 where P: AsRef<Path> {
     if !use_bincache {
         panic!("tried to get meta-hash path when not using binary cache");
     }
-    let exe_path = try!(get_exe_path(input, BuildKind::Normal, use_bincache, pkg_path, meta));
-    Ok(exe_path.with_extension("meta-hash"))
+    Ok(pkg_path.as_ref().join("target.meta-hash"))
 }
 
 /**
@@ -1387,4 +1392,162 @@ fn cargo(cmd_name: &str, manifest: &str, use_bincache: bool, meta: &PackageMetad
     }
 
     Ok(cmd)
+}
+
+/**
+Tries to find the path to a package's target file.
+
+This will also cache this information such that `exe_path` can find it later.
+*/
+fn cargo_target<P>(input: &Input, pkg_path: P, manifest: &str, use_bincache: bool, meta: &PackageMetadata) -> Result<PathBuf>
+where P: AsRef<Path> {
+    lazy_static! {
+        static ref VER_JSON_MSGS: Version = Version::parse("0.18.0").unwrap();
+    }
+
+    trace!("cargo_target(_, {:?}, {:?}, {:?}, _)", pkg_path.as_ref(), manifest, use_bincache);
+
+    let cargo_ver = try!(cargo_version()
+        .err_tag("could not determine target filename"));
+
+    let exe_path = if cargo_ver < *VER_JSON_MSGS {
+        try!(cargo_target_by_guess(input, use_bincache, pkg_path.as_ref(), meta))
+    } else {
+        try!(cargo_target_by_message(input, manifest, use_bincache, meta))
+    };
+
+    trace!(".. exe_path: {:?}", exe_path);
+
+    // Before we return, cache the result.
+    {
+        use std::fs::File;
+
+        let manifest_path = Path::new(manifest);
+        let package_path = manifest_path.parent().unwrap();
+        let cache_path = package_path.join("target.exe_path");
+
+        let mut f = try!(File::create(&cache_path));
+        try!(platform::write_path(&mut f, &exe_path));
+    }
+
+    Ok(exe_path)
+}
+
+/**
+Figures out where the output executable for the input should be by guessing.
+
+Depending on the configuration, this might not work.  On the other hand, this actually works (usually) prior to Cargo 0.18 (Rust 1.17).
+*/
+fn cargo_target_by_guess(input: &Input, use_bincache: bool, pkg_path: &Path, meta: &PackageMetadata) -> Result<PathBuf> {
+    trace!("cargo_target_by_guess(_, {:?}, {:?}, _)", use_bincache, pkg_path);
+
+    let profile = match meta.debug {
+        true => "debug",
+        false => "release"
+    };
+    let target_path = if use_bincache {
+        try!(get_binary_cache_path())
+    } else {
+        pkg_path.join("target")
+    };
+    let mut exe_path = target_path.join(profile).join(&input.safe_name()).into_os_string();
+    exe_path.push(std::env::consts::EXE_SUFFIX);
+    Ok(exe_path.into())
+}
+
+/**
+Gets the path to the package's target file by parsing the output of `cargo build`.
+
+This only works on Cargo 0.18 (Rust 1.17) and higher.
+*/
+fn cargo_target_by_message(input: &Input, manifest: &str, use_bincache: bool, meta: &PackageMetadata) -> Result<PathBuf> {
+    use std::io::{BufRead, BufReader};
+    use rustc_serialize::json;
+
+    trace!("cargo_target_by_message(_, {:?}, {:?}, _)", manifest, use_bincache);
+
+    let mut cmd = try!(cargo("build", manifest, use_bincache, meta));
+    cmd.arg("--message-format=json");
+    cmd.stdout(process::Stdio::piped());
+    cmd.stderr(process::Stdio::null());
+
+    trace!(".. cmd: {:?}", cmd);
+
+    let mut child = try!(cmd.spawn());
+    match try!(child.wait()).code() {
+        Some(0) => (),
+        Some(st) => return Err(format!("could not determine target filename: cargo exited with status {}", st).into()),
+        None => return Err(format!("could not determine target filename: cargo exited abnormally").into()),
+    }
+
+    let mut line = String::with_capacity(1024);
+    let mut stdout = BufReader::new(child.stdout.take().unwrap());
+    let null = json::Json::Null;
+    let package_name = input.safe_name();
+
+    let mut line_num = 0;
+    loop {
+        line_num += 1;
+        line.clear();
+        let bytes = try!(stdout.read_line(&mut line));
+        trace!(".. line {}, {}b: {:?}", line_num, bytes, line);
+        if bytes == 0 {
+            return Err("could not determine target filename: did not find appropriate cargo message".into());
+        }
+
+        let msg = try!(json::Json::from_str(line.trim())
+            .map_err(Box::new));
+
+        // Is this the message we're looking for?
+        if msg.find("reason").unwrap_or(&null).as_string() != Some("compiler-artifact") {
+            trace!("   couldn't find `compiler-artifact`");
+            continue;
+        }
+        if msg.find_path(&["target", "name"]).unwrap_or(&null).as_string() != Some(&package_name) {
+            trace!("   couldn't find `target.name`, or it wasn't {:?}", package_name);
+            continue;
+        }
+
+        // Looks like it; grab the path.
+        let exe_path = msg.find_path(&["filenames"])
+            .expect("could not find `filenames` in json message")
+            .as_array()
+            .expect("`filenames` in json message was not an array")
+            [0]
+            .as_string()
+            .expect("`filenames[0]` in json message was not a string");
+
+        return Ok(exe_path.into());
+    }
+}
+
+/**
+Get the version of the currently active cargo.
+*/
+fn cargo_version() -> Result<Version> {
+    use regex::Regex;
+
+    lazy_static! {
+        static ref RE_VERSION: Regex = Regex::new(r#"^cargo (\S+)"#).unwrap();
+    }
+
+    let mut cmd = Command::new("cargo");
+    cmd.arg("-V");
+
+    let child = try!(cmd.output());
+    match child.status.code() {
+        Some(0) => (),
+        Some(st) => return Err(format!("could not determine cargo version: cargo exited with status {}", st).into()),
+        None => return Err(format!("could not determine cargo version: cargo exited abnormally").into()),
+    }
+
+    let stdout = String::from_utf8_lossy(&child.stdout);
+    let m = match RE_VERSION.captures(&stdout) {
+        Some(m) => m,
+        None => return Err(format!("could not determine cargo version: output did not match expected").into()),
+    };
+
+    let ver = m.get(1).unwrap();
+    Ok(try!(Version::parse(ver.as_str())
+        .map_err(Box::new)))
 }

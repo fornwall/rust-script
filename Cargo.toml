@@ -30,6 +30,7 @@ lazy_static = "0.2.6"
 log = "0.3.7"
 regex = "0.2.1"
 rustc-serialize = "0.3.23"
+semver = "0.5.1" # semver 0.6 incompatible with Rust < 1.14
 shaman = "0.1.0"
 time = "0.1.36"
 toml = "0.2.1" # toml 0.3 incompatible with Rust < 1.14.
