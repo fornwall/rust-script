@@ -1,6 +1,6 @@
 [package]
 name = "cargo-script"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Daniel Keep <daniel.keep@gmail.com>"]
 
 description = "A Cargo subcommand designed to let people quickly and easily run Rust \"scripts\" which can make use of Cargo's package ecosystem."
