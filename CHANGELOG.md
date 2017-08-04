@@ -1,4 +1,10 @@
 
+# v0.2.1
+
+**Changed:**
+
+* `cargo-script` now interrogates `cargo` to find out where it puts the compiled executables.  This should make `cargo-script` more robust.  This only works with Rust 1.17 or higher.
+
 # v0.2.0
 
 **New:**
