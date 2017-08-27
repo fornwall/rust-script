@@ -42,6 +42,9 @@ uuid-sys = "0.1.2" # WARNING: do not use with rustc < 1.15
 winapi = "0.2.8"
 winreg = "0.4.0"
 
+[target.'cfg(unix)'.dependencies]
+atty = "0.2.2"
+
 [dev-dependencies]
 gcc = "0.3.45"
 scan-rules = "0.2.0"

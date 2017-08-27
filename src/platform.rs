@@ -14,6 +14,7 @@ This module is for platform-specific stuff.
 pub use self::inner::{
     current_time, file_last_modified, get_cache_dir,
     migrate_old_data, write_path, read_path,
+    force_cargo_color,
 };
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -56,6 +57,8 @@ mod inner_unix_or_windows {
 
 #[cfg(unix)]
 mod inner {
+    extern crate atty;
+
     pub use super::inner_unix_or_windows::current_time;
 
     use std::path::{Path, PathBuf};
@@ -197,6 +200,15 @@ mod inner {
         let mut buf = vec![];
         try!(r.read_to_end(&mut buf));
         Ok(OsStr::from_bytes(&buf).into())
+    }
+
+    /**
+    Returns `true` if `cargo-script` should force Cargo to use coloured output.
+
+    This depends on whether `cargo-script`'s STDERR is connected to a TTY or not.
+    */
+    pub fn force_cargo_color() -> bool {
+        atty::is(atty::Stream::Stderr)
     }
 }
 
@@ -346,5 +358,14 @@ pub mod inner {
         }
 
         return Ok(OsString::from_wide(&words).into())
+    }
+
+    /**
+    Returns `true` if `cargo-script` should force Cargo to use coloured output.
+
+    Always returns `false` on Windows because colour is communicated over a side-channel.
+    */
+    pub fn force_cargo_color() -> bool {
+        false
     }
 }

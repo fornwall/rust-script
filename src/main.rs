@@ -1408,6 +1408,10 @@ fn cargo(cmd_name: &str, manifest: &str, use_bincache: bool, meta: &PackageMetad
     cmd.arg(cmd_name)
         .arg("--manifest-path").arg(manifest);
 
+    if platform::force_cargo_color() {
+        cmd.arg("--color").arg("always");
+    }
+
     if use_bincache {
         cmd.env("CARGO_TARGET_DIR", try!(get_binary_cache_path()));
     }
