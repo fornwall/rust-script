@@ -1,4 +1,10 @@
 
+# v0.2.3
+
+**Fixed:**
+
+* Suspiciously absent 0.2.2 features.
+
 # v0.2.2
 
 **Fixed:**
