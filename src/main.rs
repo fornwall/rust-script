@@ -745,7 +745,7 @@ fn gen_pkg_and_compile(
     };
 
     {
-        let script_path = pkg_path.join(input.safe_name()).with_extension("rs");
+        let script_path = pkg_path.join(format!("{}.rs", input.safe_name()));
         /*
         There are times (particularly involving shared target dirs) where we can't rely on Cargo to correctly detect invalidated builds.  As such, if we've been told to *force* a recompile, we'll deliberately force the script to be overwritten, which will invalidate the timestamp, which will lead to a recompile.
         */
@@ -1267,6 +1267,36 @@ impl<'a> Input<'a> {
     }
 
     /**
+    Return the package name for the input.  This should be a valid Rust identifier.
+    */
+    pub fn package_name(&self) -> String {
+        let name = self.safe_name();
+        let mut r = String::with_capacity(name.len());
+
+        for (i, c) in name.chars().enumerate() {
+            match (i, c) {
+                (0, '0'...'9') => {
+                    r.push('_');
+                    r.push(c);
+                },
+                (_, '0'...'9')
+                | (_, 'a'...'z')
+                | (_, 'A'...'Z')
+                | (_, '_')
+                | (_, '-')
+                => {
+                    r.push(c);
+                },
+                (_, _) => {
+                    r.push('_');
+                }
+            }
+        }
+
+        r
+    }
+
+    /**
     Compute the package ID for the input.  This is used as the name of the cache folder into which the Cargo package will be generated.
     */
     pub fn compute_id<'dep, DepIt>(&self, deps: DepIt) -> Result<OsString>
@@ -1450,7 +1480,7 @@ fn cargo_target_by_guess(input: &Input, use_bincache: bool, pkg_path: &Path, met
     } else {
         pkg_path.join("target")
     };
-    let mut exe_path = target_path.join(profile).join(&input.safe_name()).into_os_string();
+    let mut exe_path = target_path.join(profile).join(&input.package_name()).into_os_string();
     exe_path.push(std::env::consts::EXE_SUFFIX);
     Ok(exe_path.into())
 }
@@ -1483,7 +1513,7 @@ fn cargo_target_by_message(input: &Input, manifest: &str, use_bincache: bool, me
     let mut line = String::with_capacity(1024);
     let mut stdout = BufReader::new(child.stdout.take().unwrap());
     let null = json::Json::Null;
-    let package_name = input.safe_name();
+    let package_name = input.package_name();
 
     let mut line_num = 0;
     loop {

@@ -1,4 +1,10 @@
 
+# v0.2.2
+
+**Fixed:**
+
+* `cargo-script` no longer gets confused when trying to run scripts with non-identifier characters in their name.
+
 # v0.2.1
 
 **Changed:**

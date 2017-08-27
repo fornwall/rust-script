@@ -73,3 +73,9 @@ fn test_script_hyphens() {
         }
     ).unwrap()
 }
+
+#[test]
+fn test_script_has_weird_chars() {
+    let out = cargo_script!("tests/data/script-has.weird§chars!.rs").unwrap();
+    assert!(out.success());
+}

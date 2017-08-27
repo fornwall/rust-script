@@ -130,7 +130,7 @@ authors = ["Anonymous"]
 
 [[bin]]
 name = "%n"
-path = "%n.rs"
+path = "%f.rs"
 "#;
 
 /**

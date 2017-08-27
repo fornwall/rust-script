@@ -967,7 +967,10 @@ time = "*"
 Generates a default Cargo manifest for the given input.
 */
 fn default_manifest(input: &Input) -> Result<toml::Table> {
-    let mani_str = consts::DEFAULT_MANIFEST.replace("%n", input.safe_name());
+    let mani_str = consts::DEFAULT_MANIFEST
+        .replace("%n", &input.package_name())
+        .replace("%f", &input.safe_name())
+        ;
     toml::Parser::new(&mani_str).parse()
         .ok_or("could not parse default manifest, somehow".into())
 }

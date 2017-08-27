@@ -1,6 +1,6 @@
 [root]
 name = "cargo-script"
-version = "0.2.0"
+version = "0.2.2"
 dependencies = [
  "chan 0.1.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.23.2 (registry+https://github.com/rust-lang/crates.io-index)",
