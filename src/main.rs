@@ -378,7 +378,7 @@ fn main() {
     env_logger::init().unwrap();
     info!("starting");
     info!("args: {:?}", std::env::args().collect::<Vec<_>>());
-    let mut stderr = &mut std::io::stderr();
+    let stderr = &mut std::io::stderr();
     match try_main() {
         Ok(0) => (),
         Ok(code) => {
