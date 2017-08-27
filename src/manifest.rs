@@ -13,6 +13,7 @@ This module is concerned with how `cargo-script` extracts the manfiest from a sc
 extern crate hoedown;
 extern crate regex;
 
+use std::path::Path;
 use self::regex::Regex;
 use toml;
 
@@ -100,6 +101,9 @@ pub fn split_input(input: &Input, deps: &[(String, String)], prelude_items: &[St
 
     let mani = try!(merge_manifest(def_mani, part_mani));
     let mani = try!(merge_manifest(mani, dep_mani));
+
+    // Fix up relative paths.
+    let mani = try!(fix_manifest_paths(mani, &input.base_path()));
     info!("mani: {:?}", mani);
 
     let mani_str = format!("{}", toml::Value::Table(mani));
@@ -1037,4 +1041,81 @@ fn merge_manifest(mut into_t: toml::Table, from_t: toml::Table) -> Result<toml::
             _ => None
         }
     }
+}
+
+/**
+Given a Cargo manifest, attempts to rewrite relative file paths to absolute ones, allowing the manifest to be relocated.
+*/
+fn fix_manifest_paths(mani: toml::Table, base: &Path) -> Result<toml::Table> {
+    // Values that need to be rewritten:
+    let paths: &[&[&str]] = &[
+        &["build-dependencies", "*", "path"],
+        &["dependencies", "*", "path"],
+        &["dev-dependencies", "*", "path"],
+        &["package", "build"],
+        &["target", "*", "dependencies", "*", "path"],
+    ];
+
+    let mut mani = toml::Value::Table(mani);
+
+    for path in paths {
+        try!(iterate_toml_mut_path(&mut mani, path, &mut |v| {
+            match *v {
+                toml::Value::String(ref mut s) => {
+                    if Path::new(s).is_relative() {
+                        let p = base.join(&*s);
+                        match p.to_str() {
+                            Some(p) => *s = p.into(),
+                            None => {},
+                        }
+                    }
+                },
+                _ => {}
+            }
+            Ok(())
+        }))
+    }
+
+    match mani {
+        toml::Value::Table(mani) => Ok(mani),
+        _ => unreachable!(),
+    }
+}
+
+/**
+Iterates over the specified TOML values via a path specification.
+*/
+fn iterate_toml_mut_path<F>(base: &mut toml::Value, path: &[&str], on_each: &mut F) -> Result<()>
+where F: FnMut(&mut toml::Value) -> Result<()> {
+    if path.len() == 0 {
+        return on_each(base);
+    }
+
+    let cur = path[0];
+    let tail = &path[1..];
+
+    if cur == "*" {
+        match *base {
+            toml::Value::Table(ref mut tab) => {
+                for (_, v) in tab {
+                    try!(iterate_toml_mut_path(v, tail, on_each));
+                }
+            },
+            _ => {},
+        }
+    } else {
+        match *base {
+            toml::Value::Table(ref mut tab) => {
+                match tab.get_mut(cur) {
+                    Some(v) => {
+                        try!(iterate_toml_mut_path(v, tail, on_each));
+                    },
+                    None => {},
+                }
+            },
+            _ => {},
+        }
+    }
+
+    Ok(())
 }

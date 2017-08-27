@@ -1,0 +1,10 @@
+[package]
+name = "slow-build"
+version = "0.1.0"
+authors = ["Daniel Keep <daniel.keep@gmail.com>"]
+
+build = "slow-build-build.rs"
+
+[lib]
+name = "slow_build"
+path = "slow-build-lib.rs"

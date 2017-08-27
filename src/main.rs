@@ -1297,6 +1297,16 @@ impl<'a> Input<'a> {
     }
 
     /**
+    Base directory for resolving relative paths.
+    */
+    pub fn base_path(&self) -> PathBuf {
+        match *self {
+            Input::File(_, path, _, _) => path.parent().expect("couldn't get parent directory for file input base path").into(),
+            Input::Expr(..) | Input::Loop(..) => std::env::current_dir().expect("couldn't get current directory for input base path"),
+        }
+    }
+
+    /**
     Compute the package ID for the input.  This is used as the name of the cache folder into which the Cargo package will be generated.
     */
     pub fn compute_id<'dep, DepIt>(&self, deps: DepIt) -> Result<OsString>
