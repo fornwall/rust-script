@@ -5,6 +5,10 @@
 
 * `cargo-script` no longer gets confused when trying to run scripts with non-identifier characters in their name.
 
+* Coloured output from `cargo` now works on *nix.
+
+* Relative paths in manifests for dependencies are now supported.
+
 # v0.2.1
 
 **Changed:**
