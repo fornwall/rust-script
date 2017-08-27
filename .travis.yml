@@ -2,8 +2,8 @@ language: rust
 script: rustc -vV && cargo build --verbose && cargo test --verbose
 rust:
   - 1.11.0
-  - 1.13.0
-  - 1.15.0
+  - 1.14.0
+  - 1.17.0
   - stable
   - beta
   - nightly
