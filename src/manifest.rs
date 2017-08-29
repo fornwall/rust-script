@@ -55,6 +55,12 @@ pub fn split_input(input: &Input, deps: &[(String, String)], prelude_items: &[St
 
             (manifest, source, consts::FILE_TEMPLATE, false)
         },
+        Input::Expr("meaning-of-life") | Input::Expr("meaning_of_life") => {
+            (Manifest::Toml(""), r#"
+                println!("42");
+                std::process::exit(42);
+            "#, consts::EXPR_TEMPLATE, true)
+        },
         Input::Expr(content) => {
             (Manifest::Toml(""), content, consts::EXPR_TEMPLATE, true)
         },
