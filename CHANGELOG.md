@@ -1,4 +1,10 @@
 
+# v0.2.4
+
+**New:**
+
+* Expressions can now use `try!`/`?` for propagating errors.
+
 # v0.2.3
 
 **Fixed:**
