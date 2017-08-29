@@ -34,8 +34,16 @@ pub const FILE_TEMPLATE: &'static str = r#"%b"#;
 pub const EXPR_TEMPLATE: &'static str = r#"
 %p
 fn main() {
-    if let Err(e) = try_main() {
-        println!("ERROR: script panicked: {:?}", e);
+    let exit_code = match try_main() {
+        Ok(()) => None,
+        Err(e) => {
+            use std::io::{self, Write};
+            writeln!(io::stderr(), "Error: {}", e);
+            Some(1)
+        },
+    };
+    if let Some(exit_code) = exit_code {
+        std::process::exit(exit_code);
     }
 }
 
