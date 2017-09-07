@@ -808,10 +808,13 @@ fn gen_pkg_and_compile(
                     None => Err("cargo failed".into())
                 });
 
+        // Drop out now if compilation failed.
+        let _ = try!(compile_err);
+
         // Find out and cache what the executable was called.
         let _ = try!(cargo_target(input, pkg_path, &*mani_path.to_string_lossy(), action.use_bincache, &meta));
 
-        if compile_err.is_ok() && action.use_bincache {
+        if action.use_bincache {
             // Write out the metadata hash to tie this executable to a particular chunk of metadata.  This is to avoid issues with multiple scripts with the same name being compiled to a common target directory.
             let meta_hash = action.metadata.sha1_hash();
             info!("writing meta hash: {:?}...", meta_hash);

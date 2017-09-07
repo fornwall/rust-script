@@ -1,4 +1,10 @@
 
+# v0.2.5
+
+**Fixed:**
+
+* Cargo script hanging on build failure on Windows.
+
 # v0.2.4
 
 **New:**
