@@ -20,7 +20,7 @@ use toml;
 
 use consts;
 use error::{Blame, Result};
-use util::templates;
+use templates;
 use Input;
 
 lazy_static! {
@@ -48,6 +48,7 @@ Splits input into a complete Cargo manifest and unadultered Rust source.
 Unless we have prelude items to inject, in which case it will be *slightly* adulterated.
 */
 pub fn split_input(input: &Input, deps: &[(String, String)], prelude_items: &[String]) -> Result<(String, String)> {
+    let template_buf;
     let (part_mani, source, template, sub_prelude) = match *input {
         Input::File(_, _, content, _) => {
             assert_eq!(prelude_items.len(), 0);
@@ -57,14 +58,21 @@ pub fn split_input(input: &Input, deps: &[(String, String)], prelude_items: &[St
 
             (manifest, source, consts::FILE_TEMPLATE, false)
         },
-        Input::Expr("meaning-of-life") | Input::Expr("meaning_of_life") => {
+        Input::Expr("meaning-of-life", None) | Input::Expr("meaning_of_life", None) => {
             (Manifest::Toml(""), r#"
                 println!("42");
                 std::process::exit(42);
             "#, consts::EXPR_TEMPLATE, true)
         },
-        Input::Expr(content) => {
-            (Manifest::Toml(""), content, consts::EXPR_TEMPLATE, true)
+        Input::Expr(content, template) => {
+            let template_src = match template {
+                Some(template_name) => {
+                    template_buf = try!(templates::get_template(template_name));
+                    &template_buf
+                },
+                None => consts::EXPR_TEMPLATE,
+            };
+            (Manifest::Toml(""), content, template_src, true)
         },
         Input::Loop(content, count) => {
             let templ = if count { consts::LOOP_COUNT_TEMPLATE } else { consts::LOOP_TEMPLATE };

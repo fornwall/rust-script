@@ -12,7 +12,7 @@ This module is for platform-specific stuff.
 */
 
 pub use self::inner::{
-    current_time, file_last_modified, get_cache_dir,
+    current_time, file_last_modified, get_cache_dir, get_config_dir,
     migrate_old_data, write_path, read_path,
     force_cargo_color,
 };
@@ -107,6 +107,16 @@ mod inner {
         }
 
         Err((Blame::Human, "neither $CARGO_HOME nor $HOME is defined").into())
+    }
+
+    /**
+    Get a directory suitable for storing user-specific configuration data.
+
+    This is chosen to match the location where Cargo places its configuration data.
+    */
+    pub fn get_config_dir() -> Result<PathBuf, MainError> {
+        // Currently, this appears to be the same as the cache directory.
+        get_cache_dir()
     }
 
     pub fn migrate_old_data(kind: MigrationKind) -> (Vec<String>, Result<(), MainError>) {
@@ -236,10 +246,17 @@ pub mod inner {
     mod uuid {
         // This *is* in `uuid-sys` ≤ 0.1.2, but it doesn't work in Rust < 1.15.
         #[link(name="uuid")]
-        extern { static FOLDERID_LocalAppData: super::winapi::KNOWNFOLDERID; }
+        extern {
+            static FOLDERID_LocalAppData: super::winapi::KNOWNFOLDERID;
+            static FOLDERID_RoamingAppData: super::winapi::KNOWNFOLDERID;
+        }
 
         pub unsafe fn local_app_data() -> &'static super::winapi::KNOWNFOLDERID {
             &FOLDERID_LocalAppData
+        }
+
+        pub unsafe fn roaming_app_data() -> &'static super::winapi::KNOWNFOLDERID {
+            &FOLDERID_RoamingAppData
         }
     }
 
@@ -250,6 +267,10 @@ pub mod inner {
 
         pub unsafe fn local_app_data() -> &'static super::winapi::KNOWNFOLDERID {
             &uuid::FOLDERID_LocalAppData
+        }
+
+        pub unsafe fn roaming_app_data() -> &'static super::winapi::KNOWNFOLDERID {
+            &uuid::FOLDERID_RoamingAppData
         }
     }
 
@@ -280,6 +301,18 @@ pub mod inner {
     */
     pub fn get_cache_dir() -> Result<PathBuf, MainError> {
         let rfid = unsafe { uuid::local_app_data() };
+        let dir = try!(SHGetKnownFolderPath(rfid, 0, ::std::ptr::null_mut())
+            .map_err(|e| e.to_string()));
+        Ok(Path::new(&dir).to_path_buf().join("Cargo"))
+    }
+
+    /**
+    Get a directory suitable for storing user-specific configuration data.
+
+    This is *not* chosen to match the location where Cargo places its cache data, because Cargo is *wrong*.  This is at least *less wrong*.
+    */
+    pub fn get_config_dir() -> Result<PathBuf, MainError> {
+        let rfid = unsafe { uuid::roaming_app_data() };
         let dir = try!(SHGetKnownFolderPath(rfid, 0, ::std::ptr::null_mut())
             .map_err(|e| e.to_string()));
         Ok(Path::new(&dir).to_path_buf().join("Cargo"))

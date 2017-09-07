@@ -1,7 +1,10 @@
 use std::sync::Mutex;
 
 macro_rules! cargo_script {
-    ($($args:expr),* $(,)*) => {
+    (
+        #[env($($env_k:ident=$env_v:expr),* $(,)*)]
+        $($args:expr),* $(,)*
+    ) => {
         {
             extern crate tempdir;
             use std::process::Command;
@@ -21,6 +24,9 @@ macro_rules! cargo_script {
                 )*
 
                 cmd.env_remove("CARGO_TARGET_DIR");
+
+                let env: &[(&str, &str)] = &[$((stringify!($env_k), $env_v),)*];
+                cmd.envs(env.iter().cloned());
 
                 cmd_str = format!("{:?}", cmd);
 
@@ -45,6 +51,10 @@ macro_rules! cargo_script {
 
             out
         }
+    };
+
+    ($($args:expr),* $(,)*) => {
+        cargo_script!(#[env()] $($args),*)
     };
 }
 

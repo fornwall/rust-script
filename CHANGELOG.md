@@ -1,6 +1,10 @@
 
 # v0.2.5
 
+**New:**
+
+* Added support for expression script templates.
+
 **Fixed:**
 
 * Cargo script hanging on build failure on Windows.

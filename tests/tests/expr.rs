@@ -85,3 +85,15 @@ fn test_expr_qmark() {
         ("43") => ()
     ).unwrap();
 }
+
+#[test]
+fn test_template() {
+    let template_dir = "tests/data/templates";
+    let out = cargo_script!(
+        #[env(CARGO_SCRIPT_DEBUG_TEMPLATE_PATH=template_dir)]
+        "-t", "shout", "-e", with_output_marker!(r#""no way? no way!""#)
+    ).unwrap();
+    scan!(out.stdout_output();
+        ("NO WAY? NO WAY!") => ()
+    ).unwrap();
+}

@@ -22,6 +22,7 @@ extern crate clap;
 extern crate env_logger;
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate log;
+extern crate open;
 extern crate regex;
 extern crate rustc_serialize;
 extern crate semver;
@@ -63,6 +64,7 @@ mod consts;
 mod error;
 mod manifest;
 mod platform;
+mod templates;
 mod util;
 
 #[cfg(windows)]
@@ -87,6 +89,7 @@ use util::{ChainMap, Defer, PathExt};
 #[derive(Debug)]
 enum SubCommand {
     Script(Args),
+    Templates(templates::Args),
     #[cfg(windows)]
     FileAssoc(file_assoc::Args),
 }
@@ -114,6 +117,7 @@ struct Args {
     use_bincache: Option<bool>,
     migrate_data: Option<MigrationKind>,
     build_kind: BuildKind,
+    template: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -310,7 +314,15 @@ fn parse_args() -> SubCommand {
                 .long("bench")
                 .conflicts_with_all(csas!["test", "debug", "args", "force"])
             )
+            .arg(Arg::with_name("template")
+                .help("Specify a template to use for expression scripts.")
+                .long("template")
+                .short("t")
+                .takes_value(true)
+                .requires("expr")
+            )
         )
+        .subcommand(templates::Args::subcommand())
         .chain_map(|mut app| {
             drop(&mut app); // avoid warning
             if_windows! {
@@ -319,6 +331,10 @@ fn parse_args() -> SubCommand {
             app
         })
         .get_matches();
+
+    if let Some(m) = m.subcommand_matches("templates") {
+        return ::SubCommand::Templates(templates::Args::parse(m));
+    }
 
     if_windows! {
         if let Some(m) = m.subcommand_matches("file-association") {
@@ -371,6 +387,7 @@ fn parse_args() -> SubCommand {
         use_bincache: yes_or_no(m.value_of("use_bincache")),
         migrate_data: run_kind(m.value_of("migrate_data")),
         build_kind: BuildKind::from_flags(m.is_present("test"), m.is_present("bench")),
+        template: m.value_of("template").map(Into::into),
     })
 }
 
@@ -401,6 +418,7 @@ fn try_main() -> Result<i32> {
 
     let args = match args {
         SubCommand::Script(args) => args,
+        SubCommand::Templates(args) => return templates::try_main(args),
         #[cfg(windows)]
         SubCommand::FileAssoc(args) => return file_assoc::try_main(args),
     };
@@ -481,7 +499,7 @@ fn try_main() -> Result<i32> {
         },
         (Some(expr), true, false) => {
             content = expr;
-            Input::Expr(&content)
+            Input::Expr(&content, args.template.as_ref().map(|s| &**s))
         },
         (Some(loop_), false, true) => {
             content = loop_;
@@ -910,6 +928,9 @@ struct PackageMetadata {
     /// Last-modified timestamp for script file.
     modified: Option<u64>,
 
+    /// Template used.
+    template: Option<String>,
+
     /// Was the script compiled in debug mode?
     debug: bool,
 
@@ -984,16 +1005,18 @@ fn decide_action_for(
 
     // Construct input metadata.
     let input_meta = {
-        let (path, mtime) = match *input {
+        let (path, mtime, template) = match *input {
             Input::File(_, path, _, mtime)
-                => (Some(path.to_string_lossy().into_owned()), Some(mtime)),
-            Input::Expr(..)
-            | Input::Loop(..)
-                => (None, None)
+                => (Some(path.to_string_lossy().into_owned()), Some(mtime), None),
+            Input::Expr(_, template)
+                => (None, None, template),
+            Input::Loop(..)
+                => (None, None, None)
         };
         PackageMetadata {
             path: path,
             modified: mtime,
+            template: template.map(Into::into),
             debug: debug,
             deps: deps,
             prelude: prelude,
@@ -1241,9 +1264,9 @@ pub enum Input<'a> {
     /**
     The input is an expression.
 
-    The tuple member is: the script contents.
+    The tuple member is: the script contents, and the template (if any).
     */
-    Expr(&'a str),
+    Expr(&'a str, Option<&'a str>),
 
     /**
     The input is a loop expression.
@@ -1346,8 +1369,12 @@ impl<'a> Input<'a> {
                 id.push(if STUB_HASHES { "stub" } else { &*digest });
                 Ok(id)
             },
-            Expr(content) => {
+            Expr(content, template) => {
                 let mut hasher = hash_deps();
+
+                hasher.input_str("template:");
+                hasher.input_str(template.unwrap_or(""));
+                hasher.input_str(";");
 
                 hasher.input_str(&content);
                 let mut digest = hasher.result_str();
