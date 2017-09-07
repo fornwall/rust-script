@@ -10,12 +10,14 @@ or distributed except according to those terms.
 /*!
 This module contains code related to template support.
 */
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use clap;
 use open;
 use regex::Regex;
+use consts;
 use error::{Blame, MainError, Result, ResultExt};
 use platform;
 
@@ -123,21 +125,40 @@ pub fn get_template_path() -> Result<PathBuf> {
 /**
 Attempts to locate and load the contents of the specified template.
 */
-pub fn get_template(name: &str) -> Result<String> {
+pub fn get_template(name: &str) -> Result<Cow<'static, str>> {
     use std::io::Read;
 
     let base = try!(get_template_path());
 
-    let mut file = try!(fs::File::open(base.join(format!("{}.rs", name)))
+    let file = fs::File::open(base.join(format!("{}.rs", name)))
         .map_err(MainError::from)
         .err_tag(format!("template file `{}.rs` does not exist in {}",
             name,
             base.display()))
-        .shift_blame(Blame::Human));
+        .shift_blame(Blame::Human);
+
+    // If the template is one of the built-in ones, do fallback if it wasn't found on disk.
+    if file.is_err() {
+        if let Some(text) = builtin_template(name) {
+            return Ok(text.into())
+        }
+    }
+
+    let mut file = try!(file);
 
     let mut text = String::new();
     try!(file.read_to_string(&mut text));
-    Ok(text)
+    Ok(text.into())
+}
+
+fn builtin_template(name: &str) -> Option<&'static str> {
+    Some(match name {
+        "expr" => consts::EXPR_TEMPLATE,
+        "file" => consts::FILE_TEMPLATE,
+        "loop" => consts::LOOP_TEMPLATE,
+        "loop-count" => consts::LOOP_COUNT_TEMPLATE,
+        _ => return None,
+    })
 }
 
 fn list() -> Result<()> {

@@ -56,29 +56,23 @@ pub fn split_input(input: &Input, deps: &[(String, String)], prelude_items: &[St
             let (manifest, source) = find_embedded_manifest(content)
                 .unwrap_or((Manifest::Toml(""), content));
 
-            (manifest, source, consts::FILE_TEMPLATE, false)
+            (manifest, source, try!(templates::get_template("file")), false)
         },
         Input::Expr("meaning-of-life", None) | Input::Expr("meaning_of_life", None) => {
             (Manifest::Toml(""), r#"
                 println!("42");
                 std::process::exit(42);
-            "#, consts::EXPR_TEMPLATE, true)
+            "#, try!(templates::get_template("expr")), true)
         },
         Input::Expr(content, template) => {
-            let template_src = match template {
-                Some(template_name) => {
-                    template_buf = try!(templates::get_template(template_name));
-                    &template_buf
-                },
-                None => consts::EXPR_TEMPLATE,
-            };
-            let (manifest, template_src) = find_embedded_manifest(template_src)
-                .unwrap_or((Manifest::Toml(""), template_src));
-            (manifest, content, template_src, true)
+            template_buf = try!(templates::get_template(template.unwrap_or("expr")));
+            let (manifest, template_src) = find_embedded_manifest(&template_buf)
+                .unwrap_or((Manifest::Toml(""), &template_buf));
+            (manifest, content, template_src.into(), true)
         },
         Input::Loop(content, count) => {
-            let templ = if count { consts::LOOP_COUNT_TEMPLATE } else { consts::LOOP_TEMPLATE };
-            (Manifest::Toml(""), content, templ, true)
+            let templ = if count { "loop-count" } else { "loop" };
+            (Manifest::Toml(""), content, try!(templates::get_template(templ)), true)
         },
     };
 
@@ -98,7 +92,7 @@ pub fn split_input(input: &Input, deps: &[(String, String)], prelude_items: &[St
         subs.insert(consts::SCRIPT_PRELUDE_SUB, &prelude_str[..]);
     }
 
-    let source = try!(templates::expand(template, &subs));
+    let source = try!(templates::expand(&template, &subs));
 
     info!("part_mani: {:?}", part_mani);
     info!("source: {:?}", source);

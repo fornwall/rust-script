@@ -109,3 +109,15 @@ fn test_expr_template_with_deps() {
         ("Some(())") => ()
     ).unwrap();
 }
+
+#[test]
+fn test_expr_template_override_expr() {
+    let template_dir = "tests/data/templates/override";
+    let out = cargo_script!(
+        #[env(CARGO_SCRIPT_DEBUG_TEMPLATE_PATH=template_dir)]
+        "-e", with_output_marker!(r#"true"#)
+    ).unwrap();
+    scan!(out.stdout_output();
+        ("Some(())") => ()
+    ).unwrap();
+}
