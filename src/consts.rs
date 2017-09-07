@@ -24,15 +24,21 @@ USAGE:
 For more information try --help";
 
 /*
-What follows are the templates used to wrap script input.  The input provided by the user is inserted in place of `%b`.  *Proper* templates of some kind would be nice, but damnit, I'm lazy.
+What follows are the templates used to wrap script input.
 */
 
+/// Substitution for the script body.
+pub const SCRIPT_BODY_SUB: &'static str = "script";
+
+/// Substitution for the script prelude.
+pub const SCRIPT_PRELUDE_SUB: &'static str = "prelude";
+
 /// The template used for script file inputs.
-pub const FILE_TEMPLATE: &'static str = r#"%b"#;
+pub const FILE_TEMPLATE: &'static str = r#"#{script}"#;
 
 /// The template used for `--expr` input.
 pub const EXPR_TEMPLATE: &'static str = r#"
-%p
+#{prelude}
 fn main() {
     let exit_code = match try_main() {
         Ok(()) => None,
@@ -48,7 +54,7 @@ fn main() {
 }
 
 fn try_main() -> Result<(), Box<std::error::Error>> {
-    match {%b} {
+    match {#{script}} {
         __cargo_script_expr => println!("{:?}", __cargo_script_expr)
     }
     Ok(())
@@ -64,13 +70,13 @@ Regarding the loop templates: what I *want* is for the result of the closure to 
 
 /// The template used for `--loop` input, assuming no `--count` flag is also given.
 pub const LOOP_TEMPLATE: &'static str = r#"
-%p
+#{prelude}
 use std::any::Any;
 use std::io::prelude::*;
 
 fn main() {
     let mut closure = enforce_closure(
-{%b}
+{#{script}}
     );
     let mut line_buffer = String::new();
     let mut stdin = std::io::stdin();
@@ -105,7 +111,7 @@ use std::io::prelude::*;
 
 fn main() {
     let mut closure = enforce_closure(
-{%b}
+{#{script}}
     );
     let mut line_buffer = String::new();
     let mut stdin = std::io::stdin();
@@ -134,19 +140,25 @@ where F: FnMut(&str, usize) -> T, T: 'static {
 }
 "#;
 
+/// Substitution for the identifier-safe name of the script.
+pub const MANI_NAME_SUB: &'static str = "name";
+
+/// Substitution for the filesystem-safe name of the script.
+pub const MANI_FILE_SUB: &'static str = "file";
+
 /**
-The default manifest used for packages.  `%n` is replaced with the "safe name" of the input, which *should* be safe to use as a file name.
+The default manifest used for packages.
 */
-pub const DEFAULT_MANIFEST: &'static str = r#"
+pub const DEFAULT_MANIFEST: &'static str = r##"
 [package]
-name = "%n"
+name = "#{name}"
 version = "0.1.0"
 authors = ["Anonymous"]
 
 [[bin]]
-name = "%n"
-path = "%f.rs"
-"#;
+name = "#{name}"
+path = "#{file}.rs"
+"##;
 
 /**
 The name of the package metadata file.

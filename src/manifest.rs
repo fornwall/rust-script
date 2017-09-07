@@ -13,12 +13,14 @@ This module is concerned with how `cargo-script` extracts the manfiest from a sc
 extern crate hoedown;
 extern crate regex;
 
+use std::collections::HashMap;
 use std::path::Path;
 use self::regex::Regex;
 use toml;
 
 use consts;
 use error::{Blame, Result};
+use util::templates;
 use Input;
 
 lazy_static! {
@@ -70,30 +72,23 @@ pub fn split_input(input: &Input, deps: &[(String, String)], prelude_items: &[St
         },
     };
 
-    let source = template.replace("%b", source);
+    let mut prelude_str;
+    let mut subs = HashMap::with_capacity(2);
+    subs.insert(consts::SCRIPT_BODY_SUB, &source[..]);
 
-    /*
-    We are doing it this way because we can guarantee that %p *always* appears before %b, *and* that we don't attempt this when we don't want to allow prelude substitution.
-
-    The problem with doing it the other way around is that the user could specify a prelude item that contains `%b` (which would do *weird things*).
-
-    Also, don't use `str::replace` because it replaces *all* occurrences, not just the first.
-    */
-    let source = match sub_prelude {
-        false => source,
-        true => {
-            const PRELUDE_PAT: &'static str = "%p";
-            let offset = source.find(PRELUDE_PAT).expect("template doesn't have %p");
-            let mut new_source = String::new();
-            new_source.push_str(&source[..offset]);
-            for i in prelude_items {
-                new_source.push_str(i);
-                new_source.push_str("\n");
-            }
-            new_source.push_str(&source[offset + PRELUDE_PAT.len()..]);
-            new_source
+    if sub_prelude {
+        prelude_str = String::with_capacity(prelude_items
+            .iter()
+            .map(|i| i.len() + 1)
+            .sum::<usize>());
+        for i in prelude_items {
+            prelude_str.push_str(i);
+            prelude_str.push_str("\n");
         }
-    };
+        subs.insert(consts::SCRIPT_PRELUDE_SUB, &prelude_str[..]);
+    }
+
+    let source = try!(templates::expand(template, &subs));
 
     info!("part_mani: {:?}", part_mani);
     info!("source: {:?}", source);
@@ -977,10 +972,13 @@ time = "*"
 Generates a default Cargo manifest for the given input.
 */
 fn default_manifest(input: &Input) -> Result<toml::Table> {
-    let mani_str = consts::DEFAULT_MANIFEST
-        .replace("%n", &input.package_name())
-        .replace("%f", &input.safe_name())
-        ;
+    let mani_str = {
+        let pkg_name = input.package_name();
+        let mut subs = HashMap::with_capacity(2);
+        subs.insert(consts::MANI_NAME_SUB, &*pkg_name);
+        subs.insert(consts::MANI_FILE_SUB, &input.safe_name()[..]);
+        try!(templates::expand(consts::DEFAULT_MANIFEST, &subs))
+    };
     toml::Parser::new(&mani_str).parse()
         .ok_or("could not parse default manifest, somehow".into())
 }
