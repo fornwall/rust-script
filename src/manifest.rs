@@ -72,7 +72,9 @@ pub fn split_input(input: &Input, deps: &[(String, String)], prelude_items: &[St
                 },
                 None => consts::EXPR_TEMPLATE,
             };
-            (Manifest::Toml(""), content, template_src, true)
+            let (manifest, template_src) = find_embedded_manifest(template_src)
+                .unwrap_or((Manifest::Toml(""), template_src));
+            (manifest, content, template_src, true)
         },
         Input::Loop(content, count) => {
             let templ = if count { consts::LOOP_COUNT_TEMPLATE } else { consts::LOOP_TEMPLATE };
