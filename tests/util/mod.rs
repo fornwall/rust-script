@@ -24,9 +24,7 @@ macro_rules! cargo_script {
                 )*
 
                 cmd.env_remove("CARGO_TARGET_DIR");
-
-                let env: &[(&str, &str)] = &[$((stringify!($env_k), $env_v),)*];
-                cmd.envs(env.iter().cloned());
+                $(cmd.env(stringify!($env_k), $env_v);)*
 
                 cmd_str = format!("{:?}", cmd);
 
