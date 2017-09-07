@@ -27,6 +27,7 @@ lazy_static! {
 
 #[derive(Debug)]
 pub enum Args {
+    Dump { name: String },
     List,
     Show { path: bool },
 }
@@ -38,6 +39,16 @@ impl Args {
         SubCommand::with_name("templates")
             .about("Manage Cargo Script expression templates.")
             .setting(AppSettings::SubcommandRequiredElseHelp)
+
+            .subcommand(SubCommand::with_name("dump")
+                .about("Outputs the contents of a template to standard output.")
+
+                .arg(Arg::with_name("template")
+                    .help("Name of template to dump.")
+                    .index(1)
+                    .required(true)
+                )
+            )
 
             .subcommand(SubCommand::with_name("list")
                 .about("List the available templates.")
@@ -55,6 +66,11 @@ impl Args {
 
     pub fn parse(m: &clap::ArgMatches) -> Self {
         match m.subcommand() {
+            ("dump", Some(m)) => {
+                Args::Dump {
+                    name: m.value_of("template").unwrap().into(),
+                }
+            },
             ("list", _) => Args::List,
             ("show", Some(m)) => {
                 Args::Show {
@@ -68,6 +84,7 @@ impl Args {
 
 pub fn try_main(args: Args) -> Result<i32> {
     match args {
+        Args::Dump { name } => try!(dump(&name)),
         Args::List => try!(list()),
         Args::Show { path } => try!(show(path)),
     }
@@ -159,6 +176,12 @@ fn builtin_template(name: &str) -> Option<&'static str> {
         "loop-count" => consts::LOOP_COUNT_TEMPLATE,
         _ => return None,
     })
+}
+
+fn dump(name: &str) -> Result<()> {
+    let text = try!(get_template(name));
+    print!("{}", text);
+    Ok(())
 }
 
 fn list() -> Result<()> {
