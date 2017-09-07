@@ -155,6 +155,40 @@ $ cat now.crs | cargo script --count --loop \
      5: }
 ```
 
+### Templates
+
+You can use templates to avoid having to re-specify common code and dependencies.  You can view a list of your templates by running `cargo-script templates list` (note the hyphen), or show the folder in which they should be stored by running `cargo-script templates show`.  You can dump the contents of a template using `cargo-script templates dump NAME`.
+
+Templates are Rust source files with two placeholders: `#{prelude}` for the auto-generated prelude (which should be placed at the top of the template), and `#{script}` for the contents of the script itself.
+
+For example, a minimal expression template that adds a dependency and imports some additional symbols might be:
+
+```rust
+// cargo-deps: itertools="0.6.2"
+#![allow(unused_imports)]
+#{prelude}
+extern crate itertools;
+use std::io::prelude::*;
+use std::mem;
+use itertools::Itertools;
+
+fn main() {
+    let result = {
+        #{script}
+    };
+    println!("{:?}", result);
+}
+```
+
+If stored in the templates folder as `grabbag.rs`, you can use it by passing the name `grabbag` via the `--template` option, like so:
+
+```text
+$ cargo script -t grabbag -e "mem::size_of::<Box<Read>>()"
+16
+```
+
+In addition, there are three built-in templates: `expr`, `loop`, and `loop-count`.  These are used for the `--expr`, `--loop`, and `--loop --count` invocation forms.  They can be overridden by placing templates with the same name in the template folder.  If you have *not* overridden them, you can dump the contents of these built-in templates using the `templates dump` command noted above.
+
 ## Things That Should Probably Be Done
 
 * Somehow convince the Cargo devs to add aggressive caching of dependencies so that compiling anything that has dependencies doesn't take an age.

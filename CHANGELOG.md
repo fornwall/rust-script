@@ -5,6 +5,8 @@
 
 * Added support for expression script templates.
 
+* The built-in templates used for scripts can be overridden.
+
 **Fixed:**
 
 * Cargo script hanging on build failure on Windows.
