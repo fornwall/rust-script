@@ -1602,7 +1602,7 @@ fn cargo_version() -> Result<Version> {
     use regex::Regex;
 
     lazy_static! {
-        static ref RE_VERSION: Regex = Regex::new(r#"^cargo (\S+)"#).unwrap();
+        static ref RE_VERSION: Regex = Regex::new(r#"^cargo[ -](\S+)"#).unwrap();
     }
 
     let mut cmd = Command::new("cargo");
