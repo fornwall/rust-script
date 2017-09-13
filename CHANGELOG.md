@@ -1,4 +1,10 @@
 
+# v0.2.6
+
+**Fixed:**
+
+* Incompatibility with the version of Cargo shipped with Rust 1.16.0.
+
 # v0.2.5
 
 **New:**
