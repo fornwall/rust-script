@@ -155,6 +155,18 @@ $ cat now.crs | cargo script --count --loop \
      5: }
 ```
 
+### Environment Variables
+
+The following environment variables are provided to scripts by `cargo-script`:
+
+- `CARGO_SCRIPT_BASE_PATH`: the base path used by `cargo-script` to resolve relative dependency paths.  Note that this is *not* necessarily the same as either the working directory, or the directory in which the script is being compiled.
+
+- `CARGO_SCRIPT_PKG_NAME`: the generated package name of the script.
+
+- `CARGO_SCRIPT_SAFE_NAME`: the file name of the script (sans file extension) being run.  For scripts, this is derived from the script's filename.  May also be `"expr"` or `"loop"` for those invocations.
+
+- `CARGO_SCRIPT_SCRIPT_PATH`: absolute path to the script being run, assuming one exists.  Set to the empty string for expressions.
+
 ### Templates
 
 You can use templates to avoid having to re-specify common code and dependencies.  You can view a list of your templates by running `cargo-script templates list` (note the hyphen), or show the folder in which they should be stored by running `cargo-script templates show`.  You can dump the contents of a template using `cargo-script templates dump NAME`.

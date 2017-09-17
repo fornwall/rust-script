@@ -624,12 +624,25 @@ fn try_main() -> Result<i32> {
 
     // Run it!
     if action.execute {
+        fn hint<F: FnOnce(&mut Command) -> &mut Command>(f: F) -> F { f }
+        let add_env = hint(move |cmd| {
+            cmd.env("CARGO_SCRIPT_SCRIPT_PATH", input.path().unwrap_or(Path::new("")));
+            cmd.env("CARGO_SCRIPT_SAFE_NAME", input.safe_name());
+            cmd.env("CARGO_SCRIPT_PKG_NAME", input.package_name());
+            cmd.env("CARGO_SCRIPT_BASE_PATH", input.base_path());
+            cmd
+        });
+
         if action.build_kind.can_exec_directly() {
             let exe_path = try!(get_exe_path(action.build_kind, &action.pkg_path));
             info!("executing {:?}", exe_path);
-            match try!(Command::new(exe_path).args(&args.args).status()
-                .map(|st| st.code().unwrap_or(1)))
-            {
+            match try!({
+                Command::new(exe_path)
+                    .args(&args.args)
+                    .chain_map(add_env)
+                    .status()
+                    .map(|st| st.code().unwrap_or(1))
+            }) {
                 0 => (),
                 n => return Ok(n)
             }
@@ -637,6 +650,7 @@ fn try_main() -> Result<i32> {
             let cmd_name = action.build_kind.exec_command();
             info!("running `cargo {}`", cmd_name);
             let mut cmd = try!(action.cargo(cmd_name));
+            add_env(&mut cmd);
             match try!(cmd.status().map(|st| st.code().unwrap_or(1))) {
                 0 => (),
                 n => return Ok(n)
@@ -1277,6 +1291,19 @@ pub enum Input<'a> {
 }
 
 impl<'a> Input<'a> {
+    /**
+    Return the path to the script, if it has one.
+    */
+    pub fn path(&self) -> Option<&Path> {
+        use Input::*;
+
+        match *self {
+            File(_, path, _, _) => Some(path),
+            Expr(..) => None,
+            Loop(..) => None,
+        }
+    }
+
     /**
     Return the "safe name" for the input.  This should be filename-safe.
 

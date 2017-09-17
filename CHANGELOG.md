@@ -1,4 +1,10 @@
 
+# v0.2.7
+
+**New:**
+
+* Several environment variables are now given to scripts by `cargo-script`.
+
 # v0.2.6
 
 **Fixed:**

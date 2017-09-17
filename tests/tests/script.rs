@@ -92,3 +92,13 @@ fn test_script_slow_output() {
         ("Ok") => ()
     ).unwrap()
 }
+
+#[test]
+fn test_script_cs_env() {
+    let out = cargo_script!(
+        "tests/data/script-cs-env.rs"
+    ).unwrap();
+    scan!(out.stdout_output();
+        ("Ok") => ()
+    ).unwrap()
+}
