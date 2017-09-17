@@ -5,6 +5,10 @@
 
 * Several environment variables are now given to scripts by `cargo-script`.
 
+**Changed:**
+
+* Overhauled `README.md`.
+
 # v0.2.6
 
 **Fixed:**
