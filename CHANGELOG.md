@@ -9,6 +9,10 @@
 
 * Overhauled `README.md`.
 
+**Fixed:**
+
+* Warning in the new `expr` template.
+
 # v0.2.6
 
 **Fixed:**

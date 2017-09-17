@@ -44,7 +44,7 @@ fn main() {
         Ok(()) => None,
         Err(e) => {
             use std::io::{self, Write};
-            writeln!(io::stderr(), "Error: {}", e);
+            let _ = writeln!(io::stderr(), "Error: {}", e);
             Some(1)
         },
     };
