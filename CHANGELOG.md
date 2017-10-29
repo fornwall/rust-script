@@ -1,4 +1,10 @@
 
+# v0.2.8
+
+**Changed:**
+
+* Implemented work-around for [issue 50](https://github.com/DanielKeep/cargo-script/issues/50).  See the section in the `README` on known issues.
+
 # v0.2.7
 
 **New:**
