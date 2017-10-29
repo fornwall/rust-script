@@ -1511,7 +1511,16 @@ where P: AsRef<Path> {
     let cargo_ver = try!(cargo_version()
         .err_tag("could not determine target filename"));
 
-    let exe_path = if cargo_ver < *VER_JSON_MSGS {
+    let mut use_guess = false;
+    use_guess |= work_around_issue_50();
+    use_guess |= if cargo_ver < *VER_JSON_MSGS {
+        trace!(".. cargo {:?} is too old to support JSON output", cargo_ver);
+        true
+    } else {
+        false
+    };
+
+    let exe_path = if use_guess {
         try!(cargo_target_by_guess(input, use_bincache, pkg_path.as_ref(), meta))
     } else {
         try!(cargo_target_by_message(input, manifest, use_bincache, meta))
@@ -1651,4 +1660,19 @@ fn cargo_version() -> Result<Version> {
     let ver = m.get(1).unwrap();
     Ok(try!(Version::parse(ver.as_str())
         .map_err(Box::new)))
+}
+
+/**
+Do we need to work around [issue #50](https://github.com/DanielKeep/cargo-script/issues/50)?
+
+Sometimes, `cargo-script` will hang when trying to read the JSON output of `cargo build`.
+*/
+fn work_around_issue_50() -> bool {
+    let suffers = cfg!(issue_50);
+    let ignored = std::env::var_os("CARGO_SCRIPT_IGNORE_ISSUE_50").is_some();
+    match (suffers, ignored) {
+        (true, true) => { trace!(".. issue 50 relevant, but ignored"); false },
+        (true, false) => { trace!(".. working around issue 50"); true },
+        (false, _) => { false },
+    }
 }
