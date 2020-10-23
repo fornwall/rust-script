@@ -51,16 +51,14 @@ cargo install --force rust-script
 
 The following features are defined:
 
-- `suppress-cargo-output` (default): if building the script takes less than 2 seconds and succeeds, `cargo-script` will suppress Cargo's output.  Note that this disabled coloured Cargo output on Windows.
+- `suppress-cargo-output` (default): if building the script takes less than 2 seconds and succeeds, `rust-script` will suppress Cargo's output.  Note that this disabled coloured Cargo output on Windows.
 
 <a name="compiling"></a>
 ### Manually Compiling and Installing
 
 `rust-script` requires Rust 1.11 or higher to build.  Rust 1.4+ was supported prior to version 0.2.
 
-Once built, you should place the resulting executable somewhere on your `PATH`.  At that point, you should be able to invoke it by using `cargo script`.  Note that you *can* run the executable directly, but the first argument will *need* to be `script`.
-
-If you want to run `cargo script` from a hashbang on UNIX, or via file associations on Windows, you should also install the `run-cargo-script` program somewhere on `PATH`.
+Once built, you should place the resulting executable somewhere on your `PATH`. At that point, you should be able to invoke it by using `rust-script`.
 
 <a name="hashbang"></a>
 ### Self-Executing Scripts
@@ -69,36 +67,36 @@ On UNIX systems, you can use `#!/usr/bin/env rust-script` as a hashbang line in 
 
 If you are using Windows, you can associate the `.crs` extension (which is simply a renamed `.rs` file) with `rust-script`.  This allows you to execute Rust scripts simply by naming them like any other executable or script.
 
-TODO: This can be done using the `rust-script --file-association` command (note the hyphen in `cargo-script`).  This command can also remove the file association.  If you pass `--amend-pathext` to the `file-assocation install` command, it will also allow you to execute `.crs` scripts *without* having to specify the file extension, in the same way that `.exe` and `.bat` files can be used.
+TODO: This can be done using the `rust-script --file-association` command. This command can also remove the file association.  If you pass `--amend-pathext` to the `file-assocation install` command, it will also allow you to execute `.crs` scripts *without* having to specify the file extension, in the same way that `.exe` and `.bat` files can be used.
 
 If you want to make a script usable across platforms, it is recommended that you use *both* a hashbang line *and* give the file a `.crs` file extension.
 
 <a name="usage"></a>
 ## Usage
 
-Generally, you will want to use `cargo-script` by invoking it as `cargo script` (note the lack of a hypen).  Doing so is equivalent to invoking it as `cargo-script script`.  `cargo-script` supports several other subcommands, which can be accessed by running `cargo-script` directly.  You can also get an overview of the available options using the `--help` flag.
+Generally, you can get an overview of the available options using the `--help` flag.
 
 <a name="scripts"></a>
 ### Scripts
 
-The primary use for `cargo-script` is for running Rust source files as scripts.  For example:
+The primary use for `rust-script` is for running Rust source files as scripts.  For example:
 
 ```shell
 $ echo 'fn main() { println!("Hello, World!"); }' > hello.rs
-$ cargo script hello.rs
+$ rust-script hello.rs
 Hello, World!
-$ cargo script hello # you can leave off the file extension
+$ rust-script hello # you can leave off the file extension
 Hello, World!
 ```
 
 The output of Cargo will be hidden unless compilation fails, or takes longer than a few seconds.
 
-`cargo-script` will also look for embedded dependency and manifest information in the script.  For example, all of the following are equivalent:
+`rust-script` will also look for embedded dependency and manifest information in the script.  For example, all of the following are equivalent:
 
 - `now.crs` (code block manifest with UNIX hashbang and `.crs` extension):
 
     ```rust
-    #!/usr/bin/env run-cargo-script
+    #!/usr/bin/env rust-script
     //! This is a regular crate doc comment, but it also contains a partial
     //! Cargo manifest.  Note the use of a *fenced* code block, and the
     //! `cargo` "language".
@@ -129,10 +127,10 @@ The output of Cargo will be hidden unless compilation fails, or takes longer tha
 
     > **Note**: you can write multiple dependencies by separating them with commas.  *E.g.* `time="0.1.25", libc="0.2.5"`.
 
-On running either of these, `cargo-script` will generate a Cargo package, build it, and run the result.  The output may look something like:
+On running either of these, `rust-script` will generate a Cargo package, build it, and run the result.  The output may look something like:
 
 ```shell
-$ cargo script now
+$ rust-script now
     Updating registry `https://github.com/rust-lang/crates.io-index`
    Compiling winapi-build v0.1.1
    Compiling winapi v0.2.8
@@ -147,7 +145,7 @@ Sun, 17 Sep 2017 20:38:58 +1000
 Subsequent runs, provided the script has not changed, will likely just run the cached executable directly:
 
 ```shell
-$ cargo script now
+$ rust-script now
 Sun, 17 Sep 2017 20:39:40 +1000
 ```
 
@@ -163,13 +161,13 @@ Useful command-line arguments:
 <a name="expressions"></a>
 ### Expressions
 
-`cargo-script` can also run pieces of Rust code directly from the command line.  This is done by providing the `--expr` option; this causes `cargo-script` to interpret the `<script>` argument as source code *instead* of as a file path.  For example, code can be executed from the command line in a number of ways:
+`rust-script` can also run pieces of Rust code directly from the command line.  This is done by providing the `--expr` option; this causes `rust-script` to interpret the `<script>` argument as source code *instead* of as a file path.  For example, code can be executed from the command line in a number of ways:
 
-- `cargo script --dep time --expr "extern crate time; time::now().rfc822z().to_string()"`
-- `cargo script --dep time=0.1.38 --expr "extern crate time; ..."` - uses a specific version of `time`
-- `cargo script -d time -e "extern crate time; ..."` - short form of above
-- `cargo script -D time -e "..."` - guess and inject `extern crate time`; this only works when the package and crate names of a dependency match.
-- `cargo script -d time -x time -e "..."` - injects `extern crate time`; works when the names do *not* match.
+- `rust-script --dep time --expr "extern crate time; time::now().rfc822z().to_string()"`
+- `rust-script --dep time=0.1.38 --expr "extern crate time; ..."` - uses a specific version of `time`
+- `rust-script -d time -e "extern crate time; ..."` - short form of above
+- `rust-script -D time -e "..."` - guess and inject `extern crate time`; this only works when the package and crate names of a dependency match.
+- `rust-script -d time -x time -e "..."` - injects `extern crate time`; works when the names do *not* match.
 
 The code given is embedded into a block expression, evaluated, and printed out using the `Debug` formatter (*i.e.* `{:?}`).
 
@@ -183,10 +181,10 @@ Useful command-line arguments:
 <a name="filters"></a>
 ### Stream Filters
 
-You can use `cargo-script` to write a quick stream filter, by specifying a closure to be called for each line read from stdin, like so:
+You can use `rust-script` to write a quick stream filter, by specifying a closure to be called for each line read from stdin, like so:
 
 ```text
-$ cat now.crs | cargo script --loop \
+$ cat now.crs | rust-script --loop \
     "let mut n=0; move |l| {n+=1; println!(\"{:>6}: {}\",n,l.trim_right())}"
    Compiling loop v0.1.0 (file:///C:/Users/drk/AppData/Local/Cargo/script-cache/loop-58079283761aab8433b1)
      1: // cargo-deps: time="0.1.25"
@@ -199,7 +197,7 @@ $ cat now.crs | cargo script --loop \
 You can achieve a similar effect to the above by using the `--count` flag, which causes the line number to be passed as a second argument to your closure:
 
 ```text
-$ cat now.crs | cargo script --count --loop \
+$ cat now.crs | rust-script --count --loop \
     "|l,n| println!(\"{:>6}: {}\", n, l.trim_right())"
    Compiling loop v0.1.0 (file:///C:/Users/drk/AppData/Local/Cargo/script-cache/loop-58079283761aab8433b1)
      1: // cargo-deps: time="0.1.25"
@@ -214,9 +212,9 @@ Note that, like with expressions, you can specify a custom template for stream f
 <a name="env-vars"></a>
 ### Environment Variables
 
-The following environment variables are provided to scripts by `cargo-script`:
+The following environment variables are provided to scripts by `rust-script`:
 
-- `CARGO_SCRIPT_BASE_PATH`: the base path used by `cargo-script` to resolve relative dependency paths.  Note that this is *not* necessarily the same as either the working directory, or the directory in which the script is being compiled.
+- `CARGO_SCRIPT_BASE_PATH`: the base path used by `rust-script` to resolve relative dependency paths.  Note that this is *not* necessarily the same as either the working directory, or the directory in which the script is being compiled.
 
 - `CARGO_SCRIPT_PKG_NAME`: the generated package name of the script.
 
@@ -227,7 +225,7 @@ The following environment variables are provided to scripts by `cargo-script`:
 <a name="templates"></a>
 ### Templates
 
-You can use templates to avoid having to re-specify common code and dependencies.  You can view a list of your templates by running `cargo-script templates list` (note the hyphen), or show the folder in which they should be stored by running `cargo-script templates show`.  You can dump the contents of a template using `cargo-script templates dump NAME`.
+You can use templates to avoid having to re-specify common code and dependencies.  You can view a list of your templates by running `rust-script templates list` (note the hyphen), or show the folder in which they should be stored by running `rust-script templates show`.  You can dump the contents of a template using `rust-script templates dump NAME`.
 
 Templates are Rust source files with two placeholders: `#{prelude}` for the auto-generated prelude (which should be placed at the top of the template), and `#{script}` for the contents of the script itself.
 
@@ -253,7 +251,7 @@ fn main() {
 If stored in the templates folder as `grabbag.rs`, you can use it by passing the name `grabbag` via the `--template` option, like so:
 
 ```text
-$ cargo script -t grabbag -e "mem::size_of::<Box<Read>>()"
+$ rust-script -t grabbag -e "mem::size_of::<Box<Read>>()"
 16
 ```
 
@@ -264,9 +262,9 @@ In addition, there are three built-in templates: `expr`, `loop`, and `loop-count
 
 ### [Issue #50](https://github.com/DanielKeep/cargo-script/issues/50)
 
-There is a problem on Windows where `cargo-script` can hang when asking Cargo for the path to a package's compiled executable.  `cargo-script` currently works around this by using an older heuristic to guess this path on affected versions.  This can, however, lead to `cargo-script` being unable to correctly locate a compiled executable.
+There is a problem on Windows where `rust-script` can hang when asking Cargo for the path to a package's compiled executable.  `rust-script` currently works around this by using an older heuristic to guess this path on affected versions.  This can, however, lead to `rust-script` being unable to correctly locate a compiled executable.
 
-If this is a problem, `cargo-script` can be instructed to use the accurate-but-buggy approach by setting the `CARGO_SCRIPT_IGNORE_ISSUE_50` environment variable to any non-empty string.
+If this is a problem, `rust-script` can be instructed to use the accurate-but-buggy approach by setting the `CARGO_SCRIPT_IGNORE_ISSUE_50` environment variable to any non-empty string.
 
 <a name="license"></a>
 ## License

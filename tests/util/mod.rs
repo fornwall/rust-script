@@ -9,15 +9,14 @@ macro_rules! cargo_script {
             extern crate tempdir;
             use std::process::Command;
 
-            let cargo_lock = ::util::CARGO_MUTEX.lock().expect("could not acquire Cargo mutext");
+            let cargo_lock = ::util::CARGO_MUTEX.lock().expect("Could not acquire Cargo mutex");
 
-            let temp_dir = tempdir::TempDir::new("cargo-script-test").unwrap();
+            let temp_dir = tempdir::TempDir::new("rust-script-test").unwrap();
             let cmd_str;
             let out = {
                 let target_dir = ::std::env::var("CARGO_TARGET_DIR")
                     .unwrap_or_else(|_| String::from("target"));
-                let mut cmd = Command::new(format!("{}/debug/cargo-script", target_dir));
-                cmd.arg("script");
+                let mut cmd = Command::new(format!("{}/debug/rust-script", target_dir));
                 cmd.arg("--pkg-path").arg(temp_dir.path());
                 $(
                     cmd.arg($args);
@@ -33,12 +32,12 @@ macro_rules! cargo_script {
             };
 
             if let Ok(out) = out.as_ref() {
-                println!("cargo-script cmd: {}", cmd_str);
-                println!("cargo-script stdout:");
+                println!("rust-script cmd: {}", cmd_str);
+                println!("rust-script stdout:");
                 println!("-----");
                 println!("{}", out.stdout);
                 println!("-----");
-                println!("cargo-script stderr:");
+                println!("rust-script stderr:");
                 println!("-----");
                 println!("{}", out.stderr);
                 println!("-----");

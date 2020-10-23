@@ -4,7 +4,7 @@ version = "0.1.0"
 # edition = "2018"
 authors = ["Fredrik Fornwall <fredrik@fornwall.net>"]
 
-description = "A command-line tool to run Rust \"scripts\" which can make use of crates."
+description = "Command-line tool to run Rust \"scripts\" which can make use of crates."
 repository = "https://github.com/fornwall/rust-script"
 readme = "README.md"
 license = "MIT/Apache-2.0"
@@ -27,16 +27,16 @@ chan = { version = "0.1.19", optional = true }
 clap = "2.23.2"
 env_logger = "0.4.2"
 hoedown = "6.0.0"
-itertools = "0.5.10" # version 0.6 incompatible with Rust < 1.12
+itertools = "0.9.0"
 lazy_static = "1.4.0"
 log = "0.3.7"
 open = "1.2.0"
-regex = "0.2.1"
+regex = "1.4.1"
 rustc-serialize = "0.3.23"
-semver = "0.5.1" # semver 0.6 incompatible with Rust < 1.14
+semver = "0.11.0"
 shaman = "0.1.0"
 time = "0.1.36"
-toml = "0.2.1" # toml 0.3 incompatible with Rust < 1.14.
+toml = "0.2.1"
 
 [target.'cfg(windows)'.dependencies]
 ole32-sys = "0.2.0"
@@ -54,7 +54,7 @@ scan-rules = "0.2.0"
 tempdir = "0.3.5"
 
 [build-dependencies]
-rustc_version = "0.1.7" # version 0.2 incompatible with Rust < 1.14
+rustc_version = "0.1.7"
 
 [profile.release]
 lto = true
