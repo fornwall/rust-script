@@ -1,13 +1,15 @@
 [package]
-name = "cargo-script"
-version = "0.2.9"
-authors = ["Daniel Keep <daniel.keep@gmail.com>"]
+name = "rust-script"
+version = "0.1.0"
+edition = "2018"
+authors = ["Fredrik Fornwall <fredrik@fornwall.net>"]
 
-description = "A Cargo subcommand designed to let people quickly and easily run Rust \"scripts\" which can make use of Cargo's package ecosystem."
-repository = "https://github.com/DanielKeep/cargo-script"
+description = "A command-line tool to run Rust \"scripts\" which can make use of crates."
+repository = "https://github.com/fornwall/rust-script"
 readme = "README.md"
 license = "MIT/Apache-2.0"
 keywords = ["cargo", "script"]
+categories = ["command-line-utilities", "development-tools"]
 
 build = "build.rs"
 
