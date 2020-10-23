@@ -450,8 +450,8 @@ fn try_main() -> Result<i32> {
     }
 
     if log_enabled!(log::LogLevel::Debug) {
-        let scp = try!(get_script_cache_path());
-        let bcp = try!(get_binary_cache_path());
+        let scp = get_script_cache_path()?;
+        let bcp = get_binary_cache_path()?;
         debug!("script-cache path: {:?}", scp);
         debug!("binary-cache path: {:?}", bcp);
     }
@@ -463,7 +463,7 @@ fn try_main() -> Result<i32> {
     2. Do it *before* we start trying to read the input so that, later on, we can make `<script>` optional, but still supply `--clear-cache`.
     */
     if args.clear_cache {
-        try!(clean_cache(0));
+        clean_cache(0)?;
 
         // If we *did not* get a `<script>` argument, that's OK.
         if args.script.is_none() {
@@ -481,18 +481,18 @@ fn try_main() -> Result<i32> {
 
     let input = match (args.script, args.expr, args.loop_) {
         (Some(script), false, false) => {
-            let (path, mut file) = try!(find_script(script).ok_or("could not find script"));
+            let (path, mut file) = find_script(script).ok_or("could not find script")?;
 
             script_name = path.file_stem()
                 .map(|os| os.to_string_lossy().into_owned())
                 .unwrap_or("unknown".into());
 
             let mut body = String::new();
-            try!(file.read_to_string(&mut body));
+            file.read_to_string(&mut body)?;
 
             let mtime = platform::file_last_modified(&file);
 
-            script_path = try!(std::env::current_dir()).join(path);
+            script_path = std::env::current_dir()?.join(path);
             content = body;
 
             Input::File(&script_name, &script_path, &content, mtime)
@@ -505,9 +505,9 @@ fn try_main() -> Result<i32> {
             content = loop_;
             Input::Loop(&content, args.count)
         },
-        (None, _, _) => try!(Err((Blame::Human, consts::NO_ARGS_MESSAGE))),
-        _ => try!(Err((Blame::Human,
-            "cannot specify both --expr and --loop")))
+        (None, _, _) => Err((Blame::Human, consts::NO_ARGS_MESSAGE))?,
+        _ => Err((Blame::Human,
+            "cannot specify both --expr and --loop"))?
     };
     info!("input: {:?}", input);
 
@@ -536,11 +536,11 @@ fn try_main() -> Result<i32> {
             assert!(parts.next().is_none(), "dependency somehow has three parts?!");
 
             if name == "" {
-                try!(Err((Blame::Human, "cannot have empty dependency package name")));
+                Err((Blame::Human, "cannot have empty dependency package name"))?;
             }
 
             if version == "" {
-                try!(Err((Blame::Human, "cannot have empty dependency version")));
+                Err((Blame::Human, "cannot have empty dependency version"))?;
             }
 
             match deps.entry(name.into()) {
@@ -551,9 +551,9 @@ fn try_main() -> Result<i32> {
                     // This is *only* a problem if the versions don't match.  We won't try to do anything clever in terms of upgrading or resolving or anything... exact match or go home.
                     let existing = oe.get();
                     if &version != existing {
-                        try!(Err((Blame::Human,
+                        Err((Blame::Human,
                             format!("conflicting versions for dependency '{}': '{}', '{}'",
-                                name, existing, version))));
+                                name, existing, version)))?;
                     }
                 }
             }
@@ -593,7 +593,7 @@ fn try_main() -> Result<i32> {
     info!("prelude_items: {:?}", prelude_items);
 
     // Work out what to do.
-    let action = try!(decide_action_for(
+    let action = decide_action_for(
         &input,
         deps,
         prelude_items,
@@ -605,10 +605,10 @@ fn try_main() -> Result<i32> {
         args.features,
         args.use_bincache,
         args.build_kind,
-    ));
+    )?;
     info!("action: {:?}", action);
 
-    try!(gen_pkg_and_compile(&input, &action));
+    gen_pkg_and_compile(&input, &action)?;
 
     // Once we're done, clean out old packages from the cache.  There's no point if we've already done a full clear, though.
     let _defer_clear = {
@@ -616,7 +616,7 @@ fn try_main() -> Result<i32> {
         let cc = args.clear_cache;
         Defer::<_, MainError>::defer(move || {
             if !cc {
-                try!(clean_cache(consts::MAX_CACHE_AGE_MS));
+                clean_cache(consts::MAX_CACHE_AGE_MS)?;
             }
             Ok(())
         })
@@ -634,24 +634,24 @@ fn try_main() -> Result<i32> {
         });
 
         if action.build_kind.can_exec_directly() {
-            let exe_path = try!(get_exe_path(action.build_kind, &action.pkg_path));
+            let exe_path = get_exe_path(action.build_kind, &action.pkg_path)?;
             info!("executing {:?}", exe_path);
-            match try!({
+            match {
                 Command::new(exe_path)
                     .args(&args.args)
                     .chain_map(add_env)
                     .status()
                     .map(|st| st.code().unwrap_or(1))
-            }) {
+            }? {
                 0 => (),
                 n => return Ok(n)
             }
         } else {
             let cmd_name = action.build_kind.exec_command();
             info!("running `cargo {}`", cmd_name);
-            let mut cmd = try!(action.cargo(cmd_name));
+            let mut cmd = action.cargo(cmd_name)?;
             add_env(&mut cmd);
-            match try!(cmd.status().map(|st| st.code().unwrap_or(1))) {
+            match cmd.status().map(|st| st.code().unwrap_or(1))? {
                 0 => (),
                 n => return Ok(n)
             }
@@ -672,7 +672,7 @@ fn clean_cache(max_age: u64) -> Result<()> {
 
     if max_age == 0 {
         info!("max_age is 0, clearing binary cache...");
-        let cache_dir = try!(get_binary_cache_path());
+        let cache_dir = get_binary_cache_path()?;
         if ALLOW_AUTO_REMOVE {
             if let Err(err) = fs::remove_dir_all(&cache_dir) {
                 error!("failed to remove binary cache {:?}: {}", cache_dir, err);
@@ -683,9 +683,9 @@ fn clean_cache(max_age: u64) -> Result<()> {
     let cutoff = platform::current_time() - max_age;
     info!("cutoff:     {:>20?} ms", cutoff);
 
-    let cache_dir = try!(get_script_cache_path());
+    let cache_dir = get_script_cache_path()?;
     for child in try!(fs::read_dir(cache_dir)) {
-        let child = try!(child);
+        let child = child?;
         let path = child.path();
         if path.is_file_polyfill() { continue }
 
@@ -747,13 +747,13 @@ fn gen_pkg_and_compile(
     let script_str = &action.script;
 
     info!("creating pkg dir...");
-    try!(fs::create_dir_all(pkg_path));
+    fs::create_dir_all(pkg_path)?;
     let cleanup_dir: Defer<_, MainError> = Defer::defer(|| {
         // DO NOT try deleting ANYTHING if we're not cleaning up inside our own cache.  We *DO NOT* want to risk killing user files.
         if action.using_cache {
             info!("cleaning up cache directory {:?}", pkg_path);
             if ALLOW_AUTO_REMOVE {
-                try!(fs::remove_dir_all(pkg_path));
+                fs::remove_dir_all(pkg_path)?;
             } else {
                 info!("(suppressed remove)");
             }
@@ -767,7 +767,7 @@ fn gen_pkg_and_compile(
     let mani_path = {
         let mani_path = action.manifest_path();
         let mani_hash = old_meta.map(|m| &*m.manifest_hash);
-        match try!(overwrite_file(&mani_path, mani_str, mani_hash)) {
+        match overwrite_file(&mani_path, mani_str, mani_hash)? {
             FileOverwrite::Same => (),
             FileOverwrite::Changed { new_hash } => {
                 meta.manifest_hash = new_hash;
@@ -787,7 +787,7 @@ fn gen_pkg_and_compile(
         } else {
             old_meta.map(|m| &*m.script_hash)
         };
-        match try!(overwrite_file(&script_path, script_str, script_hash)) {
+        match overwrite_file(&script_path, script_str, script_hash)? {
             FileOverwrite::Same => (),
             FileOverwrite::Changed { new_hash } => {
                 meta.script_hash = new_hash;
@@ -806,10 +806,9 @@ fn gen_pkg_and_compile(
 
     As such, we want to ignore any compilation problems until *after* we've written the metadata and disarmed the cleanup callback.
     */
-    let mut compile_err = Ok(());
     if action.compile {
         info!("compiling...");
-        let mut cmd = try!(cargo("build", &*mani_path.to_string_lossy(), action.use_bincache, &meta));
+        let mut cmd = cargo("build", &*mani_path.to_string_lossy(), action.use_bincache, &meta)?;
 
         #[cfg(feature="suppress-cargo-output")]
         macro_rules! get_status {
@@ -832,7 +831,7 @@ fn gen_pkg_and_compile(
             }
         }
 
-        compile_err = get_status!(cmd).map_err(|e| Into::<MainError>::into(e))
+        let compile_err = get_status!(cmd).map_err(|e| Into::<MainError>::into(e))
             .and_then(|st|
                 match st.code() {
                     Some(0) => Ok(()),
@@ -841,31 +840,31 @@ fn gen_pkg_and_compile(
                 });
 
         // Drop out now if compilation failed.
-        let _ = try!(compile_err);
+        let _ = compile_err?;
 
         // Find out and cache what the executable was called.
-        let _ = try!(cargo_target(input, pkg_path, &*mani_path.to_string_lossy(), action.use_bincache, &meta));
+        let _ = cargo_target(input, pkg_path, &*mani_path.to_string_lossy(), action.use_bincache, &meta)?;
 
         if action.use_bincache {
             // Write out the metadata hash to tie this executable to a particular chunk of metadata.  This is to avoid issues with multiple scripts with the same name being compiled to a common target directory.
             let meta_hash = action.metadata.sha1_hash();
             info!("writing meta hash: {:?}...", meta_hash);
-            let exe_meta_hash_path = try!(get_meta_hash_path(action.use_bincache, pkg_path));
-            let mut f = try!(fs::File::create(&exe_meta_hash_path));
-            try!(write!(&mut f, "{}", meta_hash));
+            let exe_meta_hash_path = get_meta_hash_path(action.use_bincache, pkg_path)?;
+            let mut f = fs::File::create(&exe_meta_hash_path)?;
+            write!(&mut f, "{}", meta_hash)?;
         }
     }
 
     // Write out metadata *now*.  Remember that we check the timestamp in the metadata, *not* on the executable.
     if action.emit_metadata {
         info!("emitting metadata...");
-        try!(write_pkg_metadata(pkg_path, &meta));
+        write_pkg_metadata(pkg_path, &meta)?;
     }
 
     info!("disarming pkg dir cleanup...");
     cleanup_dir.disarm();
 
-    compile_err
+    Ok(())
 }
 
 /**
@@ -1008,7 +1007,7 @@ fn decide_action_for(
     info!("using_cache: {:?}", using_cache);
 
     info!("splitting input...");
-    let (mani_str, script_str) = try!(manifest::split_input(input, &deps, &prelude));
+    let (mani_str, script_str) = manifest::split_input(input, &deps, &prelude)?;
 
     // Forcibly override some flags based on build kind.
     let (debug, force, build_only) = match build_kind {
@@ -1122,9 +1121,9 @@ fn decide_action_for(
             bail!(compile: true, force_compile: true)
         }
         let exe_meta_hash = {
-            let mut f = try!(fs::File::open(&exe_meta_hash_path));
+            let mut f = fs::File::open(&exe_meta_hash_path)?;
             let mut s = String::new();
-            try!(f.read_to_string(&mut s));
+            f.read_to_string(&mut s)?;
             s
         };
         let meta_hash = action.metadata.sha1_hash();
@@ -1158,8 +1157,8 @@ where P: AsRef<Path> {
     let package_path = pkg_path.as_ref();
     let cache_path = package_path.join("target.exe_path");
 
-    let mut f = try!(File::open(&cache_path));
-    let exe_path = try!(platform::read_path(&mut f));
+    let mut f = File::open(&cache_path)?;
+    let exe_path = platform::read_path(&mut f)?;
 
     Ok(exe_path)
 }
@@ -1182,15 +1181,15 @@ fn get_pkg_metadata<P>(pkg_path: P) -> Result<PackageMetadata>
 where P: AsRef<Path> {
     let meta_path = get_pkg_metadata_path(pkg_path);
     debug!("meta_path: {:?}", meta_path);
-    let mut meta_file = try!(fs::File::open(&meta_path));
+    let mut meta_file = fs::File::open(&meta_path)?;
 
     let meta_str = {
         let mut s = String::new();
         meta_file.read_to_string(&mut s).unwrap();
         s
     };
-    let meta: PackageMetadata = try!(rustc_serialize::json::decode(&meta_str)
-        .map_err(|err| err.to_string()));
+    let meta: PackageMetadata = rustc_serialize::json::decode(&meta_str)
+        .map_err(|err| err.to_string())?;
 
     Ok(meta)
 }
@@ -1210,11 +1209,11 @@ fn write_pkg_metadata<P>(pkg_path: P, meta: &PackageMetadata) -> Result<()>
 where P: AsRef<Path> {
     let meta_path = get_pkg_metadata_path(pkg_path);
     debug!("meta_path: {:?}", meta_path);
-    let mut meta_file = try!(fs::File::create(&meta_path));
-    let meta_str = try!(rustc_serialize::json::encode(meta)
-        .map_err(|err| err.to_string()));
-    try!(write!(&mut meta_file, "{}", meta_str));
-    try!(meta_file.flush());
+    let mut meta_file = fs::File::create(&meta_path)?;
+    let meta_str = rustc_serialize::json::encode(meta)
+        .map_err(|err| err.to_string())?;
+    write!(&mut meta_file, "{}", meta_str)?;
+    meta_file.flush()?;
     Ok(())
 }
 
@@ -1222,7 +1221,7 @@ where P: AsRef<Path> {
 Returns the path to the cache directory.
 */
 fn get_script_cache_path() -> Result<PathBuf> {
-    let cache_path = try!(platform::get_cache_dir());
+    let cache_path = platform::get_cache_dir()?;
     Ok(cache_path.join("script-cache"))
 }
 
@@ -1230,7 +1229,7 @@ fn get_script_cache_path() -> Result<PathBuf> {
 Returns the path to the binary cache directory.
 */
 fn get_binary_cache_path() -> Result<PathBuf> {
-    let cache_path = try!(platform::get_cache_dir());
+    let cache_path = platform::get_cache_dir()?;
     Ok(cache_path.join("binary-cache"))
 }
 
@@ -1461,9 +1460,9 @@ where P: AsRef<Path> {
     }
 
     debug!(".. hashes differ; new_hash: {:?}", new_hash);
-    let mut file = try!(fs::File::create(path));
-    try!(write!(&mut file, "{}", content));
-    try!(file.flush());
+    let mut file = fs::File::create(path)?;
+    write!(&mut file, "{}", content)?;
+    file.flush()?;
     Ok(FileOverwrite::Changed { new_hash: new_hash })
 }
 
@@ -1480,7 +1479,7 @@ fn cargo(cmd_name: &str, manifest: &str, use_bincache: bool, meta: &PackageMetad
     }
 
     if use_bincache {
-        cmd.env("CARGO_TARGET_DIR", try!(get_binary_cache_path()));
+        cmd.env("CARGO_TARGET_DIR", get_binary_cache_path()?);
     }
 
     // Block `--release` on `bench`.
@@ -1508,8 +1507,8 @@ where P: AsRef<Path> {
 
     trace!("cargo_target(_, {:?}, {:?}, {:?}, _)", pkg_path.as_ref(), manifest, use_bincache);
 
-    let cargo_ver = try!(cargo_version()
-        .err_tag("could not determine target filename"));
+    let cargo_ver = cargo_version()
+        .err_tag("could not determine target filename")?;
 
     let mut use_guess = false;
     use_guess |= work_around_issue_50();
@@ -1521,9 +1520,9 @@ where P: AsRef<Path> {
     };
 
     let exe_path = if use_guess {
-        try!(cargo_target_by_guess(input, use_bincache, pkg_path.as_ref(), meta))
+        cargo_target_by_guess(input, use_bincache, pkg_path.as_ref(), meta)?
     } else {
-        try!(cargo_target_by_message(input, manifest, use_bincache, meta))
+        cargo_target_by_message(input, manifest, use_bincache, meta)?
     };
 
     trace!(".. exe_path: {:?}", exe_path);
@@ -1536,8 +1535,8 @@ where P: AsRef<Path> {
         let package_path = manifest_path.parent().unwrap();
         let cache_path = package_path.join("target.exe_path");
 
-        let mut f = try!(File::create(&cache_path));
-        try!(platform::write_path(&mut f, &exe_path));
+        let mut f = File::create(&cache_path)?;
+        platform::write_path(&mut f, &exe_path)?;
     }
 
     Ok(exe_path)
@@ -1556,7 +1555,7 @@ fn cargo_target_by_guess(input: &Input, use_bincache: bool, pkg_path: &Path, met
         false => "release"
     };
     let target_path = if use_bincache {
-        try!(get_binary_cache_path())
+        get_binary_cache_path()?
     } else {
         pkg_path.join("target")
     };
@@ -1576,15 +1575,15 @@ fn cargo_target_by_message(input: &Input, manifest: &str, use_bincache: bool, me
 
     trace!("cargo_target_by_message(_, {:?}, {:?}, _)", manifest, use_bincache);
 
-    let mut cmd = try!(cargo("build", manifest, use_bincache, meta));
+    let mut cmd = cargo("build", manifest, use_bincache, meta)?;
     cmd.arg("--message-format=json");
     cmd.stdout(process::Stdio::piped());
     cmd.stderr(process::Stdio::null());
 
     trace!(".. cmd: {:?}", cmd);
 
-    let mut child = try!(cmd.spawn());
-    match try!(child.wait()).code() {
+    let mut child = cmd.spawn()?;
+    match child.wait()?.code() {
         Some(0) => (),
         Some(st) => return Err(format!("could not determine target filename: cargo exited with status {}", st).into()),
         None => return Err(format!("could not determine target filename: cargo exited abnormally").into()),
@@ -1599,14 +1598,14 @@ fn cargo_target_by_message(input: &Input, manifest: &str, use_bincache: bool, me
     loop {
         line_num += 1;
         line.clear();
-        let bytes = try!(stdout.read_line(&mut line));
+        let bytes = stdout.read_line(&mut line)?;
         trace!(".. line {}, {}b: {:?}", line_num, bytes, line);
         if bytes == 0 {
             return Err("could not determine target filename: did not find appropriate cargo message".into());
         }
 
-        let msg = try!(json::Json::from_str(line.trim())
-            .map_err(Box::new));
+        let msg = json::Json::from_str(line.trim())
+            .map_err(Box::new)?;
 
         // Is this the message we're looking for?
         if msg.find("reason").unwrap_or(&null).as_string() != Some("compiler-artifact") {
@@ -1644,7 +1643,7 @@ fn cargo_version() -> Result<Version> {
     let mut cmd = Command::new("cargo");
     cmd.arg("-V");
 
-    let child = try!(cmd.output());
+    let child = cmd.output()?;
     match child.status.code() {
         Some(0) => (),
         Some(st) => return Err(format!("could not determine cargo version: cargo exited with status {}", st).into()),
@@ -1658,8 +1657,8 @@ fn cargo_version() -> Result<Version> {
     };
 
     let ver = m.get(1).unwrap();
-    Ok(try!(Version::parse(ver.as_str())
-        .map_err(Box::new)))
+    Ok(Version::parse(ver.as_str())
+        .map_err(Box::new)?)
 }
 
 /**

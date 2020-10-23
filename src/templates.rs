@@ -84,9 +84,9 @@ impl Args {
 
 pub fn try_main(args: Args) -> Result<i32> {
     match args {
-        Args::Dump { name } => try!(dump(&name)),
-        Args::List => try!(list()),
-        Args::Show { path } => try!(show(path)),
+        Args::Dump { name } => dump(&name)?,
+        Args::List => list()?,
+        Args::Show { path } => show(path)?,
     }
 
     Ok(0)
@@ -135,7 +135,7 @@ pub fn get_template_path() -> Result<PathBuf> {
         }
     }
 
-    let cache_path = try!(platform::get_config_dir());
+    let cache_path = platform::get_config_dir()?;
     Ok(cache_path.join("script-templates"))
 }
 
@@ -145,7 +145,7 @@ Attempts to locate and load the contents of the specified template.
 pub fn get_template(name: &str) -> Result<Cow<'static, str>> {
     use std::io::Read;
 
-    let base = try!(get_template_path());
+    let base = get_template_path()?;
 
     let file = fs::File::open(base.join(format!("{}.rs", name)))
         .map_err(MainError::from)
@@ -161,10 +161,10 @@ pub fn get_template(name: &str) -> Result<Cow<'static, str>> {
         }
     }
 
-    let mut file = try!(file);
+    let mut file = file?;
 
     let mut text = String::new();
-    try!(file.read_to_string(&mut text));
+    file.read_to_string(&mut text)?;
     Ok(text.into())
 }
 
@@ -179,7 +179,7 @@ fn builtin_template(name: &str) -> Option<&'static str> {
 }
 
 fn dump(name: &str) -> Result<()> {
-    let text = try!(get_template(name));
+    let text = get_template(name)?;
     print!("{}", text);
     Ok(())
 }
@@ -187,7 +187,7 @@ fn dump(name: &str) -> Result<()> {
 fn list() -> Result<()> {
     use std::ffi::OsStr;
 
-    let t_path = try!(get_template_path());
+    let t_path = get_template_path()?;
 
     if !t_path.exists() {
         return Err(format!("cannot list template directory `{}`: it does not exist", t_path.display()).into());
@@ -198,8 +198,8 @@ fn list() -> Result<()> {
     }
 
     for entry in try!(fs::read_dir(&t_path)) {
-        let entry = try!(entry);
-        if !try!(entry.file_type()).is_file() {
+        let entry = entry?;
+        if !entry.file_type()?.is_file() {
             continue;
         }
         let f_path = entry.path();
@@ -214,17 +214,17 @@ fn list() -> Result<()> {
 }
 
 fn show(path: bool) -> Result<()> {
-    let t_path = try!(get_template_path());
+    let t_path = get_template_path()?;
 
     if path {
         println!("{}", t_path.display());
         Ok(())
     } else {
         if !t_path.exists() {
-            try!(fs::create_dir_all(&t_path));
+            fs::create_dir_all(&t_path)?;
         }
         if t_path.is_dir() {
-            try!(open::that(&t_path));
+            open::that(&t_path)?;
         } else {
             return Err(format!("cannot open directory `{}`; it isn't a directory", t_path.display()).into());
         }

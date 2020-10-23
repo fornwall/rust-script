@@ -56,23 +56,23 @@ pub fn split_input(input: &Input, deps: &[(String, String)], prelude_items: &[St
             let (manifest, source) = find_embedded_manifest(content)
                 .unwrap_or((Manifest::Toml(""), content));
 
-            (manifest, source, try!(templates::get_template("file")), false)
+            (manifest, source, templates::get_template("file")?, false)
         },
         Input::Expr("meaning-of-life", None) | Input::Expr("meaning_of_life", None) => {
             (Manifest::Toml(""), r#"
                 println!("42");
                 std::process::exit(42);
-            "#, try!(templates::get_template("expr")), true)
+            "#, templates::get_template("expr")?, true)
         },
         Input::Expr(content, template) => {
-            template_buf = try!(templates::get_template(template.unwrap_or("expr")));
+            template_buf = templates::get_template(template.unwrap_or("expr"))?;
             let (manifest, template_src) = find_embedded_manifest(&template_buf)
                 .unwrap_or((Manifest::Toml(""), &template_buf));
             (manifest, content, template_src.into(), true)
         },
         Input::Loop(content, count) => {
             let templ = if count { "loop-count" } else { "loop" };
-            (Manifest::Toml(""), content, try!(templates::get_template(templ)), true)
+            (Manifest::Toml(""), content, templates::get_template(templ)?, true)
         },
     };
 
@@ -92,23 +92,23 @@ pub fn split_input(input: &Input, deps: &[(String, String)], prelude_items: &[St
         subs.insert(consts::SCRIPT_PRELUDE_SUB, &prelude_str[..]);
     }
 
-    let source = try!(templates::expand(&template, &subs));
+    let source = templates::expand(&template, &subs)?;
 
     info!("part_mani: {:?}", part_mani);
     info!("source: {:?}", source);
 
-    let part_mani = try!(part_mani.into_toml());
+    let part_mani = part_mani.into_toml()?;
     info!("part_mani: {:?}", part_mani);
 
     // It's-a mergin' time!
-    let def_mani = try!(default_manifest(input));
-    let dep_mani = try!(deps_manifest(deps));
+    let def_mani = default_manifest(input)?;
+    let dep_mani = deps_manifest(deps)?;
 
-    let mani = try!(merge_manifest(def_mani, part_mani));
-    let mani = try!(merge_manifest(mani, dep_mani));
+    let mani = merge_manifest(def_mani, part_mani)?;
+    let mani = merge_manifest(mani, dep_mani)?;
 
     // Fix up relative paths.
-    let mani = try!(fix_manifest_paths(mani, &input.base_path()));
+    let mani = fix_manifest_paths(mani, &input.base_path())?;
     info!("mani: {:?}", mani);
 
     let mani_str = format!("{}", toml::Value::Table(mani));
@@ -346,10 +346,10 @@ impl<'s> Manifest<'s> {
     pub fn into_toml(self) -> Result<toml::Table> {
         use self::Manifest::*;
         match self {
-            Toml(s) => Ok(try!(toml::Parser::new(s).parse()
-                .ok_or("could not parse embedded manifest"))),
-            TomlOwned(ref s) => Ok(try!(toml::Parser::new(s).parse()
-                .ok_or("could not parse embedded manifest"))),
+            Toml(s) => Ok(toml::Parser::new(s).parse()
+                .ok_or("could not parse embedded manifest")?),
+            TomlOwned(ref s) => Ok(toml::Parser::new(s).parse()
+                .ok_or("could not parse embedded manifest")?),
             DepList(s) => Manifest::dep_list_to_toml(s),
         }
     }
@@ -371,8 +371,8 @@ impl<'s> Manifest<'s> {
             }
         }
 
-        Ok(try!(toml::Parser::new(&r).parse()
-            .ok_or("could not parse embedded manifest")))
+        Ok(toml::Parser::new(&r).parse()
+            .ok_or("could not parse embedded manifest")?)
     }
 }
 
@@ -827,7 +827,7 @@ fn extract_comment(s: &str) -> Result<String> {
 
             Eurgh.
             */
-            try!(n_leading_spaces(line, leading_space.unwrap_or(0)));
+            n_leading_spaces(line, leading_space.unwrap_or(0))?;
 
             let strip_len = min(leading_space.unwrap_or(0), line.len());
             let line = &line[strip_len..];
@@ -870,7 +870,7 @@ fn extract_comment(s: &str) -> Result<String> {
 
             Eurgh.
             */
-            try!(n_leading_spaces(content, leading_space.unwrap_or(0)));
+            n_leading_spaces(content, leading_space.unwrap_or(0))?;
 
             let strip_len = min(leading_space.unwrap_or(0), content.len());
             let content = &content[strip_len..];
@@ -981,7 +981,7 @@ fn default_manifest(input: &Input) -> Result<toml::Table> {
         let mut subs = HashMap::with_capacity(2);
         subs.insert(consts::MANI_NAME_SUB, &*pkg_name);
         subs.insert(consts::MANI_FILE_SUB, &input.safe_name()[..]);
-        try!(templates::expand(consts::DEFAULT_MANIFEST, &subs))
+        templates::expand(consts::DEFAULT_MANIFEST, &subs)?
     };
     toml::Parser::new(&mani_str).parse()
         .ok_or("could not parse default manifest, somehow".into())
@@ -1027,9 +1027,9 @@ fn merge_manifest(mut into_t: toml::Table, from_t: toml::Table) -> Result<toml::
                         e.insert(toml::Value::Table(from_t));
                     },
                     Occupied(e) => {
-                        let into_t = try!(as_table_mut(e.into_mut())
+                        let into_t = as_table_mut(e.into_mut())
                             .ok_or((Blame::Human, "cannot merge manifests: cannot merge \
-                                table and non-table values")));
+                                table and non-table values"))?;
                         into_t.extend(from_t);
                     }
                 }
@@ -1067,7 +1067,7 @@ fn fix_manifest_paths(mani: toml::Table, base: &Path) -> Result<toml::Table> {
     let mut mani = toml::Value::Table(mani);
 
     for path in paths {
-        try!(iterate_toml_mut_path(&mut mani, path, &mut |v| {
+        iterate_toml_mut_path(&mut mani, path, &mut |v| {
             match *v {
                 toml::Value::String(ref mut s) => {
                     if Path::new(s).is_relative() {
@@ -1081,7 +1081,7 @@ fn fix_manifest_paths(mani: toml::Table, base: &Path) -> Result<toml::Table> {
                 _ => {}
             }
             Ok(())
-        }))
+        })?
     }
 
     match mani {
@@ -1106,7 +1106,7 @@ where F: FnMut(&mut toml::Value) -> Result<()> {
         match *base {
             toml::Value::Table(ref mut tab) => {
                 for (_, v) in tab {
-                    try!(iterate_toml_mut_path(v, tail, on_each));
+                    iterate_toml_mut_path(v, tail, on_each)?;
                 }
             },
             _ => {},
@@ -1116,7 +1116,7 @@ where F: FnMut(&mut toml::Value) -> Result<()> {
             toml::Value::Table(ref mut tab) => {
                 match tab.get_mut(cur) {
                     Some(v) => {
-                        try!(iterate_toml_mut_path(v, tail, on_each));
+                        iterate_toml_mut_path(v, tail, on_each)?;
                     },
                     None => {},
                 }

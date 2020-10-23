@@ -96,7 +96,7 @@ mod suppress_child_output {
     pub fn suppress_child_output(cmd: &mut Command, timeout: Duration) -> Result<ChildToken> {
         cmd.stderr(process::Stdio::piped());
 
-        let mut child = try!(cmd.spawn());
+        let mut child = cmd.spawn()?;
         let stderr = child.stderr.take().expect("no stderr pipe found");
 
         let timeout_chan = chan::after(timeout);
