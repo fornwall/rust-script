@@ -10,5 +10,7 @@ jobs:
       uses: actions/checkout@v2
     - name: Setup rust
       uses: hecrj/setup-rust-action@v1
-    - name: Run tests
+    - name: Run unit tests
       run: cargo test
+    - name: Run script tests
+      run: ./tests/scripts/test-runner.sh

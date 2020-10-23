@@ -2,3 +2,4 @@ target
 /local
 /.cargo
 /.idea
+/tests/scripts/*.actual*
