@@ -163,7 +163,7 @@ Useful command-line arguments:
 
 `rust-script` can also run pieces of Rust code directly from the command line.  This is done by providing the `--expr` option; this causes `rust-script` to interpret the `<script>` argument as source code *instead* of as a file path.  For example, code can be executed from the command line in a number of ways:
 
-- `rust-script --dep time --expr "extern crate time; time::now().rfc822z().to_string()"`
+- `rust-script --dep time --expr "extern crate time; time::OffsetDateTime::now_utc().format(time::Format::Rfc3339).to_string()"`
 - `rust-script --dep time=0.1.38 --expr "extern crate time; ..."` - uses a specific version of `time`
 - `rust-script -d time -e "extern crate time; ..."` - short form of above
 - `rust-script -D time -e "..."` - guess and inject `extern crate time`; this only works when the package and crate names of a dependency match.
