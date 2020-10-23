@@ -197,7 +197,7 @@ fn list() -> Result<()> {
         return Err(format!("cannot list template directory `{}`: it is not a directory", t_path.display()).into());
     }
 
-    for entry in try!(fs::read_dir(&t_path)) {
+    for entry in fs::read_dir(&t_path)? {
         let entry = entry?;
         if !entry.file_type()?.is_file() {
             continue;

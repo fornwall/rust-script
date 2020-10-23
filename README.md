@@ -1,8 +1,8 @@
-# `cargo-script`
+# `rust-script`
 
-`cargo-script` is a Cargo subcommand designed to let people quickly and easily run Rust "scripts" which can make use of Cargo's package ecosystem.  It can also evaluate expressions and run filters.
+`rust-script` is a command-line tool to run Rust "scripts" which can make use of Cargo's package ecosystem.  It can also evaluate expressions and run filters.
 
-Some of `cargo-script`'s features include:
+Some of `rust-script`'s features include:
 
 - Reading Cargo manifests embedded in Rust scripts.
 - Caching compiled artefacts (including dependencies) to amortise build times.
@@ -12,7 +12,7 @@ Some of `cargo-script`'s features include:
 - Running unit tests and benchmarks from scripts.
 - Custom templates for command-line expressions and filters.
 
-**Note**: `cargo-script` *does not* work when Cargo is instructed to use a target architecture different to the default host architecture.
+**Note**: `rust-script` *does not* work when Cargo is instructed to use a target architecture different to the default host architecture.
 
 Table of contents:
 
@@ -34,24 +34,17 @@ Table of contents:
 <a name="installation"></a>
 ## Installation
 
-The recommended method for installing `cargo-script` is by using Cargo's `install` subcommand:
+The recommended method for installing `rust-script` is by using Cargo's `install` subcommand:
 
 ```sh
-cargo install cargo-script
+cargo install rust-script
 ```
 
-If you have already installed `cargo-script`, you can update to the latest version by using:
+If you have already installed `rust-script`, you can update to the latest version by using:
 
 ```sh
-cargo install --force cargo-script
+cargo install --force rust-script
 ```
-
-<a name="migrating"></a>
-### Migrating From Previous Versions
-
-`cargo-script` supports migrating data from previous versions.  This is not mandatory, but may be preferred.  Using `cargo script --migrate-data dry-run` will perform a "dry run", informing you of any applicable migrations.  Using the `for-real` option will actually perform the migration.  The following migrations may be applicable:
-
-- 0.1 → 0.2: On non-Windows platforms, and when `CARGO_HOME` is defined, moves the location for cached data from `$CARGO_HOME/.cargo` to `$CARGO_HOME`.
 
 <a name="features"></a>
 ### Cargo Features
@@ -63,7 +56,7 @@ The following features are defined:
 <a name="compiling"></a>
 ### Manually Compiling and Installing
 
-`cargo-script` requires Rust 1.11 or higher to build.  Rust 1.4+ was supported prior to version 0.2.
+`rust-script` requires Rust 1.11 or higher to build.  Rust 1.4+ was supported prior to version 0.2.
 
 Once built, you should place the resulting executable somewhere on your `PATH`.  At that point, you should be able to invoke it by using `cargo script`.  Note that you *can* run the executable directly, but the first argument will *need* to be `script`.
 
@@ -72,11 +65,11 @@ If you want to run `cargo script` from a hashbang on UNIX, or via file associati
 <a name="hashbang"></a>
 ### Self-Executing Scripts
 
-On UNIX systems, you can use `#!/usr/bin/env run-cargo-script` as a hashbang line in a Rust script.  If the script file is executable, this will allow you to execute a script file directly.
+On UNIX systems, you can use `#!/usr/bin/env rust-script` as a hashbang line in a Rust script.  If the script file is executable, this will allow you to execute a script file directly.
 
-If you are using Windows, you can associate the `.crs` extension (which is simply a renamed `.rs` file) with `run-cargo-script`.  This allows you to execute Rust scripts simply by naming them like any other executable or script.
+If you are using Windows, you can associate the `.crs` extension (which is simply a renamed `.rs` file) with `rust-script`.  This allows you to execute Rust scripts simply by naming them like any other executable or script.
 
-This can be done using the `cargo-script file-association` command (note the hyphen in `cargo-script`).  This command can also remove the file association.  If you pass `--amend-pathext` to the `file-assocation install` command, it will also allow you to execute `.crs` scripts *without* having to specify the file extension, in the same way that `.exe` and `.bat` files can be used.
+TODO: This can be done using the `rust-script --file-association` command (note the hyphen in `cargo-script`).  This command can also remove the file association.  If you pass `--amend-pathext` to the `file-assocation install` command, it will also allow you to execute `.crs` scripts *without* having to specify the file extension, in the same way that `.exe` and `.bat` files can be used.
 
 If you want to make a script usable across platforms, it is recommended that you use *both* a hashbang line *and* give the file a `.crs` file extension.
 

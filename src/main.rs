@@ -20,8 +20,10 @@ As such, `cargo-script` does two major things:
 */
 extern crate clap;
 extern crate env_logger;
-#[macro_use] extern crate lazy_static;
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate lazy_static;
+#[macro_use]
+extern crate log;
 extern crate open;
 extern crate regex;
 extern crate rustc_serialize;
@@ -29,8 +31,9 @@ extern crate semver;
 extern crate shaman;
 extern crate toml;
 
-#[cfg(feature="chan")]
-#[macro_use] extern crate chan;
+#[cfg(feature = "chan")]
+#[macro_use]
+extern crate chan;
 
 /**
 If this is set to `true`, the digests used for package IDs will be replaced with "stub" to make testing a bit easier.  Obviously, you don't want this `true` for release...
@@ -45,7 +48,7 @@ const ALLOW_AUTO_REMOVE: bool = true;
 /**
 Length of time to suppress Cargo output.
 */
-#[cfg(feature="suppress-cargo-output")]
+#[cfg(feature = "suppress-cargo-output")]
 const CARGO_OUTPUT_TIMEOUT: u64 = 2_000/*ms*/;
 
 // This macro exists for 1.11 support.
@@ -57,7 +60,7 @@ macro_rules! if_windows {
 
 #[cfg(not(windows))]
 macro_rules! if_windows {
-    ($($tts:tt)*) => { {} };
+    ($($tts:tt)*) => {{}};
 }
 
 mod consts;
@@ -73,14 +76,13 @@ mod file_assoc;
 #[cfg(not(windows))]
 mod file_assoc {}
 
+use semver::Version;
 use std::borrow::Cow;
-use std::error::Error;
 use std::ffi::OsString;
 use std::fs;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
-use semver::Version;
 
 use error::{Blame, MainError, Result, ResultExt};
 use platform::MigrationKind;
@@ -148,15 +150,15 @@ impl BuildKind {
             (false, false) => BuildKind::Normal,
             (true, false) => BuildKind::Test,
             (false, true) => BuildKind::Bench,
-            _ => panic!("got both test and bench")
+            _ => panic!("got both test and bench"),
         }
     }
 }
 
 fn parse_args() -> SubCommand {
-    use clap::{App, Arg, ArgGroup, SubCommand, AppSettings};
+    use clap::{App, AppSettings, Arg, ArgGroup, SubCommand};
     let version = option_env!("CARGO_PKG_VERSION").unwrap_or("unknown");
-    let about = r#"Compiles and runs "Cargoified Rust scripts"."#;
+    let about = r#"Compiles and rtuns a Rust script."#;
 
     // "const str array slice"
     macro_rules! csas {
@@ -169,15 +171,11 @@ fn parse_args() -> SubCommand {
     }
 
     // We have to kinda lie about who we are for the output to look right...
-    let m = App::new("cargo")
-        .bin_name("cargo")
+    let m = App::new("rust-script")
+        .bin_name("rust-script")
         .version(version)
         .about(about)
-        .setting(AppSettings::SubcommandRequiredElseHelp)
-        .subcommand(SubCommand::with_name("script")
-            .version(version)
-            .about(about)
-            .usage("cargo script [FLAGS OPTIONS] [--] <script> <args>...")
+            //.usage("cargo script [FLAGS OPTIONS] [--] <script> <args>...")
 
             /*
             Major script modes.
@@ -321,31 +319,12 @@ fn parse_args() -> SubCommand {
                 .takes_value(true)
                 .requires("expr")
             )
-        )
-        .subcommand(templates::Args::subcommand())
-        .chain_map(|mut app| {
-            drop(&mut app); // avoid warning
-            if_windows! {
-                app = app.subcommand(file_assoc::Args::subcommand());
-            }
-            app
-        })
         .get_matches();
 
-    if let Some(m) = m.subcommand_matches("templates") {
-        return ::SubCommand::Templates(templates::Args::parse(m));
-    }
-
-    if_windows! {
-        if let Some(m) = m.subcommand_matches("file-association") {
-            return ::SubCommand::FileAssoc(file_assoc::Args::parse(m));
-        }
-    }
-
-    let m = m.subcommand_matches("script").unwrap();
-
     fn owned_vec_string<'a, I>(v: Option<I>) -> Vec<String>
-    where I: ::std::iter::Iterator<Item=&'a str> {
+    where
+        I: ::std::iter::Iterator<Item = &'a str>,
+    {
         v.map(|itr| itr.map(Into::into).collect()).unwrap_or(vec![])
     }
 
@@ -353,7 +332,7 @@ fn parse_args() -> SubCommand {
         v.map(|v| match v {
             "yes" => true,
             "no" => false,
-            _ => unreachable!()
+            _ => unreachable!(),
         })
     }
 
@@ -361,7 +340,7 @@ fn parse_args() -> SubCommand {
         v.map(|v| match v {
             "dry-run" => MigrationKind::DryRun,
             "for-real" => MigrationKind::ForReal,
-            _ => unreachable!()
+            _ => unreachable!(),
         })
     }
 
@@ -400,11 +379,11 @@ fn main() {
         Ok(0) => (),
         Ok(code) => {
             std::process::exit(code);
-        },
+        }
         Err(ref err) if err.is_human() => {
             writeln!(stderr, "error: {}", err).unwrap();
             std::process::exit(1);
-        },
+        }
         Err(ref err) => {
             writeln!(stderr, "internal error: {}", err).unwrap();
             std::process::exit(1);
@@ -433,13 +412,13 @@ fn try_main() -> Result<i32> {
             (0, Ok(())) => {
                 println!("Nothing to do.");
                 return Ok(0);
-            },
+            }
             (_, Ok(())) => {
                 for entry in log {
                     println!("- {}", entry);
                 }
                 return Ok(0);
-            },
+            }
             (_, Err(err)) => {
                 for entry in log {
                     println!("- {}", entry);
@@ -483,7 +462,8 @@ fn try_main() -> Result<i32> {
         (Some(script), false, false) => {
             let (path, mut file) = find_script(script).ok_or("could not find script")?;
 
-            script_name = path.file_stem()
+            script_name = path
+                .file_stem()
                 .map(|os| os.to_string_lossy().into_owned())
                 .unwrap_or("unknown".into());
 
@@ -496,18 +476,17 @@ fn try_main() -> Result<i32> {
             content = body;
 
             Input::File(&script_name, &script_path, &content, mtime)
-        },
+        }
         (Some(expr), true, false) => {
             content = expr;
             Input::Expr(&content, args.template.as_ref().map(|s| &**s))
-        },
+        }
         (Some(loop_), false, true) => {
             content = loop_;
             Input::Loop(&content, args.count)
-        },
+        }
         (None, _, _) => Err((Blame::Human, consts::NO_ARGS_MESSAGE))?,
-        _ => Err((Blame::Human,
-            "cannot specify both --expr and --loop"))?
+        _ => Err((Blame::Human, "cannot specify both --expr and --loop"))?,
     };
     info!("input: {:?}", input);
 
@@ -519,21 +498,24 @@ fn try_main() -> Result<i32> {
     - Expand `pkg` into `pkg=*`.
     */
     let deps = {
-        use std::collections::HashMap;
         use std::collections::hash_map::Entry::{Occupied, Vacant};
+        use std::collections::HashMap;
 
         let mut deps: HashMap<String, String> = HashMap::new();
         for dep in args.dep.iter().chain(args.dep_extern.iter()).cloned() {
             // Append '=*' if it needs it.
             let dep = match dep.find('=') {
                 Some(_) => dep,
-                None => dep + "=*"
+                None => dep + "=*",
             };
 
             let mut parts = dep.splitn(2, '=');
             let name = parts.next().expect("dependency is missing name");
             let version = parts.next().expect("dependency is missing version");
-            assert!(parts.next().is_none(), "dependency somehow has three parts?!");
+            assert!(
+                parts.next().is_none(),
+                "dependency somehow has three parts?!"
+            );
 
             if name == "" {
                 Err((Blame::Human, "cannot have empty dependency package name"))?;
@@ -546,14 +528,18 @@ fn try_main() -> Result<i32> {
             match deps.entry(name.into()) {
                 Vacant(ve) => {
                     ve.insert(version.into());
-                },
+                }
                 Occupied(oe) => {
                     // This is *only* a problem if the versions don't match.  We won't try to do anything clever in terms of upgrading or resolving or anything... exact match or go home.
                     let existing = oe.get();
                     if &version != existing {
-                        Err((Blame::Human,
-                            format!("conflicting versions for dependency '{}': '{}', '{}'",
-                                name, existing, version)))?;
+                        Err((
+                            Blame::Human,
+                            format!(
+                                "conflicting versions for dependency '{}': '{}', '{}'",
+                                name, existing, version
+                            ),
+                        ))?;
                     }
                 }
             }
@@ -570,23 +556,32 @@ fn try_main() -> Result<i32> {
     Generate the prelude items, if we need any.  Again, ensure consistent and *valid* sorting.
     */
     let prelude_items = {
-        let unstable_features = args.unstable_features.iter()
+        let unstable_features = args
+            .unstable_features
+            .iter()
             .map(|uf| format!("#![feature({})]", uf));
-        let dep_externs = args.dep_extern.iter()
+        let dep_externs = args
+            .dep_extern
+            .iter()
             .map(|d| match d.find('=') {
                 Some(i) => &d[..i],
-                None => &d[..]
+                None => &d[..],
             })
             .map(|d| match d.contains('-') {
                 true => Cow::from(d.replace("-", "_")),
-                false => Cow::from(d)
+                false => Cow::from(d),
             })
             .map(|d| format!("#[macro_use] extern crate {};", d));
 
-        let externs = args.extern_.iter()
+        let externs = args
+            .extern_
+            .iter()
             .map(|n| format!("#[macro_use] extern crate {};", n));
 
-        let mut items: Vec<_> = unstable_features.chain(dep_externs).chain(externs).collect();
+        let mut items: Vec<_> = unstable_features
+            .chain(dep_externs)
+            .chain(externs)
+            .collect();
         items.sort();
         items
     };
@@ -624,9 +619,14 @@ fn try_main() -> Result<i32> {
 
     // Run it!
     if action.execute {
-        fn hint<F: FnOnce(&mut Command) -> &mut Command>(f: F) -> F { f }
+        fn hint<F: FnOnce(&mut Command) -> &mut Command>(f: F) -> F {
+            f
+        }
         let add_env = hint(move |cmd| {
-            cmd.env("CARGO_SCRIPT_SCRIPT_PATH", input.path().unwrap_or(Path::new("")));
+            cmd.env(
+                "CARGO_SCRIPT_SCRIPT_PATH",
+                input.path().unwrap_or(Path::new("")),
+            );
             cmd.env("CARGO_SCRIPT_SAFE_NAME", input.safe_name());
             cmd.env("CARGO_SCRIPT_PKG_NAME", input.package_name());
             cmd.env("CARGO_SCRIPT_BASE_PATH", input.base_path());
@@ -644,7 +644,7 @@ fn try_main() -> Result<i32> {
                     .map(|st| st.code().unwrap_or(1))
             }? {
                 0 => (),
-                n => return Ok(n)
+                n => return Ok(n),
             }
         } else {
             let cmd_name = action.build_kind.exec_command();
@@ -653,7 +653,7 @@ fn try_main() -> Result<i32> {
             add_env(&mut cmd);
             match cmd.status().map(|st| st.code().unwrap_or(1))? {
                 0 => (),
-                n => return Ok(n)
+                n => return Ok(n),
             }
         }
     }
@@ -684,10 +684,12 @@ fn clean_cache(max_age: u64) -> Result<()> {
     info!("cutoff:     {:>20?} ms", cutoff);
 
     let cache_dir = get_script_cache_path()?;
-    for child in try!(fs::read_dir(cache_dir)) {
+    for child in fs::read_dir(cache_dir)? {
         let child = child?;
         let path = child.path();
-        if path.is_file_polyfill() { continue }
+        if path.is_file_polyfill() {
+            continue;
+        }
 
         info!("checking: {:?}", path);
 
@@ -705,14 +707,14 @@ fn clean_cache(max_age: u64) -> Result<()> {
                     Ok(file) => file,
                     Err(..) => {
                         info!("couldn't open metadata for {:?}", path);
-                        return true
+                        return true;
                     }
                 };
                 platform::file_last_modified(&meta_file)
             };
             info!("meta_mtime: {:>20?} ms", meta_mtime);
 
-            (meta_mtime <= cutoff)
+            meta_mtime <= cutoff
         };
 
         if remove_dir() {
@@ -735,10 +737,7 @@ Generate and compile a package from the input.
 
 Why take `PackageMetadata`?  To ensure that any information we need to depend on for compilation *first* passes through `decide_action_for` *and* is less likely to not be serialised with the rest of the metadata.
 */
-fn gen_pkg_and_compile(
-    input: &Input,
-    action: &InputAction,
-) -> Result<()> {
+fn gen_pkg_and_compile(input: &Input, action: &InputAction) -> Result<()> {
     let pkg_path = &action.pkg_path;
     let meta = &action.metadata;
     let old_meta = action.old_metadata.as_ref();
@@ -771,7 +770,7 @@ fn gen_pkg_and_compile(
             FileOverwrite::Same => (),
             FileOverwrite::Changed { new_hash } => {
                 meta.manifest_hash = new_hash;
-            },
+            }
         }
         mani_path
     };
@@ -791,7 +790,7 @@ fn gen_pkg_and_compile(
             FileOverwrite::Same => (),
             FileOverwrite::Changed { new_hash } => {
                 meta.script_hash = new_hash;
-            },
+            }
         }
     }
 
@@ -808,42 +807,54 @@ fn gen_pkg_and_compile(
     */
     if action.compile {
         info!("compiling...");
-        let mut cmd = cargo("build", &*mani_path.to_string_lossy(), action.use_bincache, &meta)?;
+        let mut cmd = cargo(
+            "build",
+            &*mani_path.to_string_lossy(),
+            action.use_bincache,
+            &meta,
+        )?;
 
-        #[cfg(feature="suppress-cargo-output")]
+        #[cfg(feature = "suppress-cargo-output")]
         macro_rules! get_status {
             ($cmd:expr) => {
                 // `try!` doesn't work here on <=1.12.
                 (match util::suppress_child_output(
                     &mut $cmd,
-                    ::std::time::Duration::from_millis(CARGO_OUTPUT_TIMEOUT)
+                    ::std::time::Duration::from_millis(CARGO_OUTPUT_TIMEOUT),
                 ) {
                     Ok(v) => v,
                     Err(e) => return Err(e),
-                }).status()
-            }
+                })
+                .status()
+            };
         }
 
-        #[cfg(not(feature="suppress-cargo-output"))]
+        #[cfg(not(feature = "suppress-cargo-output"))]
         macro_rules! get_status {
             ($cmd:expr) => {
                 $cmd.status()
-            }
+            };
         }
 
-        let compile_err = get_status!(cmd).map_err(|e| Into::<MainError>::into(e))
-            .and_then(|st|
-                match st.code() {
-                    Some(0) => Ok(()),
-                    Some(st) => Err(format!("cargo failed with status {}", st).into()),
-                    None => Err("cargo failed".into())
-                });
+        let compile_err = get_status!(cmd)
+            .map_err(|e| Into::<MainError>::into(e))
+            .and_then(|st| match st.code() {
+                Some(0) => Ok(()),
+                Some(st) => Err(format!("cargo failed with status {}", st).into()),
+                None => Err("cargo failed".into()),
+            });
 
         // Drop out now if compilation failed.
         let _ = compile_err?;
 
         // Find out and cache what the executable was called.
-        let _ = cargo_target(input, pkg_path, &*mani_path.to_string_lossy(), action.use_bincache, &meta)?;
+        let _ = cargo_target(
+            input,
+            pkg_path,
+            &*mani_path.to_string_lossy(),
+            action.use_bincache,
+            &meta,
+        )?;
 
         if action.use_bincache {
             // Write out the metadata hash to tie this executable to a particular chunk of metadata.  This is to avoid issues with multiple scripts with the same name being compiled to a common target directory.
@@ -923,7 +934,12 @@ impl InputAction {
     }
 
     fn cargo(&self, cmd: &str) -> Result<Command> {
-        cargo(cmd, &*self.manifest_path().to_string_lossy(), self.use_bincache, &self.metadata)
+        cargo(
+            cmd,
+            &*self.manifest_path().to_string_lossy(),
+            self.use_bincache,
+            &self.metadata,
+        )
     }
 }
 
@@ -986,23 +1002,21 @@ fn decide_action_for(
     use_bincache: Option<bool>,
     build_kind: BuildKind,
 ) -> Result<InputAction> {
-    let (pkg_path, using_cache) = pkg_path.map(|p| (p.into(), false))
-        .unwrap_or_else(|| {
-            // This can't fail.  Seriously, we're *fucked* if we can't work this out.
-            let cache_path = get_script_cache_path().unwrap();
-            info!("cache_path: {:?}", cache_path);
+    let (pkg_path, using_cache) = pkg_path.map(|p| (p.into(), false)).unwrap_or_else(|| {
+        // This can't fail.  Seriously, we're *fucked* if we can't work this out.
+        let cache_path = get_script_cache_path().unwrap();
+        info!("cache_path: {:?}", cache_path);
 
-            let id = {
-                let deps_iter = deps.iter()
-                    .map(|&(ref n, ref v)| (n as &str, v as &str));
+        let id = {
+            let deps_iter = deps.iter().map(|&(ref n, ref v)| (n as &str, v as &str));
 
-                // Again, also fucked if we can't work this out.
-                input.compute_id(deps_iter).unwrap()
-            };
-            info!("id: {:?}", id);
+            // Again, also fucked if we can't work this out.
+            input.compute_id(deps_iter).unwrap()
+        };
+        info!("id: {:?}", id);
 
-            (cache_path.join(&id), true)
-        });
+        (cache_path.join(&id), true)
+    });
     info!("pkg_path: {:?}", pkg_path);
     info!("using_cache: {:?}", using_cache);
 
@@ -1019,12 +1033,11 @@ fn decide_action_for(
     // Construct input metadata.
     let input_meta = {
         let (path, mtime, template) = match *input {
-            Input::File(_, path, _, mtime)
-                => (Some(path.to_string_lossy().into_owned()), Some(mtime), None),
-            Input::Expr(_, template)
-                => (None, None, template),
-            Input::Loop(..)
-                => (None, None, None)
+            Input::File(_, path, _, mtime) => {
+                (Some(path.to_string_lossy().into_owned()), Some(mtime), None)
+            }
+            Input::Expr(_, template) => (None, None, template),
+            Input::Loop(..) => (None, None, None),
         };
         PackageMetadata {
             path: path,
@@ -1083,7 +1096,7 @@ fn decide_action_for(
         Ok(meta) => meta,
         Err(err) => {
             info!("recompiling because: failed to load metadata");
-            debug!("get_pkg_metadata error: {}", err.description());
+            debug!("get_pkg_metadata error: {}", err.to_string());
             bail!(compile: true)
         }
     };
@@ -1143,7 +1156,9 @@ Figures out where the output executable for the input should be.
 This *requires* that `cargo_target` has already been called on the package.
 */
 fn get_exe_path<P>(build_kind: BuildKind, pkg_path: P) -> Result<PathBuf>
-where P: AsRef<Path> {
+where
+    P: AsRef<Path>,
+{
     use std::fs::File;
 
     // We don't directly run tests and benchmarks.
@@ -1151,7 +1166,7 @@ where P: AsRef<Path> {
         BuildKind::Normal => (),
         BuildKind::Test | BuildKind::Bench => {
             return Err("tried to get executable path for test/bench build".into());
-        },
+        }
     }
 
     let package_path = pkg_path.as_ref();
@@ -1167,7 +1182,9 @@ where P: AsRef<Path> {
 Figures out where the `meta-hash` file should be.
 */
 fn get_meta_hash_path<P>(use_bincache: bool, pkg_path: P) -> Result<PathBuf>
-where P: AsRef<Path> {
+where
+    P: AsRef<Path>,
+{
     if !use_bincache {
         panic!("tried to get meta-hash path when not using binary cache");
     }
@@ -1178,7 +1195,9 @@ where P: AsRef<Path> {
 Load the package metadata, given the path to the package's cache folder.
 */
 fn get_pkg_metadata<P>(pkg_path: P) -> Result<PackageMetadata>
-where P: AsRef<Path> {
+where
+    P: AsRef<Path>,
+{
     let meta_path = get_pkg_metadata_path(pkg_path);
     debug!("meta_path: {:?}", meta_path);
     let mut meta_file = fs::File::open(&meta_path)?;
@@ -1188,8 +1207,8 @@ where P: AsRef<Path> {
         meta_file.read_to_string(&mut s).unwrap();
         s
     };
-    let meta: PackageMetadata = rustc_serialize::json::decode(&meta_str)
-        .map_err(|err| err.to_string())?;
+    let meta: PackageMetadata =
+        rustc_serialize::json::decode(&meta_str).map_err(|err| err.to_string())?;
 
     Ok(meta)
 }
@@ -1198,7 +1217,9 @@ where P: AsRef<Path> {
 Work out the path to a package's metadata file.
 */
 fn get_pkg_metadata_path<P>(pkg_path: P) -> PathBuf
-where P: AsRef<Path> {
+where
+    P: AsRef<Path>,
+{
     pkg_path.as_ref().join(consts::METADATA_FILE)
 }
 
@@ -1206,12 +1227,13 @@ where P: AsRef<Path> {
 Save the package metadata, given the path to the package's cache folder.
 */
 fn write_pkg_metadata<P>(pkg_path: P, meta: &PackageMetadata) -> Result<()>
-where P: AsRef<Path> {
+where
+    P: AsRef<Path>,
+{
     let meta_path = get_pkg_metadata_path(pkg_path);
     debug!("meta_path: {:?}", meta_path);
     let mut meta_file = fs::File::create(&meta_path)?;
-    let meta_str = rustc_serialize::json::encode(meta)
-        .map_err(|err| err.to_string())?;
+    let meta_str = rustc_serialize::json::encode(meta).map_err(|err| err.to_string())?;
     write!(&mut meta_file, "{}", meta_str)?;
     meta_file.flush()?;
     Ok(())
@@ -1237,7 +1259,9 @@ fn get_binary_cache_path() -> Result<PathBuf> {
 Attempts to locate the script specified by the given path.  If the path as-given doesn't yield anything, it will try adding file extensions.
 */
 fn find_script<P>(path: P) -> Option<(PathBuf, fs::File)>
-where P: AsRef<Path> {
+where
+    P: AsRef<Path>,
+{
     let path = path.as_ref();
 
     // Try the path directly.
@@ -1327,18 +1351,13 @@ impl<'a> Input<'a> {
 
         for (i, c) in name.chars().enumerate() {
             match (i, c) {
-                (0, '0'...'9') => {
+                (0, '0'..='9') => {
                     r.push('_');
                     r.push(c);
-                },
-                (_, '0'...'9')
-                | (_, 'a'...'z')
-                | (_, 'A'...'Z')
-                | (_, '_')
-                | (_, '-')
-                => {
+                }
+                (_, '0'..='9') | (_, 'a'..='z') | (_, 'A'..='Z') | (_, '_') | (_, '-') => {
                     r.push(c);
-                },
+                }
                 (_, _) => {
                     r.push('_');
                 }
@@ -1353,8 +1372,13 @@ impl<'a> Input<'a> {
     */
     pub fn base_path(&self) -> PathBuf {
         match *self {
-            Input::File(_, path, _, _) => path.parent().expect("couldn't get parent directory for file input base path").into(),
-            Input::Expr(..) | Input::Loop(..) => std::env::current_dir().expect("couldn't get current directory for input base path"),
+            Input::File(_, path, _, _) => path
+                .parent()
+                .expect("couldn't get parent directory for file input base path")
+                .into(),
+            Input::Expr(..) | Input::Loop(..) => {
+                std::env::current_dir().expect("couldn't get current directory for input base path")
+            }
         }
     }
 
@@ -1362,7 +1386,9 @@ impl<'a> Input<'a> {
     Compute the package ID for the input.  This is used as the name of the cache folder into which the Cargo package will be generated.
     */
     pub fn compute_id<'dep, DepIt>(&self, deps: DepIt) -> Result<OsString>
-    where DepIt: IntoIterator<Item=(&'dep str, &'dep str)> {
+    where
+        DepIt: IntoIterator<Item = (&'dep str, &'dep str)>,
+    {
         use shaman::digest::Digest;
         use shaman::sha1::Sha1;
         use Input::*;
@@ -1394,7 +1420,7 @@ impl<'a> Input<'a> {
                 id.push("-");
                 id.push(if STUB_HASHES { "stub" } else { &*digest });
                 Ok(id)
-            },
+            }
             Expr(content, template) => {
                 let mut hasher = hash_deps();
 
@@ -1410,7 +1436,7 @@ impl<'a> Input<'a> {
                 id.push("expr-");
                 id.push(if STUB_HASHES { "stub" } else { &*digest });
                 Ok(id)
-            },
+            }
             Loop(content, count) => {
                 let mut hasher = hash_deps();
 
@@ -1426,7 +1452,7 @@ impl<'a> Input<'a> {
                 id.push("loop-");
                 id.push(if STUB_HASHES { "stub" } else { &*digest });
                 Ok(id)
-            },
+            }
         }
     }
 }
@@ -1451,7 +1477,9 @@ enum FileOverwrite {
 Overwrite a file if and only if the contents have changed.
 */
 fn overwrite_file<P>(path: P, content: &str, hash: Option<&str>) -> Result<FileOverwrite>
-where P: AsRef<Path> {
+where
+    P: AsRef<Path>,
+{
     debug!("overwrite_file({:?}, _, {:?})", path.as_ref(), hash);
     let new_hash = hash_str(content);
     if Some(&*new_hash) == hash {
@@ -1469,10 +1497,14 @@ where P: AsRef<Path> {
 /**
 Constructs a Cargo command that runs on the script package.
 */
-fn cargo(cmd_name: &str, manifest: &str, use_bincache: bool, meta: &PackageMetadata) -> Result<Command> {
+fn cargo(
+    cmd_name: &str,
+    manifest: &str,
+    use_bincache: bool,
+    meta: &PackageMetadata,
+) -> Result<Command> {
     let mut cmd = Command::new("cargo");
-    cmd.arg(cmd_name)
-        .arg("--manifest-path").arg(manifest);
+    cmd.arg(cmd_name).arg("--manifest-path").arg(manifest);
 
     if platform::force_cargo_color() {
         cmd.arg("--color").arg("always");
@@ -1499,16 +1531,28 @@ Tries to find the path to a package's target file.
 
 This will also cache this information such that `exe_path` can find it later.
 */
-fn cargo_target<P>(input: &Input, pkg_path: P, manifest: &str, use_bincache: bool, meta: &PackageMetadata) -> Result<PathBuf>
-where P: AsRef<Path> {
+fn cargo_target<P>(
+    input: &Input,
+    pkg_path: P,
+    manifest: &str,
+    use_bincache: bool,
+    meta: &PackageMetadata,
+) -> Result<PathBuf>
+where
+    P: AsRef<Path>,
+{
     lazy_static! {
         static ref VER_JSON_MSGS: Version = Version::parse("0.18.0").unwrap();
     }
 
-    trace!("cargo_target(_, {:?}, {:?}, {:?}, _)", pkg_path.as_ref(), manifest, use_bincache);
+    trace!(
+        "cargo_target(_, {:?}, {:?}, {:?}, _)",
+        pkg_path.as_ref(),
+        manifest,
+        use_bincache
+    );
 
-    let cargo_ver = cargo_version()
-        .err_tag("could not determine target filename")?;
+    let cargo_ver = cargo_version().err_tag("could not determine target filename")?;
 
     let mut use_guess = false;
     use_guess |= work_around_issue_50();
@@ -1547,19 +1591,31 @@ Figures out where the output executable for the input should be by guessing.
 
 Depending on the configuration, this might not work.  On the other hand, this actually works (usually) prior to Cargo 0.18 (Rust 1.17).
 */
-fn cargo_target_by_guess(input: &Input, use_bincache: bool, pkg_path: &Path, meta: &PackageMetadata) -> Result<PathBuf> {
-    trace!("cargo_target_by_guess(_, {:?}, {:?}, _)", use_bincache, pkg_path);
+fn cargo_target_by_guess(
+    input: &Input,
+    use_bincache: bool,
+    pkg_path: &Path,
+    meta: &PackageMetadata,
+) -> Result<PathBuf> {
+    trace!(
+        "cargo_target_by_guess(_, {:?}, {:?}, _)",
+        use_bincache,
+        pkg_path
+    );
 
     let profile = match meta.debug {
         true => "debug",
-        false => "release"
+        false => "release",
     };
     let target_path = if use_bincache {
         get_binary_cache_path()?
     } else {
         pkg_path.join("target")
     };
-    let mut exe_path = target_path.join(profile).join(&input.package_name()).into_os_string();
+    let mut exe_path = target_path
+        .join(profile)
+        .join(&input.package_name())
+        .into_os_string();
     exe_path.push(std::env::consts::EXE_SUFFIX);
     Ok(exe_path.into())
 }
@@ -1569,11 +1625,20 @@ Gets the path to the package's target file by parsing the output of `cargo build
 
 This only works on Cargo 0.18 (Rust 1.17) and higher.
 */
-fn cargo_target_by_message(input: &Input, manifest: &str, use_bincache: bool, meta: &PackageMetadata) -> Result<PathBuf> {
-    use std::io::{BufRead, BufReader};
+fn cargo_target_by_message(
+    input: &Input,
+    manifest: &str,
+    use_bincache: bool,
+    meta: &PackageMetadata,
+) -> Result<PathBuf> {
     use rustc_serialize::json;
+    use std::io::{BufRead, BufReader};
 
-    trace!("cargo_target_by_message(_, {:?}, {:?}, _)", manifest, use_bincache);
+    trace!(
+        "cargo_target_by_message(_, {:?}, {:?}, _)",
+        manifest,
+        use_bincache
+    );
 
     let mut cmd = cargo("build", manifest, use_bincache, meta)?;
     cmd.arg("--message-format=json");
@@ -1585,8 +1650,18 @@ fn cargo_target_by_message(input: &Input, manifest: &str, use_bincache: bool, me
     let mut child = cmd.spawn()?;
     match child.wait()?.code() {
         Some(0) => (),
-        Some(st) => return Err(format!("could not determine target filename: cargo exited with status {}", st).into()),
-        None => return Err(format!("could not determine target filename: cargo exited abnormally").into()),
+        Some(st) => {
+            return Err(format!(
+                "could not determine target filename: cargo exited with status {}",
+                st
+            )
+            .into())
+        }
+        None => {
+            return Err(
+                format!("could not determine target filename: cargo exited abnormally").into(),
+            )
+        }
     }
 
     let mut line = String::with_capacity(1024);
@@ -1601,28 +1676,38 @@ fn cargo_target_by_message(input: &Input, manifest: &str, use_bincache: bool, me
         let bytes = stdout.read_line(&mut line)?;
         trace!(".. line {}, {}b: {:?}", line_num, bytes, line);
         if bytes == 0 {
-            return Err("could not determine target filename: did not find appropriate cargo message".into());
+            return Err(
+                "could not determine target filename: did not find appropriate cargo message"
+                    .into(),
+            );
         }
 
-        let msg = json::Json::from_str(line.trim())
-            .map_err(Box::new)?;
+        let msg = json::Json::from_str(line.trim()).map_err(Box::new)?;
 
         // Is this the message we're looking for?
         if msg.find("reason").unwrap_or(&null).as_string() != Some("compiler-artifact") {
             trace!("   couldn't find `compiler-artifact`");
             continue;
         }
-        if msg.find_path(&["target", "name"]).unwrap_or(&null).as_string() != Some(&package_name) {
-            trace!("   couldn't find `target.name`, or it wasn't {:?}", package_name);
+        if msg
+            .find_path(&["target", "name"])
+            .unwrap_or(&null)
+            .as_string()
+            != Some(&package_name)
+        {
+            trace!(
+                "   couldn't find `target.name`, or it wasn't {:?}",
+                package_name
+            );
             continue;
         }
 
         // Looks like it; grab the path.
-        let exe_path = msg.find_path(&["filenames"])
+        let exe_path = msg
+            .find_path(&["filenames"])
             .expect("could not find `filenames` in json message")
             .as_array()
-            .expect("`filenames` in json message was not an array")
-            [0]
+            .expect("`filenames` in json message was not an array")[0]
             .as_string()
             .expect("`filenames[0]` in json message was not a string");
 
@@ -1646,19 +1731,32 @@ fn cargo_version() -> Result<Version> {
     let child = cmd.output()?;
     match child.status.code() {
         Some(0) => (),
-        Some(st) => return Err(format!("could not determine cargo version: cargo exited with status {}", st).into()),
-        None => return Err(format!("could not determine cargo version: cargo exited abnormally").into()),
+        Some(st) => {
+            return Err(format!(
+                "could not determine cargo version: cargo exited with status {}",
+                st
+            )
+            .into())
+        }
+        None => {
+            return Err(
+                format!("could not determine cargo version: cargo exited abnormally").into(),
+            )
+        }
     }
 
     let stdout = String::from_utf8_lossy(&child.stdout);
     let m = match RE_VERSION.captures(&stdout) {
         Some(m) => m,
-        None => return Err(format!("could not determine cargo version: output did not match expected").into()),
+        None => {
+            return Err(
+                format!("could not determine cargo version: output did not match expected").into(),
+            )
+        }
     };
 
     let ver = m.get(1).unwrap();
-    Ok(Version::parse(ver.as_str())
-        .map_err(Box::new)?)
+    Ok(Version::parse(ver.as_str()).map_err(Box::new)?)
 }
 
 /**
@@ -1670,8 +1768,14 @@ fn work_around_issue_50() -> bool {
     let suffers = cfg!(issue_50);
     let ignored = std::env::var_os("CARGO_SCRIPT_IGNORE_ISSUE_50").is_some();
     match (suffers, ignored) {
-        (true, true) => { trace!(".. issue 50 relevant, but ignored"); false },
-        (true, false) => { trace!(".. working around issue 50"); true },
-        (false, _) => { false },
+        (true, true) => {
+            trace!(".. issue 50 relevant, but ignored");
+            false
+        }
+        (true, false) => {
+            trace!(".. working around issue 50");
+            true
+        }
+        (false, _) => false,
     }
 }

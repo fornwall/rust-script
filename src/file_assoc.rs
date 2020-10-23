@@ -120,8 +120,6 @@ fn install(amend_pathext: bool) -> Result<()> {
 
     // Amend PATHEXT.
     if amend_pathext {
-        use std::ascii::AsciiExt;
-
         let hklm = RegKey::predef(wre::HKEY_LOCAL_MACHINE);
         let env = try!(hklm.open_subkey(r#"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"#));
 
@@ -158,8 +156,6 @@ fn uninstall() -> Result<()> {
     println!("Deleted run-cargo-script registry entry.");
 
     {
-        use std::ascii::AsciiExt;
-
         let hklm = RegKey::predef(wre::HKEY_LOCAL_MACHINE);
         let env = try!(hklm.open_subkey(r#"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"#));
 

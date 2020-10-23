@@ -29,7 +29,7 @@ Represents an error in the program.
 pub enum MainError {
     Io(Blame, io::Error),
     Tag(Blame, Cow<'static, str>, Box<MainError>),
-    Other(Blame, Box<Error>),
+    Other(Blame, Box<dyn Error>),
     OtherOwned(Blame, String),
     OtherBorrowed(Blame, &'static str),
 }

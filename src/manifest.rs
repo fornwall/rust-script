@@ -641,8 +641,6 @@ fn scrape_markdown_manifest(content: &str) -> Result<Option<String>> {
 
     impl Render for ManifestScraper {
         fn code_block(&mut self, output: &mut Buffer, text: Option<&Buffer>, lang: Option<&Buffer>) {
-            use std::ascii::AsciiExt;
-
             let lang = lang.map(|b| b.to_str().unwrap()).unwrap_or("");
 
             if !self.seen_manifest && lang.eq_ignore_ascii_case("cargo") {

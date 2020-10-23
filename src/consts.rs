@@ -19,7 +19,7 @@ The following required arguments were not supplied:
 \t'<script>'
 
 USAGE:
-\tcargo script [FLAGS OPTIONS] [--] <script> <args>...
+    rust-script [FLAGS] [OPTIONS] [--] [ARGS]
 
 For more information try --help";
 
