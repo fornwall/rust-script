@@ -44,14 +44,12 @@ mod inner_unix_or_windows {
 
         That said, so long as everything is in the same units and uses the same epoch, it should be fine.
         */
-        let now_1970_utc = time::now_utc().to_timespec();
-        if now_1970_utc.sec < 0 || now_1970_utc.nsec < 0 {
+        let now_1970_utc_msec = time::OffsetDateTime::now_utc().timestamp();
+        if now_1970_utc_msec < 0 {
             // Fuck it.
             return 0
         }
-        let now_ms_1970_utc = (now_1970_utc.sec as u64 * 1000)
-            + (now_1970_utc.nsec as u64 / 1_000_000);
-        now_ms_1970_utc
+        now_1970_utc_msec as u64
     }
 }
 

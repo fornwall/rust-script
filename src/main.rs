@@ -98,8 +98,7 @@ enum SubCommand {
 
 #[derive(Debug)]
 struct Args {
-    script: Option<String>,
-    args: Vec<String>,
+    command: Vec<String>,
     features: Option<String>,
 
     expr: bool,
@@ -174,20 +173,19 @@ fn parse_args() -> SubCommand {
     let m = App::new("rust-script")
         .bin_name("rust-script")
         .version(version)
+        .setting(clap::AppSettings::TrailingVarArg)
+        .setting(clap::AppSettings::AllowLeadingHyphen)
         .about(about)
             //.usage("cargo script [FLAGS OPTIONS] [--] <script> <args>...")
 
             /*
             Major script modes.
             */
-            .arg(Arg::with_name("script")
-                .help("Script file (with or without extension) to execute.")
+            .arg(Arg::with_name("command")
+                .help("Command (script file plus arguments) to execute.")
                 .index(1)
-            )
-            .arg(Arg::with_name("args")
-                .help("Additional arguments passed to the script.")
-                .index(2)
                 .multiple(true)
+                .takes_value(true)
             )
             .arg(Arg::with_name("expr")
                 .help("Execute <script> as a literal expression and display the result.")
@@ -345,8 +343,7 @@ fn parse_args() -> SubCommand {
     }
 
     ::SubCommand::Script(Args {
-        script: m.value_of("script").map(Into::into),
-        args: owned_vec_string(m.values_of("args")),
+        command: owned_vec_string(m.values_of("command")),
         features: m.value_of("features").map(Into::into),
 
         expr: m.is_present("expr"),
@@ -371,7 +368,7 @@ fn parse_args() -> SubCommand {
 }
 
 fn main() {
-    env_logger::init().unwrap();
+    env_logger::init();
     info!("starting");
     info!("args: {:?}", std::env::args().collect::<Vec<_>>());
     let stderr = &mut std::io::stderr();
@@ -428,7 +425,7 @@ fn try_main() -> Result<i32> {
         }
     }
 
-    if log_enabled!(log::LogLevel::Debug) {
+    if log_enabled!(log::Level::Debug) {
         let scp = get_script_cache_path()?;
         let bcp = get_binary_cache_path()?;
         debug!("script-cache path: {:?}", scp);
@@ -445,7 +442,7 @@ fn try_main() -> Result<i32> {
         clean_cache(0)?;
 
         // If we *did not* get a `<script>` argument, that's OK.
-        if args.script.is_none() {
+        if args.command.is_empty() {
             // Just let the user know that we did *actually* run.
             println!("cargo script cache cleared.");
             return Ok(0);
@@ -458,7 +455,7 @@ fn try_main() -> Result<i32> {
     let script_path: PathBuf;
     let content: String;
 
-    let input = match (args.script, args.expr, args.loop_) {
+    let input = match (args.command.get(0).cloned(), args.expr, args.loop_) {
         (Some(script), false, false) => {
             let (path, mut file) = find_script(script).ok_or("could not find script")?;
 
@@ -638,7 +635,7 @@ fn try_main() -> Result<i32> {
             info!("executing {:?}", exe_path);
             match {
                 Command::new(exe_path)
-                    .args(&args.args)
+                    .args(&args.command[1..])
                     .chain_map(add_env)
                     .status()
                     .map(|st| st.code().unwrap_or(1))

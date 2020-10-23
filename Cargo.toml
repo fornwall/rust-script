@@ -24,18 +24,18 @@ suppress-cargo-output = ["chan"]
 
 [dependencies]
 chan = { version = "0.1.19", optional = true }
-clap = "2.23.2"
-env_logger = "0.4.2"
+clap = "2.33.3"
+env_logger = "0.8.1"
 hoedown = "6.0.0"
 itertools = "0.9.0"
 lazy_static = "1.4.0"
-log = "0.3.7"
-open = "1.2.0"
+log = "0.4.11"
+open = "1.4.0"
 regex = "1.4.1"
-rustc-serialize = "0.3.23"
+rustc-serialize = "0.3.24"
 semver = "0.11.0"
 shaman = "0.1.0"
-time = "0.1.36"
+time = "0.2.22"
 toml = "0.2.1"
 
 [target.'cfg(windows)'.dependencies]
