@@ -1,0 +1,14 @@
+name: CI
+
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v2
+    - name: Setup rust
+      uses: hecrj/setup-rust-action@v1
+    - name: Run tests
+      run: cargo test
