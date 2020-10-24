@@ -18,7 +18,10 @@ jobs:
       run: cargo test
     - name: Run script tests
       if: runner.os != 'Windows'
-      run: ./tests/scripts/test-runner.sh
+      run: |
+        # Run twice to test problem with expression caching
+        ./tests/scripts/test-runner.sh
+        ./tests/scripts/test-runner.sh
 
   check-format:
     runs-on: ubuntu-latest
