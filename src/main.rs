@@ -31,9 +31,9 @@ extern crate semver;
 extern crate shaman;
 extern crate toml;
 
-#[cfg(feature = "chan")]
+#[cfg(feature = "crossbeam-channel")]
 #[macro_use]
-extern crate chan;
+extern crate crossbeam_channel;
 
 /**
 If this is set to `true`, the digests used for package IDs will be replaced with "stub" to make testing a bit easier.  Obviously, you don't want this `true` for release...

@@ -80,7 +80,7 @@ mod suppress_child_output {
     use std::process::{self, Command};
     use std::thread;
     use std::time::Duration;
-    use chan;
+    use crossbeam_channel;
     use error::Result;
 
     /**
@@ -99,17 +99,17 @@ mod suppress_child_output {
         let mut child = cmd.spawn()?;
         let stderr = child.stderr.take().expect("no stderr pipe found");
 
-        let timeout_chan = chan::after(timeout);
-        let (done_sig, done_gate) = chan::sync(0);
+        let timeout_chan = crossbeam_channel::after(timeout);
+        let (done_sig, done_gate) = crossbeam_channel::bounded(0);
 
         let _ = thread::spawn(move || {
             let show_stderr;
             let mut recv_done = false;
-            chan_select! {
-                timeout_chan.recv() => {
+            select! {
+                recv(timeout_chan) -> _ => {
                     show_stderr = true;
                 },
-                done_gate.recv() -> success => {
+                recv(done_gate) -> success => {
                     show_stderr = !success.unwrap_or(true);
                     recv_done = true;
                 },
@@ -120,7 +120,7 @@ mod suppress_child_output {
                     .expect("could not copy child stderr");
             }
             if !recv_done {
-                done_gate.recv();
+                done_gate.recv().unwrap();
             }
         });
 
@@ -133,7 +133,7 @@ mod suppress_child_output {
 
     pub struct ChildToken {
         child: process::Child,
-        done_sig: Option<chan::Sender<bool>>,
+        done_sig: Option<crossbeam_channel::Sender<bool>>,
         // stderr_join: Option<thread::JoinHandle<()>>,
     }
 
@@ -143,13 +143,13 @@ mod suppress_child_output {
                 Ok(r) => r,
                 Err(e) => {
                     if let Some(done_sig) = self.done_sig.take() {
-                        done_sig.send(false);
+                        done_sig.send(false).unwrap();
                     }
                     return Err(e.into());
                 }
             };
             if let Some(done_sig) = self.done_sig.take() {
-                done_sig.send(st.success());
+                done_sig.send(st.success()).unwrap();
             }
             // if let Some(stderr_join) = self.stderr_join.take() {
             //     stderr_join.join()
