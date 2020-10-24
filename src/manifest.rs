@@ -639,7 +639,7 @@ fn scrape_markdown_manifest(content: &str) -> Result<Option<String>> {
                 found = true;
             },
             Event::Text(ref text) if found => {
-                let mut s = output.get_or_insert(String::new());
+                let s = output.get_or_insert(String::new());
                 s.push_str(&*text);
             },
             Event::End(Tag::CodeBlock(_)) if found => {
@@ -1013,8 +1013,6 @@ fn merge_manifest(mut into_t: toml::value::Table, from_t: toml::value::Table) ->
     for (k, v) in from_t {
         match v {
             toml::Value::Table(from_t) => {
-                use std::collections::btree_map::Entry::*;
-
                 // Merge.
                 match into_t.entry(k) {
                     toml::map::Entry::Vacant(e) => {
