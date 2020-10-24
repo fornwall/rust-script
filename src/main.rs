@@ -302,7 +302,7 @@ fn parse_args() -> SubCommand {
     where
         I: ::std::iter::Iterator<Item = &'a str>,
     {
-        v.map(|itr| itr.map(Into::into).collect()).unwrap_or(vec![])
+        v.map(|itr| itr.map(Into::into).collect()).unwrap_or_default()
     }
 
     fn yes_or_no(v: Option<&str>) -> Option<bool> {
@@ -363,11 +363,7 @@ fn try_main() -> Result<i32> {
     let args = parse_args();
     info!("Arguments: {:?}", args);
 
-    let args = match args {
-        SubCommand::Script(args) => args,
-        #[cfg(windows)]
-        SubCommand::FileAssoc(args) => return file_assoc::try_main(args),
-    };
+    let SubCommand::Script(args) = args;
 
     if log_enabled!(log::Level::Debug) {
         let scp = get_script_cache_path()?;
@@ -425,14 +421,14 @@ fn try_main() -> Result<i32> {
         }
         (Some(expr), true, false) => {
             content = expr;
-            Input::Expr(&content, args.template.as_ref().map(|s| &**s))
+            Input::Expr(&content, args.template.as_deref())
         }
         (Some(loop_), false, true) => {
             content = loop_;
             Input::Loop(&content, args.count)
         }
-        (None, _, _) => Err((Blame::Human, consts::NO_ARGS_MESSAGE))?,
-        _ => Err((Blame::Human, "cannot specify both --expr and --loop"))?,
+        (None, _, _) => return Err((Blame::Human, consts::NO_ARGS_MESSAGE).into()),
+        _ => return Err((Blame::Human, "cannot specify both --expr and --loop").into()),
     };
     info!("input: {:?}", input);
 
@@ -464,11 +460,11 @@ fn try_main() -> Result<i32> {
             );
 
             if name == "" {
-                Err((Blame::Human, "cannot have empty dependency package name"))?;
+                return Err((Blame::Human, "cannot have empty dependency package name").into());
             }
 
             if version == "" {
-                Err((Blame::Human, "cannot have empty dependency version"))?;
+                return Err((Blame::Human, "cannot have empty dependency version").into());
             }
 
             match deps.entry(name.into()) {
@@ -479,13 +475,13 @@ fn try_main() -> Result<i32> {
                     // This is *only* a problem if the versions don't match.  We won't try to do anything clever in terms of upgrading or resolving or anything... exact match or go home.
                     let existing = oe.get();
                     if &version != existing {
-                        Err((
+                        return Err((
                             Blame::Human,
                             format!(
                                 "conflicting versions for dependency '{}': '{}', '{}'",
                                 name, existing, version
                             ),
-                        ))?;
+                        ).into());
                     }
                 }
             }
@@ -779,7 +775,7 @@ fn gen_pkg_and_compile(input: &Input, action: &InputAction) -> Result<()> {
         }
 
         let compile_err = get_status!(cmd)
-            .map_err(|e| Into::<MainError>::into(e))
+            .map_err(Into::<MainError>::into)
             .and_then(|st| match st.code() {
                 Some(0) => Ok(()),
                 Some(st) => Err(format!("cargo failed with status {}", st).into()),
@@ -982,13 +978,13 @@ fn decide_action_for(
             Input::Loop(..) => (None, None, None),
         };
         PackageMetadata {
-            path: path,
+            path,
             modified: mtime,
             template: template.map(Into::into),
-            debug: debug,
-            deps: deps,
-            prelude: prelude,
-            features: features,
+            debug,
+            deps,
+            prelude,
+            features,
             manifest_hash: hash_str(&mani_str),
             script_hash: hash_str(&script_str),
         }
@@ -1001,14 +997,14 @@ fn decide_action_for(
         force_compile: force,
         emit_metadata: true,
         execute: !build_only,
-        pkg_path: pkg_path,
-        using_cache: using_cache,
+        pkg_path,
+        using_cache,
         use_bincache: use_bincache.unwrap_or(using_cache),
         metadata: input_meta,
         old_metadata: None,
         manifest: mani_str,
         script: script_str,
-        build_kind: build_kind,
+        build_kind,
     };
 
     macro_rules! bail {
@@ -1432,7 +1428,7 @@ where
     let mut file = fs::File::create(path)?;
     write!(&mut file, "{}", content)?;
     file.flush()?;
-    Ok(FileOverwrite::Changed { new_hash: new_hash })
+    Ok(FileOverwrite::Changed { new_hash })
 }
 
 /**

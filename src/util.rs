@@ -81,7 +81,7 @@ pub use self::suppress_child_output::{suppress_child_output, ChildToken};
 #[cfg(feature = "suppress-cargo-output")]
 mod suppress_child_output {
     use crate::error::Result;
-    use crossbeam_channel;
+    
     use std::io;
     use std::process::{self, Command};
     use std::thread;
@@ -128,7 +128,7 @@ mod suppress_child_output {
         });
 
         Ok(ChildToken {
-            child: child,
+            child,
             done_sig: Some(done_sig),
             // stderr_join: stderr_join,
         })
@@ -148,7 +148,7 @@ mod suppress_child_output {
                     if let Some(done_sig) = self.done_sig.take() {
                         done_sig.send(false).unwrap();
                     }
-                    return Err(e.into());
+                    return Err(e);
                 }
             };
             if let Some(done_sig) = self.done_sig.take() {

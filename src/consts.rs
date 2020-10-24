@@ -14,7 +14,7 @@ This module just contains any big string literals I don't want cluttering up the
 /**
 The message output when the user invokes `cargo script` with no further arguments.  We need to do this ourselves because `clap` doesn't provide any way to generate this message manually.
 */
-pub const NO_ARGS_MESSAGE: &'static str = "\
+pub const NO_ARGS_MESSAGE: &str = "\
 The following required arguments were not supplied:
 \t'<script>'
 
@@ -28,16 +28,16 @@ What follows are the templates used to wrap script input.
 */
 
 /// Substitution for the script body.
-pub const SCRIPT_BODY_SUB: &'static str = "script";
+pub const SCRIPT_BODY_SUB: &str = "script";
 
 /// Substitution for the script prelude.
-pub const SCRIPT_PRELUDE_SUB: &'static str = "prelude";
+pub const SCRIPT_PRELUDE_SUB: &str = "prelude";
 
 /// The template used for script file inputs.
-pub const FILE_TEMPLATE: &'static str = r#"#{script}"#;
+pub const FILE_TEMPLATE: &str = r#"#{script}"#;
 
 /// The template used for `--expr` input.
-pub const EXPR_TEMPLATE: &'static str = r#"
+pub const EXPR_TEMPLATE: &str = r#"
 #{prelude}
 fn main() {
     let exit_code = match try_main() {
@@ -69,7 +69,7 @@ Regarding the loop templates: what I *want* is for the result of the closure to 
 */
 
 /// The template used for `--loop` input, assuming no `--count` flag is also given.
-pub const LOOP_TEMPLATE: &'static str = r#"
+pub const LOOP_TEMPLATE: &str = r#"
 #{prelude}
 use std::any::Any;
 use std::io::prelude::*;
@@ -104,7 +104,7 @@ where F: FnMut(&str) -> T, T: 'static {
 "#;
 
 /// The template used for `--count --loop` input.
-pub const LOOP_COUNT_TEMPLATE: &'static str = r#"
+pub const LOOP_COUNT_TEMPLATE: &str = r#"
 use std::any::Any;
 use std::io::prelude::*;
 
@@ -140,15 +140,15 @@ where F: FnMut(&str, usize) -> T, T: 'static {
 "#;
 
 /// Substitution for the identifier-safe name of the script.
-pub const MANI_NAME_SUB: &'static str = "name";
+pub const MANI_NAME_SUB: &str = "name";
 
 /// Substitution for the filesystem-safe name of the script.
-pub const MANI_FILE_SUB: &'static str = "file";
+pub const MANI_FILE_SUB: &str = "file";
 
 /**
 The default manifest used for packages.
 */
-pub const DEFAULT_MANIFEST: &'static str = r##"
+pub const DEFAULT_MANIFEST: &str = r##"
 [package]
 name = "#{name}"
 version = "0.1.0"
@@ -162,12 +162,12 @@ path = "#{file}.rs"
 /**
 The name of the package metadata file.
 */
-pub const METADATA_FILE: &'static str = "metadata.json";
+pub const METADATA_FILE: &str = "metadata.json";
 
 /**
 Extensions to check when trying to find script input by name.
 */
-pub const SEARCH_EXTS: &'static [&'static str] = &["crs", "rs"];
+pub const SEARCH_EXTS: &[&str] = &["crs", "rs"];
 
 /**
 When generating a package's unique ID, how many hex nibbles of the digest should be used *at most*?

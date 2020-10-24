@@ -16,7 +16,7 @@ extern crate regex;
 use self::regex::Regex;
 use std::collections::HashMap;
 use std::path::Path;
-use toml;
+
 
 use crate::consts;
 use crate::error::{Blame, MainError, Result};
@@ -97,7 +97,7 @@ pub fn split_input(
             String::with_capacity(prelude_items.iter().map(|i| i.len() + 1).sum::<usize>());
         for i in prelude_items {
             prelude_str.push_str(i);
-            prelude_str.push_str("\n");
+            prelude_str.push('\n');
         }
         subs.insert(consts::SCRIPT_PRELUDE_SUB, &prelude_str[..]);
     }
@@ -385,7 +385,7 @@ impl<'s> Manifest<'s> {
             match dep.contains('=') {
                 true => {
                     r.push_str(dep);
-                    r.push_str("\n");
+                    r.push('\n');
                 }
                 false => {
                     r.push_str(dep);
@@ -835,7 +835,7 @@ fn extract_comment(s: &str) -> Result<String> {
             // Update nesting and look for end-of-comment.
             let mut end_of_comment = None;
 
-            for (end, marker) in { nesting_re.find_iter(line).map(|m| (m.start(), m.as_str())) } {
+            for (end, marker) in nesting_re.find_iter(line).map(|m| (m.start(), m.as_str())) {
                 match (marker, depth) {
                     ("/*", _) => depth += 1,
                     ("*/", 1) => {
@@ -851,7 +851,7 @@ fn extract_comment(s: &str) -> Result<String> {
             let line = end_of_comment.map(|end| &line[..end]).unwrap_or(line);
 
             // Detect and strip margin.
-            margin = margin.or_else(|| margin_re.find(line).and_then(|m| Some(m.as_str())));
+            margin = margin.or_else(|| margin_re.find(line).map(|m| m.as_str()));
 
             let line = if let Some(margin) = margin {
                 let end = line
@@ -884,7 +884,7 @@ fn extract_comment(s: &str) -> Result<String> {
             r.push_str(line);
 
             // `lines` removes newlines.  Ideally, it wouldn't do that, but hopefully this shouldn't cause any *real* problems.
-            r.push_str("\n");
+            r.push('\n');
         }
 
         Ok(r)
@@ -929,7 +929,7 @@ fn extract_comment(s: &str) -> Result<String> {
             r.push_str(content);
 
             // `lines` removes newlines.  Ideally, it wouldn't do that, but hopefully this shouldn't cause any *real* problems.
-            r.push_str("\n");
+            r.push('\n');
         }
 
         Ok(r)
@@ -1049,17 +1049,17 @@ fn deps_manifest(deps: &[(String, String)]) -> Result<toml::value::Table> {
 
     for &(ref name, ref ver) in deps {
         mani_str.push_str(name);
-        mani_str.push_str("=");
+        mani_str.push('=');
 
         // We only want to quote the version if it *isn't* a table.
-        let quotes = match ver.starts_with("{") {
+        let quotes = match ver.starts_with('{') {
             true => "",
             false => "\"",
         };
         mani_str.push_str(quotes);
         mani_str.push_str(ver);
         mani_str.push_str(quotes);
-        mani_str.push_str("\n");
+        mani_str.push('\n');
     }
 
     toml::from_str(&mani_str).map_err(|e| {
@@ -1161,7 +1161,7 @@ fn iterate_toml_mut_path<F>(base: &mut toml::Value, path: &[&str], on_each: &mut
 where
     F: FnMut(&mut toml::Value) -> Result<()>,
 {
-    if path.len() == 0 {
+    if path.is_empty() {
         return on_each(base);
     }
 

@@ -70,8 +70,8 @@ lazy_static! {
     pub static ref CARGO_MUTEX: Mutex<()> = Mutex::new(());
 }
 
-pub const OUTPUT_MARKER: &'static str = "--output--";
-pub const OUTPUT_MARKER_CODE: &'static str = "println!(\"--output--\");";
+pub const OUTPUT_MARKER: &str = "--output--";
+pub const OUTPUT_MARKER_CODE: &str = "println!(\"--output--\");";
 
 pub struct Output {
     pub status: ::std::process::ExitStatus,
