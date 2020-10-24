@@ -16,10 +16,10 @@ Since this only makes sense on Windows, this entire module is Windows-only.
 extern crate itertools;
 extern crate winreg;
 
-use std::io;
-use clap;
 use self::itertools::Itertools;
 use crate::error::{Blame, Result};
+use clap;
+use std::io;
 
 #[derive(Debug)]
 pub enum Args {
@@ -48,13 +48,11 @@ impl Args {
 
     pub fn parse(m: &clap::ArgMatches) -> Self {
         match m.subcommand() {
-            ("install", Some(m)) => {
-                Args::Install {
-                    amend_pathext: m.is_present("amend_pathext"),
-                }
+            ("install", Some(m)) => Args::Install {
+                amend_pathext: m.is_present("amend_pathext"),
             },
             ("uninstall", _) => Args::Uninstall,
-            (name, _) => panic!("bad subcommand: {:?}", name)
+            (name, _) => panic!("bad subcommand: {:?}", name),
         }
     }
 }
@@ -69,9 +67,9 @@ pub fn try_main(args: Args) -> Result<i32> {
 }
 
 fn install(amend_pathext: bool) -> Result<()> {
-    use std::env;
-    use self::winreg::RegKey;
     use self::winreg::enums as wre;
+    use self::winreg::RegKey;
+    use std::env;
 
     // Set up file association.
     let cs_path = env::current_exe()?;
@@ -107,7 +105,9 @@ fn install(amend_pathext: bool) -> Result<()> {
         Ok(()) => (),
         Err(e) => {
             if e.kind() == io::ErrorKind::PermissionDenied {
-                println!("Access denied.  Make sure you run this command from an administrator prompt.");
+                println!(
+                    "Access denied.  Make sure you run this command from an administrator prompt."
+                );
                 return Err((Blame::Human, e).into());
             } else {
                 return Err(e.into());
@@ -121,7 +121,8 @@ fn install(amend_pathext: bool) -> Result<()> {
     // Amend PATHEXT.
     if amend_pathext {
         let hklm = RegKey::predef(wre::HKEY_LOCAL_MACHINE);
-        let env = hklm.open_subkey(r#"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"#)?;
+        let env =
+            hklm.open_subkey(r#"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"#)?;
 
         let pathext: String = env.get_value("PATHEXT")?;
         if !pathext.split(";").any(|e| e.eq_ignore_ascii_case(".crs")) {
@@ -129,25 +130,31 @@ fn install(amend_pathext: bool) -> Result<()> {
             env.set_value("PATHEXT", &pathext)?;
         }
 
-        println!("Added `.crs` to PATHEXT.  You may need to log out for the change to take effect.");
+        println!(
+            "Added `.crs` to PATHEXT.  You may need to log out for the change to take effect."
+        );
     }
 
     Ok(())
 }
 
 fn uninstall() -> Result<()> {
-    use self::winreg::RegKey;
     use self::winreg::enums as wre;
+    use self::winreg::RegKey;
 
     let mut ignored_missing = false;
     {
         let mut notify = || ignored_missing = true;
 
         let hlcr = RegKey::predef(wre::HKEY_CLASSES_ROOT);
-        hlcr.delete_subkey(r#"CargoScript.Crs\shell\open\command"#).ignore_missing_and(&mut notify)?;
-        hlcr.delete_subkey(r#"CargoScript.Crs\shell\open"#).ignore_missing_and(&mut notify)?;
-        hlcr.delete_subkey(r#"CargoScript.Crs\shell"#).ignore_missing_and(&mut notify)?;
-        hlcr.delete_subkey(r#"CargoScript.Crs"#).ignore_missing_and(&mut notify)?;
+        hlcr.delete_subkey(r#"CargoScript.Crs\shell\open\command"#)
+            .ignore_missing_and(&mut notify)?;
+        hlcr.delete_subkey(r#"CargoScript.Crs\shell\open"#)
+            .ignore_missing_and(&mut notify)?;
+        hlcr.delete_subkey(r#"CargoScript.Crs\shell"#)
+            .ignore_missing_and(&mut notify)?;
+        hlcr.delete_subkey(r#"CargoScript.Crs"#)
+            .ignore_missing_and(&mut notify)?;
     }
 
     if ignored_missing {
@@ -157,11 +164,15 @@ fn uninstall() -> Result<()> {
 
     {
         let hklm = RegKey::predef(wre::HKEY_LOCAL_MACHINE);
-        let env = hklm.open_subkey(r#"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"#)?;
+        let env =
+            hklm.open_subkey(r#"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"#)?;
 
         let pathext: String = env.get_value("PATHEXT")?;
         if pathext.split(";").any(|e| e.eq_ignore_ascii_case(".crs")) {
-            let pathext = pathext.split(";").filter(|e| !e.eq_ignore_ascii_case(".crs")).join(";");
+            let pathext = pathext
+                .split(";")
+                .filter(|e| !e.eq_ignore_ascii_case(".crs"))
+                .join(";");
             env.set_value("PATHEXT", &pathext)?;
             println!("Removed `.crs` from PATHEXT.  You may need to log out for the change to take effect.");
         }
@@ -172,12 +183,15 @@ fn uninstall() -> Result<()> {
 
 trait IgnoreMissing {
     fn ignore_missing_and<F>(self, f: F) -> Self
-    where F: FnOnce();
+    where
+        F: FnOnce();
 }
 
 impl IgnoreMissing for io::Result<()> {
     fn ignore_missing_and<F>(self, f: F) -> Self
-    where F: FnOnce() {
+    where
+        F: FnOnce(),
+    {
         match self {
             Ok(()) => Ok(()),
             Err(e) => {

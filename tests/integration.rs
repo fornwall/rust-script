@@ -5,9 +5,12 @@ Because *both* Cargo and Rust both know better than I do and won't let me tell t
 
 *All* integration tests have to be glommed into a single runner so that we can use locks to prevent Cargo from falling over and breaking both its legs as soon as a gentle breeze comes along.  I *would* do this "properly" using file locks, except that's apparently impossible in Rust without writing the whole stack yourself directly on native OS calls, and I just can't be arsed to go to *that* much effort just to get some bloody tests to work.
 */
-#[macro_use] extern crate lazy_static;
-#[macro_use] extern crate scan_rules;
-#[macro_use] mod util;
+#[macro_use]
+extern crate lazy_static;
+#[macro_use]
+extern crate scan_rules;
+#[macro_use]
+mod util;
 
 mod tests {
     mod expr;

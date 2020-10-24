@@ -63,13 +63,13 @@ mod file_assoc;
 #[cfg(not(windows))]
 mod file_assoc {}
 
+use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::ffi::OsString;
 use std::fs;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
-use serde::{Serialize, Deserialize};
 
 use crate::error::{Blame, MainError, Result};
 use crate::util::{ChainMap, Defer};
@@ -395,7 +395,7 @@ fn try_main() -> Result<i32> {
 
     if args.list_templates {
         templates::list()?;
-        return Ok(0)
+        return Ok(0);
     }
 
     // Take the arguments and work out what our input is going to be.  Primarily, this gives us the content, a user-friendly name, and a cache-friendly ID.
@@ -1149,8 +1149,7 @@ where
         meta_file.read_to_string(&mut s).unwrap();
         s
     };
-    let meta: PackageMetadata =
-        serde_json::from_str(&meta_str).map_err(|err| err.to_string())?;
+    let meta: PackageMetadata = serde_json::from_str(&meta_str).map_err(|err| err.to_string())?;
 
     Ok(meta)
 }
@@ -1331,9 +1330,9 @@ impl<'a> Input<'a> {
     where
         DepIt: IntoIterator<Item = (&'dep str, &'dep str)>,
     {
+        use crate::Input::*;
         use shaman::digest::Digest;
         use shaman::sha1::Sha1;
-        use crate::Input::*;
 
         let hash_deps = || {
             let mut hasher = Sha1::new();
@@ -1564,7 +1563,7 @@ fn cargo_target_by_message(
             "could not determine target filename: cargo exited with status {}",
             st
         )
-            .into()),
+        .into()),
         None => Err(
             "could not determine target filename: cargo exited abnormally"
                 .to_string()

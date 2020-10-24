@@ -3,6 +3,7 @@ name: CI
 on: push
 
 jobs:
+
   test:
     strategy:
       matrix:
@@ -18,3 +19,15 @@ jobs:
     - name: Run script tests
       if: runner.os != 'Windows'
       run: ./tests/scripts/test-runner.sh
+
+  check-format:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v2
+    - name: Setup rust
+      uses: hecrj/setup-rust-action@v1
+    - name: Install rustfmt
+      run: rustup component add rustfmt
+    - name: Check formatting with rustfmt
+      run: cargo fmt -- --check

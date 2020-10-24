@@ -11,11 +11,7 @@ or distributed except according to those terms.
 This module is for platform-specific stuff.
 */
 
-pub use self::inner::{
-    get_cache_dir, get_config_dir,
-    write_path, read_path,
-    force_cargo_color,
-};
+pub use self::inner::{force_cargo_color, get_cache_dir, get_config_dir, read_path, write_path};
 
 use std::fs;
 
@@ -23,13 +19,20 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 // Last-modified time of a file, in milliseconds since the UNIX epoch.
 pub fn file_last_modified(file: &fs::File) -> u128 {
-    file.metadata().and_then(|md| md.modified().map(|t| t.duration_since(UNIX_EPOCH).unwrap().as_millis())).unwrap_or(0)
+    file.metadata()
+        .and_then(|md| {
+            md.modified()
+                .map(|t| t.duration_since(UNIX_EPOCH).unwrap().as_millis())
+        })
+        .unwrap_or(0)
 }
-
 
 // Current system time, in milliseconds since the UNIX epoch.
 pub fn current_time() -> u128 {
-    SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis()
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis()
 }
 
 #[cfg(unix)]
@@ -38,10 +41,10 @@ mod inner {
 
     pub use super::*;
 
+    use crate::error::{Blame, MainError};
+    use std::os::unix::ffi::OsStrExt;
     use std::path::{Path, PathBuf};
     use std::{env, io};
-    use std::os::unix::ffi::OsStrExt;
-    use crate::error::{MainError, Blame};
 
     /**
     Get a directory suitable for storing user- and machine-specific data which may or may not be persisted across sessions.
@@ -55,7 +58,8 @@ mod inner {
             let old_home = home.join(".cargo");
             if old_home.exists() {
                 // Keep using the old directory in preference to the new one, but only if it still contains `script-cache` and/or `binary-cache`.
-                if old_home.join("script-cache").exists() || old_home.join("binary-cache").exists() {
+                if old_home.join("script-cache").exists() || old_home.join("binary-cache").exists()
+                {
                     // Yup; use this one.
                     return Ok(old_home);
                 }
@@ -83,12 +87,16 @@ mod inner {
     }
 
     pub fn write_path<W>(w: &mut W, path: &Path) -> io::Result<()>
-    where W: io::Write {
+    where
+        W: io::Write,
+    {
         w.write_all(path.as_os_str().as_bytes())
     }
 
     pub fn read_path<R>(r: &mut R) -> io::Result<PathBuf>
-    where R: io::Read {
+    where
+        R: io::Read,
+    {
         use std::ffi::OsStr;
         let mut buf = vec![];
         r.read_to_end(&mut buf)?;
@@ -117,12 +125,12 @@ pub mod inner {
 
     use std::ffi::OsString;
     use std::fmt;
-    
+
+    use crate::error::MainError;
     use std::io;
-    use std::path::{Path, PathBuf};
     use std::mem;
     use std::os::windows::ffi::{OsStrExt, OsStringExt};
-    use crate::error::MainError;
+    use std::path::{Path, PathBuf};
 
     mod uuid {
         // WARNING: do not use with rustc < 1.15; it will cause linking errors.
@@ -146,8 +154,8 @@ pub mod inner {
     */
     pub fn get_cache_dir() -> Result<PathBuf, MainError> {
         let rfid = unsafe { uuid::local_app_data() };
-        let dir = SHGetKnownFolderPath(rfid, 0, ::std::ptr::null_mut())
-            .map_err(|e| e.to_string())?;
+        let dir =
+            SHGetKnownFolderPath(rfid, 0, ::std::ptr::null_mut()).map_err(|e| e.to_string())?;
         Ok(Path::new(&dir).to_path_buf().join("Cargo"))
     }
 
@@ -158,8 +166,8 @@ pub mod inner {
     */
     pub fn get_config_dir() -> Result<PathBuf, MainError> {
         let rfid = unsafe { uuid::roaming_app_data() };
-        let dir = SHGetKnownFolderPath(rfid, 0, ::std::ptr::null_mut())
-            .map_err(|e| e.to_string())?;
+        let dir =
+            SHGetKnownFolderPath(rfid, 0, ::std::ptr::null_mut()).map_err(|e| e.to_string())?;
         Ok(Path::new(&dir).to_path_buf().join("Cargo"))
     }
 
@@ -173,7 +181,11 @@ pub mod inner {
         }
     }
 
-    fn SHGetKnownFolderPath(rfid: &winapi::KNOWNFOLDERID, dwFlags: winapi::DWORD, hToken: winapi::HANDLE) -> WinResult<OsString> {
+    fn SHGetKnownFolderPath(
+        rfid: &winapi::KNOWNFOLDERID,
+        dwFlags: winapi::DWORD,
+        hToken: winapi::HANDLE,
+    ) -> WinResult<OsString> {
         use self::winapi::PWSTR;
         let mut psz_path: PWSTR = unsafe { mem::uninitialized() };
         let hresult = unsafe {
@@ -181,7 +193,7 @@ pub mod inner {
                 rfid,
                 dwFlags,
                 hToken,
-                mem::transmute(&mut psz_path as &mut PWSTR as *mut PWSTR)
+                mem::transmute(&mut psz_path as &mut PWSTR as *mut PWSTR),
             )
         };
 
@@ -208,7 +220,9 @@ pub mod inner {
     }
 
     pub fn write_path<W>(w: &mut W, path: &Path) -> io::Result<()>
-    where W: io::Write {
+    where
+        W: io::Write,
+    {
         for word in path.as_os_str().encode_wide() {
             let lo = (word & 0xff) as u8;
             let hi = (word >> 8) as u8;
@@ -218,7 +232,9 @@ pub mod inner {
     }
 
     pub fn read_path<R>(r: &mut R) -> io::Result<PathBuf>
-    where R: io::Read {
+    where
+        R: io::Read,
+    {
         let mut buf = vec![];
         r.read_to_end(&mut buf)?;
 
@@ -229,7 +245,7 @@ pub mod inner {
             words.push(lo as u16 | ((hi as u16) << 8));
         }
 
-        return Ok(OsString::from_wide(&words).into())
+        return Ok(OsString::from_wide(&words).into());
     }
 
     /**

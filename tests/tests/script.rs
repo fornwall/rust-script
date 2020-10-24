@@ -3,7 +3,8 @@ fn test_script_explicit() {
     let out = cargo_script!("-dboolinator", "tests/data/script-explicit.rs").unwrap();
     scan!(out.stdout_output();
         ("Some(1)") => ()
-    ).unwrap()
+    )
+    .unwrap()
 }
 
 #[test]
@@ -11,7 +12,8 @@ fn test_script_features() {
     let out = cargo_script!("--features", "dont-panic", "tests/data/script-features.rs").unwrap();
     scan!(out.stdout_output();
         ("Keep calm and borrow check.") => ()
-    ).unwrap();
+    )
+    .unwrap();
 
     let out = cargo_script!("tests/data/script-features.rs").unwrap();
     assert!(!out.success());
@@ -22,7 +24,8 @@ fn test_script_full_block() {
     let out = cargo_script!("tests/data/script-full-block.rs").unwrap();
     scan!(out.stdout_output();
         ("Some(1)") => ()
-    ).unwrap()
+    )
+    .unwrap()
 }
 
 #[test]
@@ -30,7 +33,8 @@ fn test_script_full_line() {
     let out = cargo_script!("tests/data/script-full-line.rs").unwrap();
     scan!(out.stdout_output();
         ("Some(1)") => ()
-    ).unwrap()
+    )
+    .unwrap()
 }
 
 #[test]
@@ -38,7 +42,8 @@ fn test_script_invalid_doc_comment() {
     let out = cargo_script!("tests/data/script-invalid-doc-comment.rs").unwrap();
     scan!(out.stdout_output();
         ("Hello, World!") => ()
-    ).unwrap()
+    )
+    .unwrap()
 }
 
 #[test]
@@ -46,7 +51,8 @@ fn test_script_no_deps() {
     let out = cargo_script!("tests/data/script-no-deps.rs").unwrap();
     scan!(out.stdout_output();
         ("Hello, World!") => ()
-    ).unwrap()
+    )
+    .unwrap()
 }
 
 #[test]
@@ -54,7 +60,8 @@ fn test_script_short() {
     let out = cargo_script!("tests/data/script-short.rs").unwrap();
     scan!(out.stdout_output();
         ("Some(1)") => ()
-    ).unwrap()
+    )
+    .unwrap()
 }
 
 #[test]
@@ -71,7 +78,8 @@ fn test_script_hyphens() {
         ("[0]:", let _: QuotedString, "[1]:", let arg: QuotedString) => {
             assert_eq!(arg, "-NotAnArg");
         }
-    ).unwrap()
+    )
+    .unwrap()
 }
 
 #[test]
@@ -85,20 +93,21 @@ fn test_script_slow_output() {
     let out = cargo_script!(
         "--use-shared-binary-cache=no",
         "tests/data/script-slow-output.rs"
-    ).unwrap();
+    )
+    .unwrap();
     assert!(out.stderr_raw().contains("Compiling slow-build"));
     assert!(out.stderr_raw().contains("Compiling script-slow-output"));
     scan!(out.stdout_output();
         ("Ok") => ()
-    ).unwrap()
+    )
+    .unwrap()
 }
 
 #[test]
 fn test_script_cs_env() {
-    let out = cargo_script!(
-        "tests/data/script-cs-env.rs"
-    ).unwrap();
+    let out = cargo_script!("tests/data/script-cs-env.rs").unwrap();
     scan!(out.stdout_output();
         ("Ok") => ()
-    ).unwrap()
+    )
+    .unwrap()
 }
