@@ -146,25 +146,6 @@ pub mod inner {
     use std::os::windows::ffi::{OsStrExt, OsStringExt};
     use error::MainError;
 
-    #[cfg(old_rustc_windows_linking_behaviour)]
-    mod uuid {
-        // This *is* in `uuid-sys` ≤ 0.1.2, but it doesn't work in Rust < 1.15.
-        #[link(name="uuid")]
-        extern {
-            static FOLDERID_LocalAppData: super::winapi::KNOWNFOLDERID;
-            static FOLDERID_RoamingAppData: super::winapi::KNOWNFOLDERID;
-        }
-
-        pub unsafe fn local_app_data() -> &'static super::winapi::KNOWNFOLDERID {
-            &FOLDERID_LocalAppData
-        }
-
-        pub unsafe fn roaming_app_data() -> &'static super::winapi::KNOWNFOLDERID {
-            &FOLDERID_RoamingAppData
-        }
-    }
-
-    #[cfg(not(old_rustc_windows_linking_behaviour))]
     mod uuid {
         // WARNING: do not use with rustc < 1.15; it will cause linking errors.
         extern crate uuid;

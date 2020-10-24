@@ -434,7 +434,6 @@ dependencies = [
  "pulldown-cmark",
  "regex",
  "rustc-serialize",
- "rustc_version 0.1.7",
  "scan-rules",
  "semver 0.11.0",
  "shaman",
