@@ -51,18 +51,6 @@ Length of time to suppress Cargo output.
 #[cfg(feature = "suppress-cargo-output")]
 const CARGO_OUTPUT_TIMEOUT: u64 = 2_000/*ms*/;
 
-// This macro exists for 1.11 support.
-#[cfg(windows)]
-macro_rules! if_windows {
-    (@as_expr $e:expr) => { $e };
-    ($($tts:tt)*) => { if_windows! { @as_expr { $($tts)* } } };
-}
-
-#[cfg(not(windows))]
-macro_rules! if_windows {
-    ($($tts:tt)*) => {{}};
-}
-
 mod consts;
 mod error;
 mod manifest;
