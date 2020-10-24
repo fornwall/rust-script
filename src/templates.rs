@@ -15,9 +15,9 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use regex::Regex;
-use consts;
-use error::{Blame, MainError, Result, ResultExt};
-use platform;
+use crate::consts;
+use crate::error::{Blame, MainError, Result, ResultExt};
+use crate::platform;
 
 lazy_static! {
     static ref RE_SUB: Regex = Regex::new(r#"#\{([A-Za-z_][A-Za-z0-9_]*)}"#).unwrap();

@@ -81,7 +81,7 @@ mod suppress_child_output {
     use std::thread;
     use std::time::Duration;
     use crossbeam_channel;
-    use error::Result;
+    use crate::error::Result;
 
     /**
     Suppresses the stderr output of a child process, unless:

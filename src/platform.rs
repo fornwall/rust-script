@@ -41,7 +41,7 @@ mod inner {
     use std::path::{Path, PathBuf};
     use std::{env, io};
     use std::os::unix::ffi::OsStrExt;
-    use error::{MainError, Blame};
+    use crate::error::{MainError, Blame};
 
     /**
     Get a directory suitable for storing user- and machine-specific data which may or may not be persisted across sessions.

@@ -18,10 +18,10 @@ use std::path::Path;
 use self::regex::Regex;
 use toml;
 
-use consts;
-use error::{Blame, MainError, Result};
-use templates;
-use Input;
+use crate::consts;
+use crate::error::{Blame, MainError, Result};
+use crate::templates;
+use crate::Input;
 
 lazy_static! {
     static ref RE_SHORT_MANIFEST: Regex = Regex::new(

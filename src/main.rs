@@ -71,8 +71,8 @@ use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 use serde::{Serialize, Deserialize};
 
-use error::{Blame, MainError, Result};
-use util::{ChainMap, Defer};
+use crate::error::{Blame, MainError, Result};
+use crate::util::{ChainMap, Defer};
 
 #[derive(Debug)]
 enum SubCommand {
@@ -313,7 +313,7 @@ fn parse_args() -> SubCommand {
         })
     }
 
-    ::SubCommand::Script(Args {
+    crate::SubCommand::Script(Args {
         command: owned_vec_string(m.values_of("command")),
         features: m.value_of("features").map(Into::into),
 
@@ -1260,7 +1260,7 @@ impl<'a> Input<'a> {
     Return the path to the script, if it has one.
     */
     pub fn path(&self) -> Option<&Path> {
-        use Input::*;
+        use crate::Input::*;
 
         match *self {
             File(_, path, _, _) => Some(path),
@@ -1275,7 +1275,7 @@ impl<'a> Input<'a> {
     Currently, nothing is done to ensure this, other than hoping *really hard* that we don't get fed some excessively bizzare input filename.
     */
     pub fn safe_name(&self) -> &str {
-        use Input::*;
+        use crate::Input::*;
 
         match *self {
             File(name, _, _, _) => name,
@@ -1333,7 +1333,7 @@ impl<'a> Input<'a> {
     {
         use shaman::digest::Digest;
         use shaman::sha1::Sha1;
-        use Input::*;
+        use crate::Input::*;
 
         let hash_deps = || {
             let mut hasher = Sha1::new();
