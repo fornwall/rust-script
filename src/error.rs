@@ -85,18 +85,7 @@ impl fmt::Display for MainError {
     }
 }
 
-impl Error for MainError {
-    fn description(&self) -> &str {
-        use self::MainError::*;
-        match *self {
-            Io(_, ref err) => err.description(),
-            Tag(_, ref msg, _) => msg,
-            Other(_, ref err) => err.description(),
-            OtherOwned(_, ref err) => err,
-            OtherBorrowed(_, ref err) => err,
-        }
-    }
-}
+impl Error for MainError {}
 
 macro_rules! from_impl {
     ($src_ty:ty => $dst_ty:ty, $src:ident -> $e:expr) => {
