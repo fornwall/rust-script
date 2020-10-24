@@ -763,14 +763,10 @@ fn gen_pkg_and_compile(input: &Input, action: &InputAction) -> Result<()> {
         #[cfg(feature = "suppress-cargo-output")]
         macro_rules! get_status {
             ($cmd:expr) => {
-                // `try!` doesn't work here on <=1.12.
-                (match util::suppress_child_output(
+                util::suppress_child_output(
                     &mut $cmd,
                     ::std::time::Duration::from_millis(CARGO_OUTPUT_TIMEOUT),
-                ) {
-                    Ok(v) => v,
-                    Err(e) => return Err(e),
-                })
+                )?
                 .status()
             };
         }

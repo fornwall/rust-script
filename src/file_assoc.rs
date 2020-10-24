@@ -61,8 +61,8 @@ impl Args {
 
 pub fn try_main(args: Args) -> Result<i32> {
     match args {
-        Args::Install { amend_pathext } => try!(install(amend_pathext)),
-        Args::Uninstall => try!(uninstall()),
+        Args::Install { amend_pathext } => install(amend_pathext)?,
+        Args::Uninstall => uninstall()?,
     }
 
     Ok(0)
@@ -74,8 +74,8 @@ fn install(amend_pathext: bool) -> Result<()> {
     use self::winreg::enums as wre;
 
     // Set up file association.
-    let cs_path = try!(env::current_exe());
-    let cs_path = try!(cs_path.canonicalize());
+    let cs_path = env::current_exe()?;
+    let cs_path = cs_path.canonicalize()?;
     let rcs_path = cs_path.with_file_name("run-cargo-script.exe");
 
     if !rcs_path.exists() {
@@ -92,14 +92,14 @@ fn install(amend_pathext: bool) -> Result<()> {
 
     let res = (|| -> io::Result<()> {
         let hlcr = RegKey::predef(wre::HKEY_CLASSES_ROOT);
-        let dot_crs = try!(hlcr.create_subkey(".crs"));
-        try!(dot_crs.set_value("", &"CargoScript.Crs"));
+        let dot_crs = hlcr.create_subkey(".crs")?;
+        dot_crs.set_value("", &"CargoScript.Crs")?;
 
-        let cs_crs = try!(hlcr.create_subkey("CargoScript.Crs"));
-        try!(cs_crs.set_value("", &"Cargo Script"));
+        let cs_crs = hlcr.create_subkey("CargoScript.Crs")?;
+        cs_crs.set_value("", &"Cargo Script")?;
 
-        let sh_o_c = try!(cs_crs.create_subkey(r#"shell\open\command"#));
-        try!(sh_o_c.set_value("", &format!(r#""{}" "%1" %*"#, rcs_path)));
+        let sh_o_c = cs_crs.create_subkey(r#"shell\open\command"#)?;
+        sh_o_c.set_value("", &format!(r#""{}" "%1" %*"#, rcs_path))?;
         Ok(())
     })();
 
@@ -121,12 +121,12 @@ fn install(amend_pathext: bool) -> Result<()> {
     // Amend PATHEXT.
     if amend_pathext {
         let hklm = RegKey::predef(wre::HKEY_LOCAL_MACHINE);
-        let env = try!(hklm.open_subkey(r#"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"#));
+        let env = hklm.open_subkey(r#"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"#)?;
 
-        let pathext: String = try!(env.get_value("PATHEXT"));
+        let pathext: String = env.get_value("PATHEXT")?;
         if !pathext.split(";").any(|e| e.eq_ignore_ascii_case(".crs")) {
             let pathext = pathext.split(";").chain(Some(".CRS")).join(";");
-            try!(env.set_value("PATHEXT", &pathext));
+            env.set_value("PATHEXT", &pathext)?;
         }
 
         println!("Added `.crs` to PATHEXT.  You may need to log out for the change to take effect.");
@@ -144,10 +144,10 @@ fn uninstall() -> Result<()> {
         let mut notify = || ignored_missing = true;
 
         let hlcr = RegKey::predef(wre::HKEY_CLASSES_ROOT);
-        try!(hlcr.delete_subkey(r#"CargoScript.Crs\shell\open\command"#).ignore_missing_and(&mut notify));
-        try!(hlcr.delete_subkey(r#"CargoScript.Crs\shell\open"#).ignore_missing_and(&mut notify));
-        try!(hlcr.delete_subkey(r#"CargoScript.Crs\shell"#).ignore_missing_and(&mut notify));
-        try!(hlcr.delete_subkey(r#"CargoScript.Crs"#).ignore_missing_and(&mut notify));
+        hlcr.delete_subkey(r#"CargoScript.Crs\shell\open\command"#).ignore_missing_and(&mut notify)?;
+        hlcr.delete_subkey(r#"CargoScript.Crs\shell\open"#).ignore_missing_and(&mut notify)?;
+        hlcr.delete_subkey(r#"CargoScript.Crs\shell"#).ignore_missing_and(&mut notify)?;
+        hlcr.delete_subkey(r#"CargoScript.Crs"#).ignore_missing_and(&mut notify)?;
     }
 
     if ignored_missing {
@@ -157,12 +157,12 @@ fn uninstall() -> Result<()> {
 
     {
         let hklm = RegKey::predef(wre::HKEY_LOCAL_MACHINE);
-        let env = try!(hklm.open_subkey(r#"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"#));
+        let env = hklm.open_subkey(r#"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"#)?;
 
-        let pathext: String = try!(env.get_value("PATHEXT"));
+        let pathext: String = env.get_value("PATHEXT")?;
         if pathext.split(";").any(|e| e.eq_ignore_ascii_case(".crs")) {
             let pathext = pathext.split(";").filter(|e| !e.eq_ignore_ascii_case(".crs")).join(";");
-            try!(env.set_value("PATHEXT", &pathext));
+            env.set_value("PATHEXT", &pathext)?;
             println!("Removed `.crs` from PATHEXT.  You may need to log out for the change to take effect.");
         }
     }

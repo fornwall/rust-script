@@ -146,8 +146,8 @@ pub mod inner {
     */
     pub fn get_cache_dir() -> Result<PathBuf, MainError> {
         let rfid = unsafe { uuid::local_app_data() };
-        let dir = try!(SHGetKnownFolderPath(rfid, 0, ::std::ptr::null_mut())
-            .map_err(|e| e.to_string()));
+        let dir = SHGetKnownFolderPath(rfid, 0, ::std::ptr::null_mut())
+            .map_err(|e| e.to_string())?;
         Ok(Path::new(&dir).to_path_buf().join("Cargo"))
     }
 
@@ -158,8 +158,8 @@ pub mod inner {
     */
     pub fn get_config_dir() -> Result<PathBuf, MainError> {
         let rfid = unsafe { uuid::roaming_app_data() };
-        let dir = try!(SHGetKnownFolderPath(rfid, 0, ::std::ptr::null_mut())
-            .map_err(|e| e.to_string()));
+        let dir = SHGetKnownFolderPath(rfid, 0, ::std::ptr::null_mut())
+            .map_err(|e| e.to_string())?;
         Ok(Path::new(&dir).to_path_buf().join("Cargo"))
     }
 
@@ -212,7 +212,7 @@ pub mod inner {
         for word in path.as_os_str().encode_wide() {
             let lo = (word & 0xff) as u8;
             let hi = (word >> 8) as u8;
-            try!(w.write_all(&[lo, hi]));
+            w.write_all(&[lo, hi])?;
         }
         Ok(())
     }
@@ -220,7 +220,7 @@ pub mod inner {
     pub fn read_path<R>(r: &mut R) -> io::Result<PathBuf>
     where R: io::Read {
         let mut buf = vec![];
-        try!(r.read_to_end(&mut buf));
+        r.read_to_end(&mut buf)?;
 
         let mut words = Vec::with_capacity(buf.len() / 2);
         let mut it = buf.iter().cloned();
