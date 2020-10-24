@@ -19,7 +19,7 @@ use self::regex::Regex;
 use toml;
 
 use consts;
-use error::{Blame, Result};
+use error::{Blame, MainError, Result};
 use templates;
 use Input;
 
@@ -343,18 +343,20 @@ enum Manifest<'s> {
 }
 
 impl<'s> Manifest<'s> {
-    pub fn into_toml(self) -> Result<toml::Table> {
+    pub fn into_toml(self) -> Result<toml::value::Table> {
         use self::Manifest::*;
         match self {
-            Toml(s) => Ok(toml::Parser::new(s).parse()
-                .ok_or("could not parse embedded manifest")?),
-            TomlOwned(ref s) => Ok(toml::Parser::new(s).parse()
-                .ok_or("could not parse embedded manifest")?),
+            Toml(s) => toml::from_str(s),
+            TomlOwned(ref s) => toml::from_str(&s),
             DepList(s) => Manifest::dep_list_to_toml(s),
-        }
+        }.map_err(|e| MainError::Tag(
+            Blame::Human,
+            "could not parse embedded manifest".into(),
+            Box::new(MainError::Other(Blame::Internal, Box::new(e))),
+        ))
     }
 
-    fn dep_list_to_toml(s: &str) -> Result<toml::Table> {
+    fn dep_list_to_toml(s: &str) -> ::std::result::Result<toml::value::Table, toml::de::Error> {
         let mut r = String::new();
         r.push_str("[dependencies]\n");
         for dep in s.trim().split(',') {
@@ -371,8 +373,7 @@ impl<'s> Manifest<'s> {
             }
         }
 
-        Ok(toml::Parser::new(&r).parse()
-            .ok_or("could not parse embedded manifest")?)
+        toml::from_str(&r)
     }
 }
 
@@ -962,7 +963,7 @@ time = "*"
 /**
 Generates a default Cargo manifest for the given input.
 */
-fn default_manifest(input: &Input) -> Result<toml::Table> {
+fn default_manifest(input: &Input) -> Result<toml::value::Table> {
     let mani_str = {
         let pkg_name = input.package_name();
         let mut subs = HashMap::with_capacity(2);
@@ -970,14 +971,17 @@ fn default_manifest(input: &Input) -> Result<toml::Table> {
         subs.insert(consts::MANI_FILE_SUB, &input.safe_name()[..]);
         templates::expand(consts::DEFAULT_MANIFEST, &subs)?
     };
-    toml::Parser::new(&mani_str).parse()
-        .ok_or("could not parse default manifest, somehow".into())
+    toml::from_str(&mani_str).map_err(|e| MainError::Tag(
+        Blame::Internal,
+        "could not parse default manifest".into(),
+        Box::new(MainError::Other(Blame::Internal, Box::new(e))),
+    ))
 }
 
 /**
 Generates a partial Cargo manifest containing the specified dependencies.
 */
-fn deps_manifest(deps: &[(String, String)]) -> Result<toml::Table> {
+fn deps_manifest(deps: &[(String, String)]) -> Result<toml::value::Table> {
     let mut mani_str = String::new();
     mani_str.push_str("[dependencies]\n");
 
@@ -993,8 +997,11 @@ fn deps_manifest(deps: &[(String, String)]) -> Result<toml::Table> {
         mani_str.push_str("\n");
     }
 
-    toml::Parser::new(&mani_str).parse()
-        .ok_or("could not parse dependency manifest".into())
+    toml::from_str(&mani_str).map_err(|e| MainError::Tag(
+        Blame::Human,
+        "could not parse dependency manifest".into(),
+        Box::new(MainError::Other(Blame::Internal, Box::new(e))),
+    ))
 }
 
 /**
@@ -1002,7 +1009,7 @@ Given two Cargo manifests, merges the second *into* the first.
 
 Note that the "merge" in this case is relatively simple: only *top-level* tables are actually merged; everything else is just outright replaced.
 */
-fn merge_manifest(mut into_t: toml::Table, from_t: toml::Table) -> Result<toml::Table> {
+fn merge_manifest(mut into_t: toml::value::Table, from_t: toml::value::Table) -> Result<toml::value::Table> {
     for (k, v) in from_t {
         match v {
             toml::Value::Table(from_t) => {
@@ -1010,10 +1017,10 @@ fn merge_manifest(mut into_t: toml::Table, from_t: toml::Table) -> Result<toml::
 
                 // Merge.
                 match into_t.entry(k) {
-                    Vacant(e) => {
+                    toml::map::Entry::Vacant(e) => {
                         e.insert(toml::Value::Table(from_t));
                     },
-                    Occupied(e) => {
+                    toml::map::Entry::Occupied(e) => {
                         let into_t = as_table_mut(e.into_mut())
                             .ok_or((Blame::Human, "cannot merge manifests: cannot merge \
                                 table and non-table values"))?;
@@ -1030,7 +1037,7 @@ fn merge_manifest(mut into_t: toml::Table, from_t: toml::Table) -> Result<toml::
 
     return Ok(into_t);
 
-    fn as_table_mut(t: &mut toml::Value) -> Option<&mut toml::Table> {
+    fn as_table_mut(t: &mut toml::Value) -> Option<&mut toml::value::Table> {
         match *t {
             toml::Value::Table(ref mut t) => Some(t),
             _ => None
@@ -1041,7 +1048,7 @@ fn merge_manifest(mut into_t: toml::Table, from_t: toml::Table) -> Result<toml::
 /**
 Given a Cargo manifest, attempts to rewrite relative file paths to absolute ones, allowing the manifest to be relocated.
 */
-fn fix_manifest_paths(mani: toml::Table, base: &Path) -> Result<toml::Table> {
+fn fix_manifest_paths(mani: toml::value::Table, base: &Path) -> Result<toml::value::Table> {
     // Values that need to be rewritten:
     let paths: &[&[&str]] = &[
         &["build-dependencies", "*", "path"],
