@@ -12,58 +12,36 @@ This module is for platform-specific stuff.
 */
 
 pub use self::inner::{
-    current_time, file_last_modified, get_cache_dir, get_config_dir,
+    get_cache_dir, get_config_dir,
     write_path, read_path,
     force_cargo_color,
 };
 
-#[cfg(any(unix, windows))]
-mod inner_unix_or_windows {
-    extern crate time;
+use std::fs;
 
-    /**
-    Gets the current system time, in milliseconds since the UNIX epoch.
-    */
-    pub fn current_time() -> u64 {
-        /*
-        This is kinda dicey, since *ideally* both this function and `file_last_modified` would be using the same underlying APIs.  They are not, insofar as I know.
+use std::time::{SystemTime, UNIX_EPOCH};
 
-        At least, not when targetting Windows.
+// Last-modified time of a file, in milliseconds since the UNIX epoch.
+pub fn file_last_modified(file: &fs::File) -> u128 {
+    file.metadata().and_then(|md| md.modified().map(|t| t.duration_since(UNIX_EPOCH).unwrap().as_millis())).unwrap_or(0)
+}
 
-        That said, so long as everything is in the same units and uses the same epoch, it should be fine.
-        */
-        let now_1970_utc_msec = time::OffsetDateTime::now_utc().timestamp();
-        if now_1970_utc_msec < 0 {
-            // Fuck it.
-            return 0
-        }
-        now_1970_utc_msec as u64
-    }
+
+// Current system time, in milliseconds since the UNIX epoch.
+pub fn current_time() -> u128 {
+    SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis()
 }
 
 #[cfg(unix)]
 mod inner {
     extern crate atty;
 
-    pub use super::inner_unix_or_windows::current_time;
+    pub use super::*;
 
     use std::path::{Path, PathBuf};
-    use std::{cmp, env, fs, io};
+    use std::{env, io};
     use std::os::unix::ffi::OsStrExt;
-    use std::os::unix::fs::MetadataExt;
     use error::{MainError, Blame};
-
-    /**
-    Gets the last-modified time of a file, in milliseconds since the UNIX epoch.
-    */
-    pub fn file_last_modified(file: &fs::File) -> u64 {
-        let mtime_s_1970_utc = file.metadata()
-            .map(|md| md.mtime())
-            .unwrap_or(0);
-
-        let mtime_s_1970_utc = cmp::max(0, mtime_s_1970_utc);
-        mtime_s_1970_utc as u64 * 1000
-    }
 
     /**
     Get a directory suitable for storing user- and machine-specific data which may or may not be persisted across sessions.
@@ -135,7 +113,7 @@ pub mod inner {
     extern crate shell32;
     extern crate winapi;
 
-    pub use super::inner_unix_or_windows::current_time;
+    pub use super::*;
 
     use std::ffi::OsString;
     use std::fmt;
@@ -157,24 +135,6 @@ pub mod inner {
         pub unsafe fn roaming_app_data() -> &'static super::winapi::KNOWNFOLDERID {
             &uuid::FOLDERID_RoamingAppData
         }
-    }
-
-    /**
-    Gets the last-modified time of a file, in milliseconds since the UNIX epoch.
-    */
-    pub fn file_last_modified(file: &fs::File) -> u64 {
-        use ::std::os::windows::fs::MetadataExt;
-
-        const MS_BETWEEN_1601_1970: u64 = 11_644_473_600_000;
-
-        let mtime_100ns_1601_utc = file.metadata()
-            .map(|md| md.last_write_time())
-            .unwrap_or(0);
-        let mtime_ms_1601_utc = mtime_100ns_1601_utc / (1000*10);
-
-        // This can obviously underflow... but since files created prior to 1970 are going to be *somewhat rare*, I'm just going to saturate to zero.
-        let mtime_ms_1970_utc = mtime_ms_1601_utc.saturating_sub(MS_BETWEEN_1601_1970);
-        mtime_ms_1970_utc
     }
 
     /**

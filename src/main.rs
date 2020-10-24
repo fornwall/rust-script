@@ -613,7 +613,7 @@ Clean up the cache folder.
 
 Looks for all folders whose metadata says they were created at least `max_age` in the past and kills them dead.
 */
-fn clean_cache(max_age: u64) -> Result<()> {
+fn clean_cache(max_age: u128) -> Result<()> {
     info!("cleaning cache with max_age: {:?}", max_age);
 
     if max_age == 0 {
@@ -901,7 +901,7 @@ struct PackageMetadata {
     path: Option<String>,
 
     /// Last-modified timestamp for script file.
-    modified: Option<u64>,
+    modified: Option<u128>,
 
     /// Template used.
     template: Option<String>,
@@ -1242,7 +1242,7 @@ pub enum Input<'a> {
 
     The tuple members are: the name, absolute path, script contents, last modified time.
     */
-    File(&'a str, &'a Path, &'a str, u64),
+    File(&'a str, &'a Path, &'a str, u128),
 
     /**
     The input is an expression.
