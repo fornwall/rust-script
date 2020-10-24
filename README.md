@@ -15,7 +15,7 @@ Some of `rust-script`'s features include:
 - Running unit tests and benchmarks from scripts.
 - Custom templates for command-line expressions and filters.
 
-**Note**: `rust-script` *does not* work when Cargo is instructed to use a target architecture different to the default host architecture.
+**Note**: `rust-script` is a maintained fork of [cargo-script](https://github.com/DanielKeep/cargo-script).
 
 Table of contents:
 
@@ -29,6 +29,7 @@ Table of contents:
   - [Stream Filters](#filters)
   - [Environment Variables](#env-vars)
   - [Templates](#templates)
+  - [Troubleshooting](#troubleshooting)
 - [Known Issues](#issues)
 - [License](#license)
   - [Contribution](#contribution)
@@ -255,6 +256,11 @@ $ rust-script -t grabbag -e "mem::size_of::<Box<Read>>()"
 ```
 
 In addition, there are three built-in templates: `expr`, `loop`, and `loop-count`.  These are used for the `--expr`, `--loop`, and `--loop --count` invocation forms.  They can be overridden by placing templates with the same name in the template folder.  If you have *not* overridden them, you can dump the contents of these built-in templates using the `templates dump` command noted above.
+
+<a name="troubleshooting"></a>
+### Troubleshooting
+
+Run with the `RUST_LOG=rust_script=debug` environment variable set to see debug log output.
 
 <a name="issues"></a>
 ## Known Issues
