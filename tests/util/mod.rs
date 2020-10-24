@@ -6,12 +6,12 @@ macro_rules! cargo_script {
         $($args:expr),* $(,)*
     ) => {
         {
-            extern crate tempdir;
+            extern crate tempfile;
             use std::process::Command;
 
             let cargo_lock = ::util::CARGO_MUTEX.lock().expect("Could not acquire Cargo mutex");
 
-            let temp_dir = tempdir::TempDir::new("rust-script-test").unwrap();
+            let temp_dir = tempfile::TempDir::new().unwrap();
             let cmd_str;
             let out = {
                 let target_dir = ::std::env::var("CARGO_TARGET_DIR")
