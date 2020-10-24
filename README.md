@@ -1,4 +1,5 @@
 [![CI](https://github.com/fornwall/rust-script/workflows/CI/badge.svg)](https://github.com/fornwall/rust-script/actions?query=workflow%3ACI)
+[![Crates.io](https://img.shields.io/crates/v/rust-script.svg)](https://crates.io/crates/rust-script)
 
 # rust-script
 
