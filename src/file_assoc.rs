@@ -19,7 +19,7 @@ extern crate winreg;
 use std::io;
 use clap;
 use self::itertools::Itertools;
-use error::{Blame, Result};
+use crate::error::{Blame, Result};
 
 #[derive(Debug)]
 pub enum Args {

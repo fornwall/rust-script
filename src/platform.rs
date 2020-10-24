@@ -117,12 +117,12 @@ pub mod inner {
 
     use std::ffi::OsString;
     use std::fmt;
-    use std::fs;
+    
     use std::io;
     use std::path::{Path, PathBuf};
     use std::mem;
     use std::os::windows::ffi::{OsStrExt, OsStringExt};
-    use error::MainError;
+    use crate::error::MainError;
 
     mod uuid {
         // WARNING: do not use with rustc < 1.15; it will cause linking errors.
