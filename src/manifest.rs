@@ -621,7 +621,7 @@ fn find_code_block_manifest(s: &str) -> Option<(Manifest, &str)> {
 Extracts the first `Cargo` fenced code block from a chunk of Markdown.
 */
 fn scrape_markdown_manifest(content: &str) -> Result<Option<String>> {
-    use self::pulldown_cmark::{Parser, Options, Event, Tag};
+    use self::pulldown_cmark::{CodeBlockKind, Parser, Options, Event, Tag};
 
     // To match librustdoc/html/markdown.rs, opts.
     let exts
@@ -634,7 +634,7 @@ fn scrape_markdown_manifest(content: &str) -> Result<Option<String>> {
 
     for item in md {
         match item {
-            Event::Start(Tag::CodeBlock(ref info)) if info.to_lowercase() == "cargo" && output.is_none() => {
+            Event::Start(Tag::CodeBlock(CodeBlockKind::Fenced(ref info))) if info.to_lowercase() == "cargo" && output.is_none() => {
                 found = true;
             },
             Event::Text(ref text) if found => {
