@@ -17,7 +17,6 @@ use self::regex::Regex;
 use std::collections::HashMap;
 use std::path::Path;
 
-
 use crate::consts;
 use crate::error::{Blame, MainError, Result};
 use crate::templates;
@@ -1132,17 +1131,13 @@ fn fix_manifest_paths(mani: toml::value::Table, base: &Path) -> Result<toml::val
 
     for path in paths {
         iterate_toml_mut_path(&mut mani, path, &mut |v| {
-            match *v {
-                toml::Value::String(ref mut s) => {
-                    if Path::new(s).is_relative() {
-                        let p = base.join(&*s);
-                        match p.to_str() {
-                            Some(p) => *s = p.into(),
-                            None => {}
-                        }
+            if let toml::Value::String(ref mut s) = *v {
+                if Path::new(s).is_relative() {
+                    let p = base.join(&*s);
+                    if let Some(p) = p.to_str() {
+                        *s = p.into()
                     }
                 }
-                _ => {}
             }
             Ok(())
         })?
@@ -1169,23 +1164,14 @@ where
     let tail = &path[1..];
 
     if cur == "*" {
-        match *base {
-            toml::Value::Table(ref mut tab) => {
-                for (_, v) in tab {
-                    iterate_toml_mut_path(v, tail, on_each)?;
-                }
+        if let toml::Value::Table(ref mut tab) = *base {
+            for (_, v) in tab {
+                iterate_toml_mut_path(v, tail, on_each)?;
             }
-            _ => {}
         }
-    } else {
-        match *base {
-            toml::Value::Table(ref mut tab) => match tab.get_mut(cur) {
-                Some(v) => {
-                    iterate_toml_mut_path(v, tail, on_each)?;
-                }
-                None => {}
-            },
-            _ => {}
+    } else if let toml::Value::Table(ref mut tab) = *base {
+        if let Some(v) = tab.get_mut(cur) {
+            iterate_toml_mut_path(v, tail, on_each)?;
         }
     }
 

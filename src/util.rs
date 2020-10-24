@@ -81,7 +81,7 @@ pub use self::suppress_child_output::{suppress_child_output, ChildToken};
 #[cfg(feature = "suppress-cargo-output")]
 mod suppress_child_output {
     use crate::error::Result;
-    
+
     use std::io;
     use std::process::{self, Command};
     use std::thread;

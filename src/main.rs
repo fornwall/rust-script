@@ -75,13 +75,6 @@ use crate::error::{Blame, MainError, Result};
 use crate::util::{ChainMap, Defer};
 
 #[derive(Debug)]
-enum SubCommand {
-    Script(Args),
-    #[cfg(windows)]
-    FileAssoc(file_assoc::Args),
-}
-
-#[derive(Debug)]
 struct Args {
     command: Vec<String>,
     features: Option<String>,
@@ -139,7 +132,7 @@ impl BuildKind {
     }
 }
 
-fn parse_args() -> SubCommand {
+fn parse_args() -> Args {
     use clap::{App, Arg, ArgGroup};
     let version = option_env!("CARGO_PKG_VERSION").unwrap_or("unknown");
     let about = r#"Compiles and rtuns a Rust script."#;
@@ -302,7 +295,8 @@ fn parse_args() -> SubCommand {
     where
         I: ::std::iter::Iterator<Item = &'a str>,
     {
-        v.map(|itr| itr.map(Into::into).collect()).unwrap_or_default()
+        v.map(|itr| itr.map(Into::into).collect())
+            .unwrap_or_default()
     }
 
     fn yes_or_no(v: Option<&str>) -> Option<bool> {
@@ -313,7 +307,7 @@ fn parse_args() -> SubCommand {
         })
     }
 
-    crate::SubCommand::Script(Args {
+    Args {
         command: owned_vec_string(m.values_of("command")),
         features: m.value_of("features").map(Into::into),
 
@@ -335,7 +329,7 @@ fn parse_args() -> SubCommand {
         build_kind: BuildKind::from_flags(m.is_present("test"), m.is_present("bench")),
         template: m.value_of("template").map(Into::into),
         list_templates: m.is_present("list-templates"),
-    })
+    }
 }
 
 fn main() {
@@ -362,8 +356,6 @@ fn main() {
 fn try_main() -> Result<i32> {
     let args = parse_args();
     info!("Arguments: {:?}", args);
-
-    let SubCommand::Script(args) = args;
 
     if log_enabled!(log::Level::Debug) {
         let scp = get_script_cache_path()?;
@@ -407,7 +399,7 @@ fn try_main() -> Result<i32> {
             script_name = path
                 .file_stem()
                 .map(|os| os.to_string_lossy().into_owned())
-                .unwrap_or("unknown".into());
+                .unwrap_or_else(|| "unknown".into());
 
             let mut body = String::new();
             file.read_to_string(&mut body)?;
@@ -474,14 +466,15 @@ fn try_main() -> Result<i32> {
                 Occupied(oe) => {
                     // This is *only* a problem if the versions don't match.  We won't try to do anything clever in terms of upgrading or resolving or anything... exact match or go home.
                     let existing = oe.get();
-                    if &version != existing {
+                    if version != existing {
                         return Err((
                             Blame::Human,
                             format!(
                                 "conflicting versions for dependency '{}': '{}', '{}'",
                                 name, existing, version
                             ),
-                        ).into());
+                        )
+                            .into());
                     }
                 }
             }
@@ -567,7 +560,7 @@ fn try_main() -> Result<i32> {
         let add_env = hint(move |cmd| {
             cmd.env(
                 "CARGO_SCRIPT_SCRIPT_PATH",
-                input.path().unwrap_or(Path::new("")),
+                input.path().unwrap_or_else(|| Path::new("")),
             );
             cmd.env("CARGO_SCRIPT_SAFE_NAME", input.safe_name());
             cmd.env("CARGO_SCRIPT_PKG_NAME", input.package_name());

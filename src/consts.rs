@@ -183,4 +183,4 @@ Measured in milliseconds.
 */
 // It's been *one week* since you looked at me,
 // cocked your head to the side and said "I'm angry."
-pub const MAX_CACHE_AGE_MS: u128 = 1 * 7 * 24 * 60 * 60 * 1000;
+pub const MAX_CACHE_AGE_MS: u128 = 7 * 24 * 60 * 60 * 1000;
