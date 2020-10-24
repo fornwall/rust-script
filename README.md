@@ -1,4 +1,6 @@
-# `rust-script`
+[![CI](https://github.com/fornwall/rust-script/workflows/CI/badge.svg)](https://github.com/fornwall/rust-script/actions?query=workflow%3ACI)
+
+# rust-script
 
 `rust-script` is a command-line tool to run Rust "scripts" which can make use of Cargo's package ecosystem.  It can also evaluate expressions and run filters.
 
