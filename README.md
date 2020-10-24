@@ -30,7 +30,6 @@ Table of contents:
   - [Environment Variables](#env-vars)
   - [Templates](#templates)
   - [Troubleshooting](#troubleshooting)
-- [Known Issues](#issues)
 - [License](#license)
   - [Contribution](#contribution)
 
@@ -261,15 +260,6 @@ In addition, there are three built-in templates: `expr`, `loop`, and `loop-count
 ### Troubleshooting
 
 Run with the `RUST_LOG=rust_script=debug` environment variable set to see debug log output.
-
-<a name="issues"></a>
-## Known Issues
-
-### [Issue #50](https://github.com/DanielKeep/cargo-script/issues/50)
-
-There is a problem on Windows where `rust-script` can hang when asking Cargo for the path to a package's compiled executable.  `rust-script` currently works around this by using an older heuristic to guess this path on affected versions.  This can, however, lead to `rust-script` being unable to correctly locate a compiled executable.
-
-If this is a problem, `rust-script` can be instructed to use the accurate-but-buggy approach by setting the `CARGO_SCRIPT_IGNORE_ISSUE_50` environment variable to any non-empty string.
 
 <a name="license"></a>
 ## License

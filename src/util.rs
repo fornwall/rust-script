@@ -200,24 +200,3 @@ impl SubsliceOffset for str {
     }
 }
 
-use std::path::Path;
-
-/**
-Stable replacement for unstable `std::fs::PathExt`.
-*/
-pub trait PathExt {
-    /**
-    Returns whether this metadata is for a regular file.
-
-    This exists in 1.5.0 and later, but I couldn't be bothered to rig up a version detection build script for this *one* method.
-    */
-    fn is_file_polyfill(&self) -> bool;
-}
-
-impl PathExt for Path {
-    fn is_file_polyfill(&self) -> bool {
-        ::std::fs::metadata(self)
-            .map(|md| md.is_file())
-            .unwrap_or(false)
-    }
-}
