@@ -523,19 +523,7 @@ fn try_main() -> Result<i32> {
     info!("prelude_items: {:?}", prelude_items);
 
     // Work out what to do.
-    let action = decide_action_for(
-        &input,
-        deps,
-        prelude_items,
-        args.debug,
-        args.pkg_path,
-        args.gen_pkg_only,
-        args.build_only,
-        args.force,
-        args.features,
-        args.use_bincache,
-        args.build_kind,
-    )?;
+    let action = decide_action_for(&input, deps, prelude_items, &args)?;
     info!("action: {:?}", action);
 
     gen_pkg_and_compile(&input, &action)?;
@@ -924,30 +912,27 @@ fn decide_action_for(
     input: &Input,
     deps: Vec<(String, String)>,
     prelude: Vec<String>,
-    debug: bool,
-    pkg_path: Option<String>,
-    gen_pkg_only: bool,
-    build_only: bool,
-    force: bool,
-    features: Option<String>,
-    use_bincache: Option<bool>,
-    build_kind: BuildKind,
+    args: &Args,
 ) -> Result<InputAction> {
-    let (pkg_path, using_cache) = pkg_path.map(|p| (p.into(), false)).unwrap_or_else(|| {
-        // This can't fail.  Seriously, we're *fucked* if we can't work this out.
-        let cache_path = get_script_cache_path().unwrap();
-        info!("cache_path: {:?}", cache_path);
+    let (pkg_path, using_cache) = args
+        .pkg_path
+        .as_ref()
+        .map(|p| (p.into(), false))
+        .unwrap_or_else(|| {
+            // This can't fail.  Seriously, we're *fucked* if we can't work this out.
+            let cache_path = get_script_cache_path().unwrap();
+            info!("cache_path: {:?}", cache_path);
 
-        let id = {
-            let deps_iter = deps.iter().map(|&(ref n, ref v)| (n as &str, v as &str));
+            let id = {
+                let deps_iter = deps.iter().map(|&(ref n, ref v)| (n as &str, v as &str));
 
-            // Again, also fucked if we can't work this out.
-            input.compute_id(deps_iter).unwrap()
-        };
-        info!("id: {:?}", id);
+                // Again, also fucked if we can't work this out.
+                input.compute_id(deps_iter).unwrap()
+            };
+            info!("id: {:?}", id);
 
-        (cache_path.join(&id), true)
-    });
+            (cache_path.join(&id), true)
+        });
     info!("pkg_path: {:?}", pkg_path);
     info!("using_cache: {:?}", using_cache);
 
@@ -955,8 +940,8 @@ fn decide_action_for(
     let (mani_str, script_str) = manifest::split_input(input, &deps, &prelude)?;
 
     // Forcibly override some flags based on build kind.
-    let (debug, force, build_only) = match build_kind {
-        BuildKind::Normal => (debug, force, build_only),
+    let (debug, force, build_only) = match args.build_kind {
+        BuildKind::Normal => (args.debug, args.force, args.build_only),
         BuildKind::Test => (true, false, false),
         BuildKind::Bench => (false, false, false),
     };
@@ -977,7 +962,7 @@ fn decide_action_for(
             debug,
             deps,
             prelude,
-            features,
+            features: args.features.clone(),
             manifest_hash: hash_str(&mani_str),
             script_hash: hash_str(&script_str),
         }
@@ -992,12 +977,12 @@ fn decide_action_for(
         execute: !build_only,
         pkg_path,
         using_cache,
-        use_bincache: use_bincache.unwrap_or(using_cache),
+        use_bincache: args.use_bincache.unwrap_or(using_cache),
         metadata: input_meta,
         old_metadata: None,
         manifest: mani_str,
         script: script_str,
-        build_kind,
+        build_kind: args.build_kind,
     };
 
     macro_rules! bail {
@@ -1010,7 +995,7 @@ fn decide_action_for(
     }
 
     // If we were told to only generate the package, we need to stop *now*
-    if gen_pkg_only {
+    if args.gen_pkg_only {
         bail!(compile: false, execute: false)
     }
 
