@@ -105,7 +105,6 @@ where F: FnMut(&str) -> T, T: 'static {
 
 /// The template used for `--count --loop` input.
 pub const LOOP_COUNT_TEMPLATE: &'static str = r#"
-%p
 use std::any::Any;
 use std::io::prelude::*;
 

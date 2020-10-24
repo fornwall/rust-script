@@ -18,7 +18,10 @@ for TEST_SCRIPT in *.sh; do
     ACTUAL_STDERR=${TEST_SCRIPT/.sh/.actual-stderr}
     echo -n "Running $TEST_SCRIPT ... "
 
-    ./$TEST_SCRIPT > $ACTUAL_STDOUT 2> $ACTUAL_STDERR
+    ./$TEST_SCRIPT > $ACTUAL_STDOUT 2> $ACTUAL_STDERR || {
+      ANY_ERROR=1
+      echo "Failed to run!"
+    }
 
     if cmp -s "$EXPECTED_STDOUT" "$ACTUAL_STDOUT"; then
       echo "Ok"
