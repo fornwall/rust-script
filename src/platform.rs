@@ -13,21 +13,9 @@ This module is for platform-specific stuff.
 
 pub use self::inner::{
     current_time, file_last_modified, get_cache_dir, get_config_dir,
-    migrate_old_data, write_path, read_path,
+    write_path, read_path,
     force_cargo_color,
 };
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum MigrationKind {
-    DryRun,
-    ForReal,
-}
-
-impl MigrationKind {
-    pub fn for_real(&self) -> bool {
-        *self == MigrationKind::ForReal
-    }
-}
 
 #[cfg(any(unix, windows))]
 mod inner_unix_or_windows {
@@ -64,7 +52,6 @@ mod inner {
     use std::os::unix::ffi::OsStrExt;
     use std::os::unix::fs::MetadataExt;
     use error::{MainError, Blame};
-    use super::MigrationKind;
 
     /**
     Gets the last-modified time of a file, in milliseconds since the UNIX epoch.
@@ -117,86 +104,6 @@ mod inner {
         get_cache_dir()
     }
 
-    pub fn migrate_old_data(kind: MigrationKind) -> (Vec<String>, Result<(), MainError>) {
-        let mut log = vec![];
-        match migrate_0_2_0(kind, &mut log) {
-            Ok(()) => (),
-            Err(e) => return (log, Err(e)),
-        }
-        (log, Ok(()))
-    }
-
-    fn migrate_0_2_0(kind: MigrationKind, log: &mut Vec<String>) -> Result<(), MainError> {
-        /*
-        Previously, when `CARGO_HOME` was defined on !Windows, the cache would be at `$CARGO_HOME/.cargo`.  If it exists, its contents (`script-cache` and `binary-cache`) need to moved into `$CARGO_HOME` directly.
-        */
-        if let Some(home) = env::var_os("CARGO_HOME") {
-            let home = Path::new(&home);
-            let old_base = home.join(".cargo");
-            if old_base.exists() {
-                info!("<0.2.0 cache directory ({:?}) exists; attempting migration", old_base);
-
-                /*
-                Why both `info!` and `log`?  One for *before* we try (to help debug any issues) that only appears in the "real" log, and one for the user to let them know what we did/didn't do.
-                */
-
-                let old_script_cache = old_base.join("script-cache");
-                let new_script_cache = home.join("script-cache");
-                match (old_script_cache.exists(), new_script_cache.exists()) {
-                    (true, true) => {
-                        info!("not migrating {:?}; already exists at new location", old_script_cache);
-                        log.push(format!("Did not move {:?}: new location {:?} already exists.", old_script_cache, new_script_cache));
-                    },
-                    (true, false) => {
-                        info!("migrating {:?} -> {:?}", old_script_cache, new_script_cache);
-                        if kind.for_real() {
-                            fs::rename(&old_script_cache, &new_script_cache)?;
-                        }
-                        log.push(format!("Moved {:?} to {:?}.", old_script_cache, new_script_cache));
-                    },
-                    (false, _) => {
-                        info!("not migrating {:?}; does not exist", old_script_cache);
-                    },
-                }
-
-                let old_binary_cache = old_base.join("binary-cache");
-                let new_binary_cache = home.join("binary-cache");
-                match (old_binary_cache.exists(), new_binary_cache.exists()) {
-                    (true, true) => {
-                        info!("not migrating {:?}; already exists at new location", old_binary_cache);
-                        log.push(format!("Did not move {:?}: new location {:?} already exists.", old_binary_cache, new_binary_cache));
-                    },
-                    (true, false) => {
-                        info!("migrating {:?} -> {:?}", old_binary_cache, new_binary_cache);
-                        if kind.for_real() {
-                            fs::rename(&old_binary_cache, &new_binary_cache)?;
-                        }
-                        log.push(format!("Moved {:?} to {:?}.", old_script_cache, new_script_cache));
-                    },
-                    (false, _) => {
-                        info!("not migrating {:?}; does not exist", old_binary_cache);
-                    },
-                }
-
-                // If `$CARGO_HOME/.cargo` is empty, remove it.
-                if fs::read_dir(&old_base)?.next().is_none() {
-                    info!("{:?} is empty; removing", old_base);
-                    if kind.for_real() {
-                        fs::remove_dir(&old_base)?;
-                    }
-                    log.push(format!("Removed empty directory {:?}", old_base));
-                } else {
-                    info!("not removing {:?}; not empty", old_base);
-                    log.push(format!("Not removing {:?}: not empty.", old_base));
-                }
-
-                info!("done with migration");
-            }
-        }
-
-        Ok(())
-    }
-
     pub fn write_path<W>(w: &mut W, path: &Path) -> io::Result<()>
     where W: io::Write {
         w.write_all(path.as_os_str().as_bytes())
@@ -238,7 +145,6 @@ pub mod inner {
     use std::mem;
     use std::os::windows::ffi::{OsStrExt, OsStringExt};
     use error::MainError;
-    use super::MigrationKind;
 
     #[cfg(old_rustc_windows_linking_behaviour)]
     mod uuid {
@@ -358,12 +264,6 @@ pub mod inner {
             ptr = ptr.offset(1);
         }
         len
-    }
-
-    pub fn migrate_old_data(kind: MigrationKind) -> (Vec<String>, Result<(), MainError>) {
-        // Avoid unused code/variable warnings.
-        let _ = kind.for_real();
-        (vec![], Ok(()))
     }
 
     pub fn write_path<W>(w: &mut W, path: &Path) -> io::Result<()>

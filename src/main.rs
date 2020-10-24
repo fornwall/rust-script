@@ -85,7 +85,6 @@ use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 
 use error::{Blame, MainError, Result, ResultExt};
-use platform::MigrationKind;
 use util::{ChainMap, Defer, PathExt};
 
 #[derive(Debug)]
@@ -116,7 +115,6 @@ struct Args {
     force: bool,
     unstable_features: Vec<String>,
     use_bincache: Option<bool>,
-    migrate_data: Option<MigrationKind>,
     build_kind: BuildKind,
     template: Option<String>,
 }
@@ -288,12 +286,6 @@ fn parse_args() -> SubCommand {
                 .takes_value(true)
                 .possible_values(csas!["no", "yes"])
             )
-            .arg(Arg::with_name("migrate_data")
-                .help("Migrate data from older versions.")
-                .long("migrate-data")
-                .takes_value(true)
-                .possible_values(csas!["dry-run", "for-real"])
-            )
             .arg(Arg::with_name("test")
                 .help("Compile and run tests.")
                 .long("test")
@@ -328,14 +320,6 @@ fn parse_args() -> SubCommand {
         })
     }
 
-    fn run_kind(v: Option<&str>) -> Option<MigrationKind> {
-        v.map(|v| match v {
-            "dry-run" => MigrationKind::DryRun,
-            "for-real" => MigrationKind::ForReal,
-            _ => unreachable!(),
-        })
-    }
-
     ::SubCommand::Script(Args {
         command: owned_vec_string(m.values_of("command")),
         features: m.value_of("features").map(Into::into),
@@ -355,7 +339,6 @@ fn parse_args() -> SubCommand {
         force: m.is_present("force"),
         unstable_features: owned_vec_string(m.values_of("unstable_features")),
         use_bincache: yes_or_no(m.value_of("use_bincache")),
-        migrate_data: run_kind(m.value_of("migrate_data")),
         build_kind: BuildKind::from_flags(m.is_present("test"), m.is_present("bench")),
         template: m.value_of("template").map(Into::into),
     })
@@ -392,32 +375,6 @@ fn try_main() -> Result<i32> {
         #[cfg(windows)]
         SubCommand::FileAssoc(args) => return file_assoc::try_main(args),
     };
-
-    /*
-    Do data migration before anything else, since it can cause the location of stuff to change.
-    */
-    if let Some(run_kind) = args.migrate_data {
-        println!("Migrating data...");
-        let (log, res) = platform::migrate_old_data(run_kind);
-        match (log.len(), res) {
-            (0, Ok(())) => {
-                println!("Nothing to do.");
-                return Ok(0);
-            }
-            (_, Ok(())) => {
-                for entry in log {
-                    println!("- {}", entry);
-                }
-                return Ok(0);
-            }
-            (_, Err(err)) => {
-                for entry in log {
-                    println!("- {}", entry);
-                }
-                return Err(err);
-            }
-        }
-    }
 
     if log_enabled!(log::Level::Debug) {
         let scp = get_script_cache_path()?;
