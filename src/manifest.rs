@@ -10,7 +10,7 @@ or distributed except according to those terms.
 /*!
 This module is concerned with how `cargo-script` extracts the manfiest from a script file.
 */
-extern crate hoedown;
+extern crate pulldown_cmark;
 extern crate regex;
 
 use std::collections::HashMap;
@@ -621,45 +621,34 @@ fn find_code_block_manifest(s: &str) -> Option<(Manifest, &str)> {
 Extracts the first `Cargo` fenced code block from a chunk of Markdown.
 */
 fn scrape_markdown_manifest(content: &str) -> Result<Option<String>> {
-    use self::hoedown::{Buffer, Markdown, Render};
+    use self::pulldown_cmark::{Parser, Options, Event, Tag};
 
-    // To match librustdoc/html/markdown.rs, HOEDOWN_EXTENSIONS.
+    // To match librustdoc/html/markdown.rs, opts.
     let exts
-        = hoedown::NO_INTRA_EMPHASIS
-        | hoedown::TABLES
-        | hoedown::FENCED_CODE
-        | hoedown::AUTOLINK
-        | hoedown::STRIKETHROUGH
-        | hoedown::SUPERSCRIPT
-        | hoedown::FOOTNOTES;
+        = Options::ENABLE_TABLES | Options::ENABLE_FOOTNOTES;
 
-    let md = Markdown::new(&content).extensions(exts);
+    let md = Parser::new_ext(&content, exts);
 
-    struct ManifestScraper {
-        seen_manifest: bool,
-    }
+    let mut found = false;
+    let mut output = None;
 
-    impl Render for ManifestScraper {
-        fn code_block(&mut self, output: &mut Buffer, text: Option<&Buffer>, lang: Option<&Buffer>) {
-            let lang = lang.map(|b| b.to_str().unwrap()).unwrap_or("");
-
-            if !self.seen_manifest && lang.eq_ignore_ascii_case("cargo") {
-                // Pass it through.
-                info!("found code block manifest");
-                if let Some(text) = text {
-                    output.pipe(text);
-                }
-                self.seen_manifest = true;
-            }
+    for item in md {
+        match item {
+            Event::Start(Tag::CodeBlock(ref info)) if info.to_lowercase() == "cargo" && output.is_none() => {
+                found = true;
+            },
+            Event::Text(ref text) if found => {
+                let mut s = output.get_or_insert(String::new());
+                s.push_str(&*text);
+            },
+            Event::End(Tag::CodeBlock(_)) if found => {
+                found = false;
+            },
+            _ => ()
         }
     }
 
-    let mut ms = ManifestScraper { seen_manifest: false };
-    let mani_buf = ms.render(&md);
-
-    if !ms.seen_manifest { return Ok(None) }
-    mani_buf.to_str().map(|s| Some(s.into()))
-        .map_err(|_| "error decoding manifest as UTF-8".into())
+    Ok(output)
 }
 
 #[test]
