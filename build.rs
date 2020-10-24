@@ -28,11 +28,4 @@ fn main() {
     if version_matches("<1.15.0") {
         println!("cargo:rustc-cfg=old_rustc_windows_linking_behaviour");
     }
-
-    /*
-    Before 1.13, there was no `?` operator. One of the tests needs this information.
-    */
-    if version_matches(">=1.13.0") {
-        println!("cargo:rustc-cfg=has_qmark");
-    }
 }

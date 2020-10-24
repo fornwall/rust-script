@@ -58,9 +58,7 @@ The following features are defined:
 <a name="compiling"></a>
 ### Manually Compiling and Installing
 
-`rust-script` requires Rust 1.11 or higher to build.  Rust 1.4+ was supported prior to version 0.2.
-
-Once built, you should place the resulting executable somewhere on your `PATH`. At that point, you should be able to invoke it by using `rust-script`.
+`rust-script` requires latest stable Rust to build.
 
 <a name="hashbang"></a>
 ### Self-Executing Scripts

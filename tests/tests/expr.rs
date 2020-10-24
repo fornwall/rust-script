@@ -75,11 +75,7 @@ fn test_expr_panic() {
 
 #[test]
 fn test_expr_qmark() {
-    let code = if cfg!(has_qmark) {
-        with_output_marker!("\"42\".parse::<i32>()?.wrapping_add(1)")
-    } else {
-        with_output_marker!("try!(\"42\".parse::<i32>()).wrapping_add(1)")
-    };
+    let code = with_output_marker!("\"42\".parse::<i32>()?.wrapping_add(1)");
     let out = cargo_script!("-e", code).unwrap();
     scan!(out.stdout_output();
         ("43") => ()
