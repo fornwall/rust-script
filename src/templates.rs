@@ -14,8 +14,6 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use clap;
-use open;
 use regex::Regex;
 use consts;
 use error::{Blame, MainError, Result, ResultExt};
@@ -23,73 +21,6 @@ use platform;
 
 lazy_static! {
     static ref RE_SUB: Regex = Regex::new(r#"#\{([A-Za-z_][A-Za-z0-9_]*)}"#).unwrap();
-}
-
-#[derive(Debug)]
-pub enum Args {
-    Dump { name: String },
-    List,
-    Show { path: bool },
-}
-
-impl Args {
-    pub fn subcommand() -> clap::App<'static, 'static> {
-        use clap::{AppSettings, Arg, SubCommand};
-
-        SubCommand::with_name("templates")
-            .about("Manage Cargo Script expression templates.")
-            .setting(AppSettings::SubcommandRequiredElseHelp)
-
-            .subcommand(SubCommand::with_name("dump")
-                .about("Outputs the contents of a template to standard output.")
-
-                .arg(Arg::with_name("template")
-                    .help("Name of template to dump.")
-                    .index(1)
-                    .required(true)
-                )
-            )
-
-            .subcommand(SubCommand::with_name("list")
-                .about("List the available templates.")
-            )
-
-            .subcommand(SubCommand::with_name("show")
-                .about("Open the template folder in a file browser.")
-
-                .arg(Arg::with_name("show_path")
-                    .help("Output the path to the template folder to standard output instead.")
-                    .long("path")
-                )
-            )
-    }
-
-    pub fn parse(m: &clap::ArgMatches) -> Self {
-        match m.subcommand() {
-            ("dump", Some(m)) => {
-                Args::Dump {
-                    name: m.value_of("template").unwrap().into(),
-                }
-            },
-            ("list", _) => Args::List,
-            ("show", Some(m)) => {
-                Args::Show {
-                    path: m.is_present("show_path"),
-                }
-            },
-            (name, _) => panic!("bad subcommand: {:?}", name)
-        }
-    }
-}
-
-pub fn try_main(args: Args) -> Result<i32> {
-    match args {
-        Args::Dump { name } => dump(&name)?,
-        Args::List => list()?,
-        Args::Show { path } => show(path)?,
-    }
-
-    Ok(0)
 }
 
 pub fn expand(src: &str, subs: &HashMap<&str, &str>) -> Result<String> {
@@ -178,16 +109,16 @@ fn builtin_template(name: &str) -> Option<&'static str> {
     })
 }
 
-fn dump(name: &str) -> Result<()> {
-    let text = get_template(name)?;
-    print!("{}", text);
-    Ok(())
-}
-
-fn list() -> Result<()> {
+pub fn list() -> Result<()> {
     use std::ffi::OsStr;
 
     let t_path = get_template_path()?;
+
+    if !t_path.exists() {
+        fs::create_dir_all(&t_path)?;
+    }
+
+    println!("Listing templates in {}", t_path.display());
 
     if !t_path.exists() {
         return Err(format!("cannot list template directory `{}`: it does not exist", t_path.display()).into());
@@ -213,21 +144,3 @@ fn list() -> Result<()> {
     Ok(())
 }
 
-fn show(path: bool) -> Result<()> {
-    let t_path = get_template_path()?;
-
-    if path {
-        println!("{}", t_path.display());
-        Ok(())
-    } else {
-        if !t_path.exists() {
-            fs::create_dir_all(&t_path)?;
-        }
-        if t_path.is_dir() {
-            open::that(&t_path)?;
-        } else {
-            return Err(format!("cannot open directory `{}`; it isn't a directory", t_path.display()).into());
-        }
-        Ok(())
-    }
-}

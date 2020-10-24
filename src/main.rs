@@ -90,7 +90,6 @@ use util::{ChainMap, Defer, PathExt};
 #[derive(Debug)]
 enum SubCommand {
     Script(Args),
-    Templates(templates::Args),
     #[cfg(windows)]
     FileAssoc(file_assoc::Args),
 }
@@ -117,6 +116,7 @@ struct Args {
     use_bincache: Option<bool>,
     build_kind: BuildKind,
     template: Option<String>,
+    list_templates: bool,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -153,7 +153,7 @@ impl BuildKind {
 }
 
 fn parse_args() -> SubCommand {
-    use clap::{App, AppSettings, Arg, ArgGroup, SubCommand};
+    use clap::{App, Arg, ArgGroup};
     let version = option_env!("CARGO_PKG_VERSION").unwrap_or("unknown");
     let about = r#"Compiles and rtuns a Rust script."#;
 
@@ -303,6 +303,12 @@ fn parse_args() -> SubCommand {
                 .takes_value(true)
                 .requires("expr")
             )
+        .arg(Arg::with_name("list-templates")
+            .help("List the available templates.")
+            .long("list-templates")
+            .takes_value(false)
+            // TODO: .conflicts_with()
+        )
         .get_matches();
 
     fn owned_vec_string<'a, I>(v: Option<I>) -> Vec<String>
@@ -341,6 +347,7 @@ fn parse_args() -> SubCommand {
         use_bincache: yes_or_no(m.value_of("use_bincache")),
         build_kind: BuildKind::from_flags(m.is_present("test"), m.is_present("bench")),
         template: m.value_of("template").map(Into::into),
+        list_templates: m.is_present("list-templates"),
     })
 }
 
@@ -371,7 +378,6 @@ fn try_main() -> Result<i32> {
 
     let args = match args {
         SubCommand::Script(args) => args,
-        SubCommand::Templates(args) => return templates::try_main(args),
         #[cfg(windows)]
         SubCommand::FileAssoc(args) => return file_assoc::try_main(args),
     };
@@ -398,6 +404,11 @@ fn try_main() -> Result<i32> {
             println!("cargo script cache cleared.");
             return Ok(0);
         }
+    }
+
+    if args.list_templates {
+        templates::list()?;
+        return Ok(0)
     }
 
     // Take the arguments and work out what our input is going to be.  Primarily, this gives us the content, a user-friendly name, and a cache-friendly ID.
