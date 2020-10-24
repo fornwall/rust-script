@@ -137,16 +137,6 @@ fn parse_args() -> Args {
     let version = option_env!("CARGO_PKG_VERSION").unwrap_or("unknown");
     let about = r#"Compiles and rtuns a Rust script."#;
 
-    // "const str array slice"
-    macro_rules! csas {
-        ($($es:expr),*) => {
-            {
-                const PIN: &'static [&'static str] = &[$($es),*];
-                PIN
-            }
-        }
-    }
-
     // We have to kinda lie about who we are for the output to look right...
     let m = App::new("rust-script")
         .bin_name("rust-script")
@@ -164,14 +154,14 @@ fn parse_args() -> Args {
                 .long("expr")
                 .short("e")
                 .takes_value(false)
-                //.conflicts_with_all(csas!["loop"])
+                //.conflicts_with_all(&["loop"])
                 .requires("command")
             )
             .arg(Arg::with_name("loop")
                 .help("Execute <script> as a literal closure once for each line from stdin.")
                 .long("loop")
                 .short("l")
-                //.conflicts_with_all(csas!["expr"])
+                //.conflicts_with_all(&["expr"])
                 .requires("command")
             )
             .group(ArgGroup::with_name("expr_or_loop")
@@ -236,7 +226,7 @@ fn parse_args() -> Args {
                 .help("Build the script, but don't run it.")
                 .long("build-only")
                 .requires("script")
-                .conflicts_with_all(csas!["args"])
+                .conflicts_with_all(&["args"])
             )
             .arg(Arg::with_name("clear_cache")
                 .help("Clears out the script cache.")
@@ -251,30 +241,30 @@ fn parse_args() -> Args {
                 .help("Generate the Cargo package, but don't compile or run it.")
                 .long("gen-pkg-only")
                 .requires("script")
-                .conflicts_with_all(csas!["args", "build_only", "debug", "force", "test", "bench"])
+                .conflicts_with_all(&["args", "build_only", "debug", "force", "test", "bench"])
             )
             .arg(Arg::with_name("pkg_path")
                 .help("Specify where to place the generated Cargo package.")
                 .long("pkg-path")
                 .takes_value(true)
                 .requires("command")
-                .conflicts_with_all(csas!["clear_cache", "force"])
+                .conflicts_with_all(&["clear_cache", "force"])
             )
             .arg(Arg::with_name("use_bincache")
                 .help("Override whether or not the shared binary cache will be used for compilation.")
                 .long("use-shared-binary-cache")
                 .takes_value(true)
-                .possible_values(csas!["no", "yes"])
+                .possible_values(&["no", "yes"])
             )
             .arg(Arg::with_name("test")
                 .help("Compile and run tests.")
                 .long("test")
-                .conflicts_with_all(csas!["bench", "debug", "args", "force"])
+                .conflicts_with_all(&["bench", "debug", "args", "force"])
             )
             .arg(Arg::with_name("bench")
                 .help("Compile and run benchmarks.  Requires a nightly toolchain.")
                 .long("bench")
-                .conflicts_with_all(csas!["test", "debug", "args", "force"])
+                .conflicts_with_all(&["test", "debug", "args", "force"])
             )
             .arg(Arg::with_name("template")
                 .help("Specify a template to use for expression scripts.")
