@@ -64,7 +64,6 @@ mod file_assoc;
 mod file_assoc {}
 
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
 use std::ffi::OsString;
 use std::fs;
 use std::io::{Read, Write};
@@ -89,7 +88,6 @@ struct Args {
     clear_cache: bool,
     debug: bool,
     dep: Vec<String>,
-    dep_extern: Vec<String>,
     extern_: Vec<String>,
     force: bool,
     unstable_features: Vec<String>,
@@ -311,7 +309,6 @@ fn parse_args() -> Args {
         clear_cache: m.is_present("clear_cache"),
         debug: m.is_present("debug"),
         dep: owned_vec_string(m.values_of("dep")),
-        dep_extern: owned_vec_string(m.values_of("dep_extern")),
         extern_: owned_vec_string(m.values_of("extern")),
         force: m.is_present("force"),
         unstable_features: owned_vec_string(m.values_of("unstable_features")),
@@ -426,7 +423,7 @@ fn try_main() -> Result<i32> {
         use std::collections::HashMap;
 
         let mut deps: HashMap<String, String> = HashMap::new();
-        for dep in args.dep.iter().chain(args.dep_extern.iter()).cloned() {
+        for dep in args.dep.iter().cloned() {
             // Append '=*' if it needs it.
             let dep = match dep.find('=') {
                 Some(_) => dep,
@@ -485,28 +482,13 @@ fn try_main() -> Result<i32> {
             .unstable_features
             .iter()
             .map(|uf| format!("#![feature({})]", uf));
-        let dep_externs = args
-            .dep_extern
-            .iter()
-            .map(|d| match d.find('=') {
-                Some(i) => &d[..i],
-                None => &d[..],
-            })
-            .map(|d| match d.contains('-') {
-                true => Cow::from(d.replace("-", "_")),
-                false => Cow::from(d),
-            })
-            .map(|d| format!("#[macro_use] extern crate {};", d));
 
         let externs = args
             .extern_
             .iter()
             .map(|n| format!("#[macro_use] extern crate {};", n));
 
-        let mut items: Vec<_> = unstable_features
-            .chain(dep_externs)
-            .chain(externs)
-            .collect();
+        let mut items: Vec<_> = unstable_features.chain(externs).collect();
         items.sort();
         items
     };

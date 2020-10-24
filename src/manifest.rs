@@ -61,15 +61,6 @@ pub fn split_input(
 
             (manifest, source, templates::get_template("file")?, false)
         }
-        Input::Expr("meaning-of-life", None) | Input::Expr("meaning_of_life", None) => (
-            Manifest::Toml(""),
-            r#"
-                println!("42");
-                std::process::exit(42);
-            "#,
-            templates::get_template("expr")?,
-            true,
-        ),
         Input::Expr(content, template) => {
             template_buf = templates::get_template(template.unwrap_or("expr"))?;
             let (manifest, template_src) = find_embedded_manifest(&template_buf)
@@ -155,6 +146,7 @@ path = "n.rs"
 
 [package]
 authors = ["Anonymous"]
+edition = "2018"
 name = "n"
 version = "0.1.0"
 "#,
@@ -177,6 +169,7 @@ path = "n.rs"
 
 [package]
 authors = ["Anonymous"]
+edition = "2018"
 name = "n"
 version = "0.1.0"
 "#,
@@ -202,6 +195,7 @@ path = "n.rs"
 
 [package]
 authors = ["Anonymous"]
+edition = "2018"
 name = "n"
 version = "0.1.0"
 "#,
@@ -228,6 +222,7 @@ time = "0.1.25"
 
 [package]
 authors = ["Anonymous"]
+edition = "2018"
 name = "n"
 version = "0.1.0"
 "#,
@@ -254,6 +249,7 @@ time = "0.1.25"
 
 [package]
 authors = ["Anonymous"]
+edition = "2018"
 name = "n"
 version = "0.1.0"
 "#,
@@ -286,6 +282,7 @@ time = "0.1.25"
 
 [package]
 authors = ["Anonymous"]
+edition = "2018"
 name = "n"
 version = "0.1.0"
 "#,
