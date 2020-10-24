@@ -46,7 +46,7 @@ pub enum Blame {
 }
 
 impl MainError {
-    pub fn blame(&self) -> Blame {
+    pub const fn blame(&self) -> Blame {
         use self::MainError::*;
         match *self {
             Io(blame, _)
@@ -82,7 +82,7 @@ impl fmt::Display for MainError {
             Tag(_, ref msg, ref err) => write!(fmt, "{}: {}", msg, err),
             Other(_, ref err) => Display::fmt(err, fmt),
             OtherOwned(_, ref err) => Display::fmt(err, fmt),
-            OtherBorrowed(_, ref err) => Display::fmt(err, fmt),
+            OtherBorrowed(_, err) => Display::fmt(err, fmt),
         }
     }
 }

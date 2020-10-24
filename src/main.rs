@@ -107,26 +107,26 @@ enum BuildKind {
 }
 
 impl BuildKind {
-    fn can_exec_directly(&self) -> bool {
+    const fn can_exec_directly(&self) -> bool {
         match *self {
-            BuildKind::Normal => true,
-            BuildKind::Test | BuildKind::Bench => false,
+            Self::Normal => true,
+            Self::Test | Self::Bench => false,
         }
     }
 
     fn exec_command(&self) -> &'static str {
         match *self {
-            BuildKind::Normal => panic!("asked for exec command for normal build"),
-            BuildKind::Test => "test",
-            BuildKind::Bench => "bench",
+            Self::Normal => panic!("asked for exec command for normal build"),
+            Self::Test => "test",
+            Self::Bench => "bench",
         }
     }
 
     fn from_flags(test: bool, bench: bool) -> Self {
         match (test, bench) {
-            (false, false) => BuildKind::Normal,
-            (true, false) => BuildKind::Test,
-            (false, true) => BuildKind::Bench,
+            (false, false) => Self::Normal,
+            (true, false) => Self::Test,
+            (false, true) => Self::Bench,
             _ => panic!("got both test and bench"),
         }
     }
@@ -1232,7 +1232,7 @@ impl<'a> Input<'a> {
     /**
     Return the path to the script, if it has one.
     */
-    pub fn path(&self) -> Option<&Path> {
+    pub const fn path(&self) -> Option<&Path> {
         use crate::Input::*;
 
         match *self {
@@ -1247,7 +1247,7 @@ impl<'a> Input<'a> {
 
     Currently, nothing is done to ensure this, other than hoping *really hard* that we don't get fed some excessively bizzare input filename.
     */
-    pub fn safe_name(&self) -> &str {
+    pub const fn safe_name(&self) -> &str {
         use crate::Input::*;
 
         match *self {
@@ -1343,7 +1343,7 @@ impl<'a> Input<'a> {
                 hasher.input_str(template.unwrap_or(""));
                 hasher.input_str(";");
 
-                hasher.input_str(&content);
+                hasher.input_str(content);
                 let mut digest = hasher.result_str();
                 digest.truncate(consts::ID_DIGEST_LEN_MAX);
 
@@ -1359,7 +1359,7 @@ impl<'a> Input<'a> {
                 hasher.input_str("count:");
                 hasher.input_str(if count { "true;" } else { "false;" });
 
-                hasher.input_str(&content);
+                hasher.input_str(content);
                 let mut digest = hasher.result_str();
                 digest.truncate(consts::ID_DIGEST_LEN_MAX);
 

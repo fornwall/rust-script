@@ -42,4 +42,4 @@ jobs:
     - name: Install rustfmt
       run: rustup component add clippy
     - name: Check for clippy warnings
-      run: cargo clippy
+      run: cargo clippy --all-targets --all-features -- -D warnings -W clippy::cargo

@@ -192,7 +192,7 @@ pub trait SubsliceOffset {
 }
 
 impl SubsliceOffset for str {
-    fn subslice_offset_stable(&self, inner: &str) -> Option<usize> {
+    fn subslice_offset_stable(&self, inner: &Self) -> Option<usize> {
         let self_beg = self.as_ptr() as usize;
         let inner = inner.as_ptr() as usize;
         if inner < self_beg || inner > self_beg.wrapping_add(self.len()) {

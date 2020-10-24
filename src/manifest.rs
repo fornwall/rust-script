@@ -364,7 +364,7 @@ impl<'s> Manifest<'s> {
         use self::Manifest::*;
         match self {
             Toml(s) => toml::from_str(s),
-            TomlOwned(ref s) => toml::from_str(&s),
+            TomlOwned(ref s) => toml::from_str(s),
             DepList(s) => Manifest::dep_list_to_toml(s),
         }
         .map_err(|e| {
@@ -670,7 +670,7 @@ fn scrape_markdown_manifest(content: &str) -> Result<Option<String>> {
     // To match librustdoc/html/markdown.rs, opts.
     let exts = Options::ENABLE_TABLES | Options::ENABLE_FOOTNOTES;
 
-    let md = Parser::new_ext(&content, exts);
+    let md = Parser::new_ext(content, exts);
 
     let mut found = false;
     let mut output = None;

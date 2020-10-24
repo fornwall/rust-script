@@ -110,7 +110,7 @@ impl Output {
 
 impl From<::std::process::Output> for Output {
     fn from(v: ::std::process::Output) -> Self {
-        Output {
+        Self {
             status: v.status,
             stdout: String::from_utf8(v.stdout).unwrap(),
             stderr: String::from_utf8(v.stderr).unwrap(),
