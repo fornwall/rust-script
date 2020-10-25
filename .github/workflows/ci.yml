@@ -50,6 +50,23 @@ jobs:
     - name: Check for clippy warnings
       run: cargo clippy --all-targets --all-features -- -D warnings -W clippy::cargo
 
+  upload-debug-builds:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v2
+    - name: Setup rust
+      uses: hecrj/setup-rust-action@v1
+    - name: Build debug
+      run: cargo build
+    - name: Upload debug build
+    - uses: actions/upload-artifact@v2
+      with:
+        path: ./target/debug/rust-script*
+
   security-audit:
     runs-on: ubuntu-latest
     steps:
