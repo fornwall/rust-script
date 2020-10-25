@@ -30,7 +30,6 @@ extern crate serde;
 extern crate shaman;
 extern crate toml;
 
-#[cfg(feature = "crossbeam-channel")]
 #[macro_use]
 extern crate crossbeam_channel;
 
@@ -43,12 +42,6 @@ const STUB_HASHES: bool = false;
 If this is set to `false`, then code that automatically deletes stuff *won't*.
 */
 const ALLOW_AUTO_REMOVE: bool = true;
-
-/**
-Length of time to suppress Cargo output.
-*/
-#[cfg(feature = "suppress-cargo-output")]
-const CARGO_OUTPUT_TIMEOUT: u64 = 2_000/*ms*/;
 
 mod consts;
 mod error;
@@ -709,21 +702,9 @@ fn gen_pkg_and_compile(input: &Input, action: &InputAction) -> Result<()> {
             &meta,
         )?;
 
-        #[cfg(feature = "suppress-cargo-output")]
         macro_rules! get_status {
             ($cmd:expr) => {
-                util::suppress_child_output(
-                    &mut $cmd,
-                    ::std::time::Duration::from_millis(CARGO_OUTPUT_TIMEOUT),
-                )?
-                .status()
-            };
-        }
-
-        #[cfg(not(feature = "suppress-cargo-output"))]
-        macro_rules! get_status {
-            ($cmd:expr) => {
-                $cmd.status()
+                util::suppress_child_output(&mut $cmd)?.status()
             };
         }
 
@@ -1398,7 +1379,12 @@ fn cargo(
     }
 
     if use_bincache {
-        cmd.env("CARGO_TARGET_DIR", get_binary_cache_path()?);
+        let script_specific_binary_cache = format!(
+            "{}/{}",
+            get_binary_cache_path()?.display(),
+            meta.sha1_hash()
+        );
+        cmd.env("CARGO_TARGET_DIR", script_specific_binary_cache);
     }
 
     // Block `--release` on `bench`.

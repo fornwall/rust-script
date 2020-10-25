@@ -48,13 +48,6 @@ If you have already installed `rust-script`, you can update to the latest versio
 cargo install --force rust-script
 ```
 
-<a name="features"></a>
-### Cargo Features
-
-The following features are defined:
-
-- `suppress-cargo-output` (default): if building the script takes less than 2 seconds and succeeds, `rust-script` will suppress Cargo's output.  Note that this disabled coloured Cargo output on Windows.
-
 <a name="compiling"></a>
 ### Manually Compiling and Installing
 

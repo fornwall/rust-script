@@ -89,21 +89,6 @@ fn test_script_has_weird_chars() {
 }
 
 #[test]
-fn test_script_slow_output() {
-    let out = cargo_script!(
-        "--use-shared-binary-cache=no",
-        "tests/data/script-slow-output.rs"
-    )
-    .unwrap();
-    assert!(out.stderr_raw().contains("Compiling slow-build"));
-    assert!(out.stderr_raw().contains("Compiling script-slow-output"));
-    scan!(out.stdout_output();
-        ("Ok") => ()
-    )
-    .unwrap()
-}
-
-#[test]
 fn test_script_cs_env() {
     let out = cargo_script!("tests/data/script-cs-env.rs").unwrap();
     scan!(out.stdout_output();

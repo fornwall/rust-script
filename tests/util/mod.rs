@@ -98,11 +98,6 @@ impl Output {
         panic!("could not find `{}` in script output", OUTPUT_MARKER);
     }
 
-    pub fn stderr_raw(&self) -> &str {
-        assert!(self.success());
-        &self.stderr[..]
-    }
-
     pub fn success(&self) -> bool {
         self.status.success()
     }

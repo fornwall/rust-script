@@ -75,55 +75,42 @@ where
     }
 }
 
-#[cfg(feature = "suppress-cargo-output")]
 pub use self::suppress_child_output::{suppress_child_output, ChildToken};
 
-#[cfg(feature = "suppress-cargo-output")]
 mod suppress_child_output {
     use crate::error::Result;
 
     use std::io;
     use std::process::{self, Command};
     use std::thread;
-    use std::time::Duration;
 
     /**
     Suppresses the stderr output of a child process, unless:
 
-    - the process takes longer than `timeout` to complete, or
     - the process exits and signals a failure.
 
-    In either of those cases, the existing output is flushes to the current process' stderr, and all further output from the child is passed through.
+    If so, the existing output is flushes to the current process' stderr, and all further output from the child is passed through.
 
-    In other words: if the child successfully completes quickly, it's stderr output is suppressed.  Otherwise, it's let through.
+    In other words: if the child successfully completes, it's stderr output is suppressed.  Otherwise, it's let through.
     */
-    pub fn suppress_child_output(cmd: &mut Command, timeout: Duration) -> Result<ChildToken> {
+    pub fn suppress_child_output(cmd: &mut Command) -> Result<ChildToken> {
         cmd.stderr(process::Stdio::piped());
 
         let mut child = cmd.spawn()?;
         let stderr = child.stderr.take().expect("no stderr pipe found");
 
-        let timeout_chan = crossbeam_channel::after(timeout);
         let (done_sig, done_gate) = crossbeam_channel::bounded(0);
 
         let _ = thread::spawn(move || {
             let show_stderr;
-            let mut recv_done = false;
             select! {
-                recv(timeout_chan) -> _ => {
-                    show_stderr = true;
-                },
                 recv(done_gate) -> success => {
                     show_stderr = !success.unwrap_or(true);
-                    recv_done = true;
                 },
             }
             if show_stderr {
                 let mut stderr = stderr;
                 io::copy(&mut stderr, &mut io::stderr()).expect("could not copy child stderr");
-            }
-            if !recv_done {
-                done_gate.recv().unwrap();
             }
         });
 
