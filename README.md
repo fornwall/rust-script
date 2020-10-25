@@ -8,8 +8,8 @@
 Some of `rust-script`'s features include:
 
 - Reading Cargo manifests embedded in Rust scripts.
-- Caching compiled artefacts (including dependencies) to amortise build times.
-- Supporting executable Rust scripts via UNIX hashbangs and Windows file associations.
+- Caching compiled artifacts (including dependencies) to amortise build times.
+- Supporting executable Rust scripts via UNIX shebangs and Windows file associations.
 - Evaluating expressions on the command-line.
 - Using expressions as stream filters (*i.e.* for use in command pipelines).
 - Running unit tests and benchmarks from scripts.
@@ -22,7 +22,7 @@ Table of contents:
 - [Installation](#installation)
   - [Features](#features)
   - [Manually Compiling and Installing](#compiling)
-  - [Self-Executing Scripts](#hashbang)
+  - [Self-Executing Scripts](#shebang)
 - [Usage](#usage)
   - [Scripts](#scripts)
   - [Expressions](#expressions)
@@ -36,27 +36,23 @@ Table of contents:
 <a name="installation"></a>
 ## Installation
 
-The recommended method for installing `rust-script` is by using Cargo's `install` subcommand:
-
-```sh
-cargo install rust-script
-```
-
-If you have already installed `rust-script`, you can update to the latest version by using:
+Install or update `rust-script` using Cargo:
 
 ```sh
 cargo install --force rust-script
 ```
+
+
 
 <a name="compiling"></a>
 ### Manually Compiling and Installing
 
 `rust-script` requires latest stable Rust to build.
 
-<a name="hashbang"></a>
+<a name="shebang"></a>
 ### Self-Executing Scripts
 
-On UNIX systems, you can use `#!/usr/bin/env rust-script` as a hashbang line in a Rust script.  If the script file is executable, this will allow you to execute a script file directly.
+On Unix systems, you can use `#!/usr/bin/env rust-script` as a shebang line in a Rust script.  This will allow you to execute a script file directly.
 
 If you are using Windows, you can associate the `.crs` extension (which is simply a renamed `.rs` file) with `rust-script`.  This allows you to execute Rust scripts simply by naming them like any other executable or script.
 
@@ -72,7 +68,7 @@ Generally, you can get an overview of the available options using the `--help` f
 <a name="scripts"></a>
 ### Scripts
 
-The primary use for `rust-script` is for running Rust source files as scripts.  For example:
+The primary use for `rust-script` is for running Rust source files as scripts. For example:
 
 ```shell
 $ echo 'fn main() { println!("Hello, World!"); }' > hello.rs
