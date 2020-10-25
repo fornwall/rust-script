@@ -28,7 +28,7 @@ open = "1"
 regex = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-shaman = "0.1"
+sha-1 = "0.9"
 toml = "0.5"
 
 [target.'cfg(windows)'.dependencies]
@@ -39,10 +39,10 @@ winapi = "0.2.8"
 winreg = "0.4.0"
 
 [target.'cfg(unix)'.dependencies]
-atty = "0.2.2"
+atty = "0.2"
 
 [dev-dependencies]
-scan-rules = "0.2.0"
+scan-rules = "0.2"
 tempfile = "3"
 
 [profile.release]
