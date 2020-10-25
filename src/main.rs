@@ -121,7 +121,7 @@ impl BuildKind {
 fn parse_args() -> Args {
     use clap::{App, Arg, ArgGroup};
     let version = option_env!("CARGO_PKG_VERSION").unwrap_or("unknown");
-    let about = r#"Compiles and rtuns a Rust script."#;
+    let about = r#"Compiles and runs a Rust script."#;
 
     // We have to kinda lie about who we are for the output to look right...
     let m = App::new("rust-script")

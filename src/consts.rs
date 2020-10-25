@@ -39,6 +39,8 @@ pub const FILE_TEMPLATE: &str = r#"#{script}"#;
 /// The template used for `--expr` input.
 pub const EXPR_TEMPLATE: &str = r#"
 #{prelude}
+use std::any::{Any, TypeId};
+
 fn main() {
     let exit_code = match try_main() {
         Ok(()) => None,
@@ -54,8 +56,12 @@ fn main() {
 }
 
 fn try_main() -> Result<(), Box<dyn std::error::Error>> {
+    fn _rust_script_is_empty_tuple<T: ?Sized + Any>(_s: &T) -> bool {
+        TypeId::of::<()>() == TypeId::of::<T>()
+    }
     match {#{script}} {
-        __cargo_script_expr => println!("{:?}", __cargo_script_expr)
+        __cargo_script_expr if !_rust_script_is_empty_tuple(&__cargo_script_expr) => println!("{:?}", __cargo_script_expr),
+        _ => {}
     }
     Ok(())
 }
@@ -64,7 +70,6 @@ fn try_main() -> Result<(), Box<dyn std::error::Error>> {
 /*
 Regarding the loop templates: what I *want* is for the result of the closure to be printed to standard output *only* if it's not `()`.
 
-* TODO: Just use TypeId, dumbass.
 * TODO: Merge the `LOOP_*` templates so there isn't duplicated code.  It's icky.
 */
 
