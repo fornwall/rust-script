@@ -62,10 +62,29 @@ jobs:
       uses: hecrj/setup-rust-action@v1
     - name: Build debug
       run: cargo build
-    - name: Upload debug build
+    - name: Upload debug build (Windows)
       uses: actions/upload-artifact@v2
       with:
-        path: ./target/debug/rust-script*
+        path: ./target/debug/rust-script
+        name: windows-binary
+    - name: Upload Windows debug build
+      if: runner.os == 'Windows'
+      uses: actions/upload-artifact@v2
+      with:
+        path: ./target/debug/rust-script.exe
+        name: windows-binary
+    - name: Upload macOS debug build
+      if: runner.os == 'macOS'
+      uses: actions/upload-artifact@v2
+      with:
+        path: ./target/debug/rust-script
+        name: mac-binary
+    - name: Upload Linux debug build
+      if: runner.os == 'Linux'
+      uses: actions/upload-artifact@v2
+      with:
+        path: ./target/debug/rust-script
+        name: linux-binary
 
   security-audit:
     runs-on: ubuntu-latest
