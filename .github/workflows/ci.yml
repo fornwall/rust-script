@@ -63,7 +63,7 @@ jobs:
     - name: Build debug
       run: cargo build
     - name: Upload debug build
-    - uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v2
       with:
         path: ./target/debug/rust-script*
 
