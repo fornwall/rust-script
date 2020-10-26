@@ -31,7 +31,6 @@ Table of contents:
   - [Templates](#templates)
   - [Troubleshooting](#troubleshooting)
 - [License](#license)
-  - [Contribution](#contribution)
 
 <a name="installation"></a>
 ## Installation
@@ -255,8 +254,3 @@ Run with the `RUST_LOG=rust_script=trace` environment variable set to see debug 
 
 `rust-script` is primarily distributed under the terms of both the [MIT license](LICENSE-MIT)
 and the [Apache License (Version 2.0)]((LICENSE-APACHE)).
-
-<a name="contribution"></a>
-### Contribution
-
-Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you shall be dual licensed as above, without any additional terms or conditions.
