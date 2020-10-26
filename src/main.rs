@@ -115,6 +115,7 @@ impl BuildKind {
 
 #[cfg(windows)]
 fn append_windows_args(app: &mut clap::App) {
+    use clap::Arg;
     app.arg(
         Arg::with_name("install-file-association")
             .help("Install a file association so that rust-script executes .crs files.")

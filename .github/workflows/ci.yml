@@ -89,6 +89,20 @@ jobs:
         path: ./target/debug/rust-script
         name: linux-binary
 
+  test-install-file-association:
+    runs-on: windows-latest
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v2
+    - name: Setup rust
+      uses: hecrj/setup-rust-action@v1
+    - name: Build debug
+      run: cargo build
+    - name: Install file association
+      run: ./target/debug/rust-script.exe --install-file-association
+    - name: Run example script
+      run: .examples\hello.crs
+
   security-audit:
     runs-on: ubuntu-latest
     steps:
