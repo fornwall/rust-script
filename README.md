@@ -248,17 +248,15 @@ In addition, there are three built-in templates: `expr`, `loop`, and `loop-count
 <a name="troubleshooting"></a>
 ### Troubleshooting
 
-Run with the `RUST_LOG=rust_script=debug` environment variable set to see debug log output.
+Run with the `RUST_LOG=rust_script=trace` environment variable set to see debug log output.
 
 <a name="license"></a>
 ## License
 
-Licensed under either of
+`rust-script` is primarily distributed under the terms of both the MIT license
+and the Apache License (Version 2.0).
 
-* MIT license (see [LICENSE](LICENSE) or <http://opensource.org/licenses/MIT>)
-* Apache License, Version 2.0 (see [LICENSE](LICENSE) or <http://www.apache.org/licenses/LICENSE-2.0>)
-
-at your option.
+See [LICENSE-APACHE](LICENSE-APACHE) and [LICENSE-MIT](LICENSE-MIT) for details.
 
 <a name="contribution"></a>
 ### Contribution
