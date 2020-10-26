@@ -253,4 +253,5 @@ Run with the `RUST_LOG=rust_script=trace` environment variable set to see debug 
 ## License
 
 `rust-script` is primarily distributed under the terms of both the [MIT license](LICENSE-MIT)
-and the [Apache License (Version 2.0)]((LICENSE-APACHE)).
+and the [Apache License (Version 2.0)](LICENSE-APACHE)
+).
