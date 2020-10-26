@@ -113,30 +113,12 @@ impl BuildKind {
     }
 }
 
-#[cfg(windows)]
-fn append_windows_args(app: &mut clap::App) {
-    use clap::Arg;
-    app.arg(
-        Arg::with_name("install-file-association")
-            .help("Install a file association so that rust-script executes .crs files.")
-            .long("install-file-association"),
-    )
-    .arg(
-        Arg::with_name("uninstall-file-association")
-            .help("Uninstall the file association that makes rust-script execute .crs files.")
-            .long("uninstall-file-association"),
-    );
-}
-
-#[cfg(not(windows))]
-fn append_windows_args(_app: &mut clap::App) {}
-
 fn parse_args() -> Args {
     use clap::{App, Arg, ArgGroup};
     let version = option_env!("CARGO_PKG_VERSION").unwrap_or("unknown");
     let about = r#"Compiles and runs a Rust script."#;
 
-    let mut app = App::new("rust-script")
+    let app = App::new("rust-script")
         .version(version)
         .setting(clap::AppSettings::TrailingVarArg)
         //.setting(clap::AppSettings::AllowLeadingHyphen)
@@ -277,7 +259,18 @@ fn parse_args() -> Args {
             // TODO: .conflicts_with()
         );
 
-    append_windows_args(&mut app);
+    #[cfg(windows)]
+    let app = app
+        .arg(
+            Arg::with_name("install-file-association")
+                .help("Install a file association so that rust-script executes .crs files.")
+                .long("install-file-association"),
+        )
+        .arg(
+            Arg::with_name("uninstall-file-association")
+                .help("Uninstall the file association that makes rust-script execute .crs files.")
+                .long("uninstall-file-association"),
+        );
 
     let m = app.get_matches();
 
