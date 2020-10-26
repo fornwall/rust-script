@@ -100,8 +100,10 @@ jobs:
       run: cargo build
     - name: Install file association
       run: ./target/debug/rust-script.exe --install-file-association
-    - name: Run example script
-      run: .examples\hello.crs
+    - name: Run example script with file extension
+      run: ./examples/hello.crs
+    - name: Run example script without file extension
+      run: ./examples/hello
 
   security-audit:
     runs-on: ubuntu-latest
