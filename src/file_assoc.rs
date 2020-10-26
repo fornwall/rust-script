@@ -12,60 +12,14 @@ use crate::error::{Blame, Result};
 use clap;
 use std::io;
 
-#[derive(Debug)]
-pub enum Args {
-    Install { amend_pathext: bool },
-    Uninstall,
-}
-
-impl Args {
-    pub fn subcommand() -> clap::App<'static, 'static> {
-        use clap::{AppSettings, Arg, SubCommand};
-
-        SubCommand::with_name("file-association")
-            .about("Manage file assocations.")
-            .setting(AppSettings::SubcommandRequiredElseHelp)
-            .subcommand(SubCommand::with_name("install")
-                .about("Install file associations.")
-                .arg(Arg::with_name("amend_pathext")
-                    .help("Add script extension to PATHEXT.  This allows scripts to be executed without typing the file extension.")
-                    .long("amend-pathext")
-                )
-            )
-            .subcommand(SubCommand::with_name("uninstall")
-                .about("Uninstall file associations.")
-            )
-    }
-
-    pub fn parse(m: &clap::ArgMatches) -> Self {
-        match m.subcommand() {
-            ("install", Some(m)) => Args::Install {
-                amend_pathext: m.is_present("amend_pathext"),
-            },
-            ("uninstall", _) => Args::Uninstall,
-            (name, _) => panic!("bad subcommand: {:?}", name),
-        }
-    }
-}
-
-pub fn try_main(args: Args) -> Result<i32> {
-    match args {
-        Args::Install { amend_pathext } => install(amend_pathext)?,
-        Args::Uninstall => uninstall()?,
-    }
-
-    Ok(0)
-}
-
-fn install(amend_pathext: bool) -> Result<()> {
+pub fn install_file_association() -> Result<()> {
     use self::winreg::enums as wre;
     use self::winreg::RegKey;
     use std::env;
 
-    // Set up file association.
     let cs_path = env::current_exe()?;
     let cs_path = cs_path.canonicalize()?;
-    let rcs_path = cs_path.with_file_name("run-cargo-script.exe");
+    let rcs_path = cs_path.with_file_name("rust-script.exe");
 
     if !rcs_path.exists() {
         return Err((Blame::Human, format!("{:?} not found", rcs_path)).into());
@@ -109,27 +63,22 @@ fn install(amend_pathext: bool) -> Result<()> {
     println!("Created run-cargo-script registry entry.");
     println!("- Handler set to: {}", rcs_path);
 
-    // Amend PATHEXT.
-    if amend_pathext {
-        let hklm = RegKey::predef(wre::HKEY_LOCAL_MACHINE);
-        let env =
-            hklm.open_subkey(r#"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"#)?;
+    let hklm = RegKey::predef(wre::HKEY_LOCAL_MACHINE);
+    let env =
+        hklm.open_subkey(r#"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"#)?;
 
-        let pathext: String = env.get_value("PATHEXT")?;
-        if !pathext.split(";").any(|e| e.eq_ignore_ascii_case(".crs")) {
-            let pathext = pathext.split(";").chain(Some(".CRS")).join(";");
-            env.set_value("PATHEXT", &pathext)?;
-        }
-
-        println!(
-            "Added `.crs` to PATHEXT.  You may need to log out for the change to take effect."
-        );
+    let pathext: String = env.get_value("PATHEXT")?;
+    if !pathext.split(";").any(|e| e.eq_ignore_ascii_case(".crs")) {
+        let pathext = pathext.split(";").chain(Some(".CRS")).join(";");
+        env.set_value("PATHEXT", &pathext)?;
     }
+
+    println!("Added `.crs` to PATHEXT.  You may need to log out for the change to take effect.");
 
     Ok(())
 }
 
-fn uninstall() -> Result<()> {
+pub fn uninstall_file_association() -> Result<()> {
     use self::winreg::enums as wre;
     use self::winreg::RegKey;
 

@@ -55,9 +55,11 @@ On Unix systems, you can use `#!/usr/bin/env rust-script` as a shebang line in a
 
 If you are using Windows, you can associate the `.crs` extension (which is simply a renamed `.rs` file) with `rust-script`.  This allows you to execute Rust scripts simply by naming them like any other executable or script.
 
-TODO: This can be done using the `rust-script --file-association` command. This command can also remove the file association.  If you pass `--amend-pathext` to the `file-assocation install` command, it will also allow you to execute `.crs` scripts *without* having to specify the file extension, in the same way that `.exe` and `.bat` files can be used.
+This can be done using the `rust-script --install-file-association` command. It will also allow you to execute `.crs` scripts *without* having to specify the file extension, in the same way that `.exe` and `.bat` files can be used.
 
-If you want to make a script usable across platforms, it is recommended that you use *both* a hashbang line *and* give the file a `.crs` file extension.
+Uninstall the file association with `rust-script --uninstall-file-association`.
+
+If you want to make a script usable across platforms, use *both* a hashbang line *and* give the file a `.crs` file extension.
 
 <a name="usage"></a>
 ## Usage

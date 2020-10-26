@@ -73,6 +73,11 @@ struct Args {
     build_kind: BuildKind,
     template: Option<String>,
     list_templates: bool,
+
+    #[cfg(windows)]
+    install_file_association: bool,
+    #[cfg(windows)]
+    uninstall_file_association: bool,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -113,9 +118,7 @@ fn parse_args() -> Args {
     let version = option_env!("CARGO_PKG_VERSION").unwrap_or("unknown");
     let about = r#"Compiles and runs a Rust script."#;
 
-    // We have to kinda lie about who we are for the output to look right...
-    let m = App::new("rust-script")
-        .bin_name("rust-script")
+    let app = App::new("rust-script")
         .version(version)
         .setting(clap::AppSettings::TrailingVarArg)
         //.setting(clap::AppSettings::AllowLeadingHyphen)
@@ -254,8 +257,23 @@ fn parse_args() -> Args {
             .long("list-templates")
             .takes_value(false)
             // TODO: .conflicts_with()
+        );
+
+    #[cfg(windows)]
+    {
+        app.arg(
+            Arg::with_name("install-file-association")
+                .help("Install a file association so that rust-script executes .crs files.")
+                .long("install-file-association"),
         )
-        .get_matches();
+        .arg(
+            Arg::with_name("uninstall-file-association")
+                .help("Uninstall the file association that makes rust-script execute .crs files.")
+                .long("uninstall-file-association"),
+        );
+    }
+
+    let m = app.get_matches();
 
     fn owned_vec_string<'a, I>(v: Option<I>) -> Vec<String>
     where
@@ -294,6 +312,10 @@ fn parse_args() -> Args {
         build_kind: BuildKind::from_flags(m.is_present("test"), m.is_present("bench")),
         template: m.value_of("template").map(Into::into),
         list_templates: m.is_present("list-templates"),
+        #[cfg(windows)]
+        install_file_association: m.is_present("install-file-association"),
+        #[cfg(windows)]
+        uninstall_file_association: m.is_present("uninstall-file-association"),
     }
 }
 
@@ -327,6 +349,17 @@ fn try_main() -> Result<i32> {
         let bcp = get_binary_cache_path()?;
         debug!("script-cache path: {:?}", scp);
         debug!("binary-cache path: {:?}", bcp);
+    }
+
+    #[cfg(windows)]
+    {
+        if args.install_file_association {
+            file_assoc::install_file_association()?;
+            return;
+        } else if args.uninstall_file_association {
+            file_assoc::uninstall_file_association()?;
+            return;
+        }
     }
 
     /*
