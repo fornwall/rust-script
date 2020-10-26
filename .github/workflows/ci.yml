@@ -98,12 +98,12 @@ jobs:
       uses: hecrj/setup-rust-action@v1
     - name: Build debug
       run: cargo build
+    - name: Run example script with file extension
+      run: ./examples/hello.crs
     - name: Install file association
       run: ./target/debug/rust-script.exe --install-file-association
     - name: Run example script with file extension
       run: ./examples/hello.crs
-    - name: Run example script without file extension
-      run: ./examples/hello
 
   security-audit:
     runs-on: ubuntu-latest
