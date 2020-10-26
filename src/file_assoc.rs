@@ -9,7 +9,6 @@ extern crate winreg;
 
 use self::itertools::Itertools;
 use crate::error::{Blame, Result};
-use clap;
 use std::io;
 
 pub fn install_file_association() -> Result<()> {

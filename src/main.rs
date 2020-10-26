@@ -355,10 +355,10 @@ fn try_main() -> Result<i32> {
     {
         if args.install_file_association {
             file_assoc::install_file_association()?;
-            return;
+            return Ok(0);
         } else if args.uninstall_file_association {
             file_assoc::uninstall_file_association()?;
-            return;
+            return Ok(0);
         }
     }
 

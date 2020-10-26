@@ -39,7 +39,10 @@ jobs:
       run: cargo fmt -- --check
 
   check-clippy:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout source
       uses: actions/checkout@v2
