@@ -236,7 +236,7 @@ pub mod inner {
             words.push(lo as u16 | ((hi as u16) << 8));
         }
 
-        return Ok(OsString::from_wide(&words).into());
+        Ok(OsString::from_wide(&words).into())
     }
 
     /**
