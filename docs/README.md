@@ -8,7 +8,6 @@
 - [Templates](#templates)
 - [Troubleshooting](#troubleshooting)
 
-<a name="overview"></a>
 ## Overview
 
 Some of `rust-script`'s features include:
