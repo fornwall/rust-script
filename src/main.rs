@@ -9,6 +9,7 @@ As such, `cargo-script` does two major things:
 
 2. It caches the generated and compiled packages, regenerating them only if the script or its metadata have changed.
 */
+#![forbid(unsafe_code)]
 extern crate env_logger;
 #[macro_use]
 extern crate lazy_static;
@@ -73,6 +74,11 @@ struct Args {
     build_kind: BuildKind,
     template: Option<String>,
     list_templates: bool,
+
+    #[cfg(windows)]
+    install_file_association: bool,
+    #[cfg(windows)]
+    uninstall_file_association: bool,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -113,35 +119,34 @@ fn parse_args() -> Args {
     let version = option_env!("CARGO_PKG_VERSION").unwrap_or("unknown");
     let about = r#"Compiles and runs a Rust script."#;
 
-    // We have to kinda lie about who we are for the output to look right...
-    let m = App::new("rust-script")
-        .bin_name("rust-script")
+    let app = App::new(consts::PROGRAM_NAME)
         .version(version)
         .setting(clap::AppSettings::TrailingVarArg)
-        //.setting(clap::AppSettings::AllowLeadingHyphen)
         .about(about)
             .arg(Arg::with_name("command")
                 .help("Command (script file plus arguments) to execute.")
                 .index(1)
+                .required(true)
                 .multiple(true)
+                .conflicts_with_all(&["list-templates", "file-association"])
             )
             .arg(Arg::with_name("expr")
                 .help("Execute <script> as a literal expression and display the result.")
                 .long("expr")
                 .short("e")
                 .takes_value(false)
-                //.conflicts_with_all(&["loop"])
                 .requires("command")
             )
             .arg(Arg::with_name("loop")
                 .help("Execute <script> as a literal closure once for each line from stdin.")
                 .long("loop")
                 .short("l")
-                //.conflicts_with_all(&["expr"])
+                .takes_value(false)
                 .requires("command")
             )
             .group(ArgGroup::with_name("expr_or_loop")
                 .args(&["expr", "loop"])
+                .conflicts_with_all(&["list-templates", "file-association"])
             )
             /*
             Options that impact the script being executed.
@@ -154,7 +159,6 @@ fn parse_args() -> Args {
             .arg(Arg::with_name("debug")
                 .help("Build a debug executable, not an optimised one.")
                 .long("debug")
-                .requires("script")
             )
             .arg(Arg::with_name("dep")
                 .help("Add an additional Cargo dependency.  Each SPEC can be either just the package name (which will assume the latest version) or a full `name=version` spec.")
@@ -163,7 +167,6 @@ fn parse_args() -> Args {
                 .takes_value(true)
                 .multiple(true)
                 .number_of_values(1)
-                .requires("command")
             )
             .arg(Arg::with_name("dep_extern")
                 .help("Like `dep`, except that it *also* adds a `#[macro_use] extern crate name;` item for expression and loop scripts.  Note that this only works if the name of the dependency and the name of the library it generates are exactly the same.")
@@ -238,7 +241,7 @@ fn parse_args() -> Args {
                 .conflicts_with_all(&["bench", "debug", "args", "force"])
             )
             .arg(Arg::with_name("bench")
-                .help("Compile and run benchmarks.  Requires a nightly toolchain.")
+                .help("Compile and run benchmarks. Requires a nightly toolchain.")
                 .long("bench")
                 .conflicts_with_all(&["test", "debug", "args", "force"])
             )
@@ -253,9 +256,27 @@ fn parse_args() -> Args {
             .help("List the available templates.")
             .long("list-templates")
             .takes_value(false)
-            // TODO: .conflicts_with()
+            .conflicts_with("file-association")
+        );
+
+    #[cfg(windows)]
+    let app = app
+        .arg(
+            Arg::with_name("install-file-association")
+                .help("Install a file association so that rust-script executes .crs files.")
+                .long("install-file-association"),
         )
-        .get_matches();
+        .arg(
+            Arg::with_name("uninstall-file-association")
+                .help("Uninstall the file association that makes rust-script execute .crs files.")
+                .long("uninstall-file-association"),
+        )
+        .group(
+            ArgGroup::with_name("file-association")
+                .args(&["install-file-association", "uninstall-file-association"]),
+        );
+
+    let m = app.get_matches();
 
     fn owned_vec_string<'a, I>(v: Option<I>) -> Vec<String>
     where
@@ -294,13 +315,16 @@ fn parse_args() -> Args {
         build_kind: BuildKind::from_flags(m.is_present("test"), m.is_present("bench")),
         template: m.value_of("template").map(Into::into),
         list_templates: m.is_present("list-templates"),
+        #[cfg(windows)]
+        install_file_association: m.is_present("install-file-association"),
+        #[cfg(windows)]
+        uninstall_file_association: m.is_present("uninstall-file-association"),
     }
 }
 
 fn main() {
     env_logger::init();
-    info!("starting");
-    info!("args: {:?}", std::env::args().collect::<Vec<_>>());
+
     let stderr = &mut std::io::stderr();
     match try_main() {
         Ok(0) => (),
@@ -323,10 +347,21 @@ fn try_main() -> Result<i32> {
     info!("Arguments: {:?}", args);
 
     if log_enabled!(log::Level::Debug) {
-        let scp = get_script_cache_path()?;
-        let bcp = get_binary_cache_path()?;
+        let scp = platform::script_cache_path()?;
+        let bcp = platform::binary_cache_path()?;
         debug!("script-cache path: {:?}", scp);
         debug!("binary-cache path: {:?}", bcp);
+    }
+
+    #[cfg(windows)]
+    {
+        if args.install_file_association {
+            file_assoc::install_file_association()?;
+            return Ok(0);
+        } else if args.uninstall_file_association {
+            file_assoc::uninstall_file_association()?;
+            return Ok(0);
+        }
     }
 
     /*
@@ -357,8 +392,8 @@ fn try_main() -> Result<i32> {
     let script_path: PathBuf;
     let content: String;
 
-    let input = match (args.command.get(0).cloned(), args.expr, args.loop_) {
-        (Some(script), false, false) => {
+    let input = match (args.command[0].clone(), args.expr, args.loop_) {
+        (script, false, false) => {
             let (path, mut file) = find_script(script).ok_or("could not find script")?;
 
             script_name = path
@@ -376,16 +411,17 @@ fn try_main() -> Result<i32> {
 
             Input::File(&script_name, &script_path, &content, mtime)
         }
-        (Some(expr), true, false) => {
+        (expr, true, false) => {
             content = expr;
             Input::Expr(&content, args.template.as_deref())
         }
-        (Some(loop_), false, true) => {
+        (loop_, false, true) => {
             content = loop_;
             Input::Loop(&content, args.count)
         }
-        (None, _, _) => return Err((Blame::Human, consts::NO_ARGS_MESSAGE).into()),
-        _ => return Err((Blame::Human, "cannot specify both --expr and --loop").into()),
+        (_, _, _) => {
+            panic!("Internal error: Invalid args");
+        }
     };
     info!("input: {:?}", input);
 
@@ -545,7 +581,7 @@ fn clean_cache(max_age: u128) -> Result<()> {
 
     if max_age == 0 {
         info!("max_age is 0, clearing binary cache...");
-        let cache_dir = get_binary_cache_path()?;
+        let cache_dir = platform::binary_cache_path()?;
         if ALLOW_AUTO_REMOVE {
             if let Err(err) = fs::remove_dir_all(&cache_dir) {
                 error!("failed to remove binary cache {:?}: {}", cache_dir, err);
@@ -556,7 +592,7 @@ fn clean_cache(max_age: u128) -> Result<()> {
     let cutoff = platform::current_time() - max_age;
     info!("cutoff:     {:>20?} ms", cutoff);
 
-    let cache_dir = get_script_cache_path()?;
+    let cache_dir = platform::script_cache_path()?;
     for child in fs::read_dir(cache_dir)? {
         let child = child?;
         let path = child.path();
@@ -858,7 +894,7 @@ fn decide_action_for(
         .map(|p| (p.into(), false))
         .unwrap_or_else(|| {
             // This can't fail.  Seriously, we're *fucked* if we can't work this out.
-            let cache_path = get_script_cache_path().unwrap();
+            let cache_path = platform::script_cache_path().unwrap();
             info!("cache_path: {:?}", cache_path);
 
             let id = {
@@ -1090,22 +1126,6 @@ where
     write!(&mut meta_file, "{}", meta_str)?;
     meta_file.flush()?;
     Ok(())
-}
-
-/**
-Returns the path to the cache directory.
-*/
-fn get_script_cache_path() -> Result<PathBuf> {
-    let cache_path = platform::get_cache_dir()?;
-    Ok(cache_path.join("script-cache"))
-}
-
-/**
-Returns the path to the binary cache directory.
-*/
-fn get_binary_cache_path() -> Result<PathBuf> {
-    let cache_path = platform::get_cache_dir()?;
-    Ok(cache_path.join("binary-cache"))
 }
 
 /**
@@ -1362,7 +1382,7 @@ fn cargo(
     if use_bincache {
         let script_specific_binary_cache = format!(
             "{}/{}",
-            get_binary_cache_path()?.display(),
+            platform::binary_cache_path()?.display(),
             meta.sha1_hash()
         );
         cmd.env("CARGO_TARGET_DIR", script_specific_binary_cache);

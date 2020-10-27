@@ -59,8 +59,8 @@ pub fn get_template_path() -> Result<PathBuf> {
         }
     }
 
-    let cache_path = platform::get_config_dir()?;
-    Ok(cache_path.join("script-templates"))
+    let cache_path = platform::templates_dir()?;
+    Ok(cache_path)
 }
 
 /**

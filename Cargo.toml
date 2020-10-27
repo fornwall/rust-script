@@ -19,12 +19,13 @@ exclude = [
 [dependencies]
 crossbeam-channel = "0.5"
 clap = "2"
+dirs = "3"
 env_logger = "0.8"
-pulldown-cmark = "0.8"
 itertools = "0.9"
 lazy_static = "1"
 log = "0.4"
 open = "1"
+pulldown-cmark = "0.8"
 regex = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
