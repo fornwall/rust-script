@@ -122,31 +122,31 @@ fn parse_args() -> Args {
     let app = App::new(consts::PROGRAM_NAME)
         .version(version)
         .setting(clap::AppSettings::TrailingVarArg)
-        //.setting(clap::AppSettings::AllowLeadingHyphen)
         .about(about)
             .arg(Arg::with_name("command")
                 .help("Command (script file plus arguments) to execute.")
                 .index(1)
                 .required(true)
                 .multiple(true)
-                .conflicts_with_all(&["test-file-association"])
+                .conflicts_with_all(&["list-templates", "file-association"])
             )
             .arg(Arg::with_name("expr")
                 .help("Execute <script> as a literal expression and display the result.")
                 .long("expr")
                 .short("e")
                 .takes_value(false)
-                .conflicts_with("loop")
                 .requires("command")
             )
             .arg(Arg::with_name("loop")
                 .help("Execute <script> as a literal closure once for each line from stdin.")
                 .long("loop")
                 .short("l")
+                .takes_value(false)
                 .requires("command")
             )
             .group(ArgGroup::with_name("expr_or_loop")
                 .args(&["expr", "loop"])
+                .conflicts_with_all(&["list-templates", "file-association"])
             )
             /*
             Options that impact the script being executed.
@@ -159,7 +159,6 @@ fn parse_args() -> Args {
             .arg(Arg::with_name("debug")
                 .help("Build a debug executable, not an optimised one.")
                 .long("debug")
-                .requires("script")
             )
             .arg(Arg::with_name("dep")
                 .help("Add an additional Cargo dependency.  Each SPEC can be either just the package name (which will assume the latest version) or a full `name=version` spec.")
@@ -168,7 +167,6 @@ fn parse_args() -> Args {
                 .takes_value(true)
                 .multiple(true)
                 .number_of_values(1)
-                .requires("command")
             )
             .arg(Arg::with_name("dep_extern")
                 .help("Like `dep`, except that it *also* adds a `#[macro_use] extern crate name;` item for expression and loop scripts.  Note that this only works if the name of the dependency and the name of the library it generates are exactly the same.")
@@ -243,7 +241,7 @@ fn parse_args() -> Args {
                 .conflicts_with_all(&["bench", "debug", "args", "force"])
             )
             .arg(Arg::with_name("bench")
-                .help("Compile and run benchmarks.  Requires a nightly toolchain.")
+                .help("Compile and run benchmarks. Requires a nightly toolchain.")
                 .long("bench")
                 .conflicts_with_all(&["test", "debug", "args", "force"])
             )
@@ -258,7 +256,7 @@ fn parse_args() -> Args {
             .help("List the available templates.")
             .long("list-templates")
             .takes_value(false)
-            // TODO: .conflicts_with()
+            .conflicts_with("file-association")
         );
 
     #[cfg(windows)]
@@ -267,13 +265,14 @@ fn parse_args() -> Args {
             Arg::with_name("install-file-association")
                 .help("Install a file association so that rust-script executes .crs files.")
                 .long("install-file-association")
-                .conflicts_with_all(&["command", "expr_or_loop"]),
         )
         .arg(
             Arg::with_name("uninstall-file-association")
                 .help("Uninstall the file association that makes rust-script execute .crs files.")
                 .long("uninstall-file-association")
-                .conflicts_with_all(&["command", "expr_or_loop"]),
+        )
+        .group(ArgGroup::with_name("file-association")
+            .args(&["install-file-association", "uninstall-file-association"])
         );
 
     let m = app.get_matches();
