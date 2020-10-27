@@ -220,6 +220,6 @@ In addition, there are three built-in templates: `expr`, `loop`, and `loop-count
 <a name="troubleshooting"></a>
 ### Troubleshooting
 
-See and report issues at https://github.com/fornwall/rust-script/issues.
+Please report all issues on [the GitHub issue tracker](https://github.com/fornwall/rust-script/issues).
 
-Run with the `RUST_LOG=rust_script=trace` environment variable set to see verbose log output.
+Run with the `RUST_LOG=rust_script=trace` environment variable set to see verbose log output if necessary.
