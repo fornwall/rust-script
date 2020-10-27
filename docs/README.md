@@ -11,9 +11,9 @@ Some of `rust-script`'s features include:
 Table of contents:
 
 - [Installation](#installation)
-  - [Self-Executing Scripts](#shebang)
 - [Usage](#usage)
   - [Scripts](#scripts)
+  - [Executable Scripts](#shebang)
   - [Expressions](#expressions)
   - [Stream Filters](#filters)
   - [Environment Variables](#env-vars)
@@ -31,19 +31,6 @@ cargo install --force rust-script
 ```
 
 The latest stable version of Rust (1.47.0) is required.
-
-<a name="shebang"></a>
-### Self-Executing Scripts
-
-On Unix systems, you can use `#!/usr/bin/env rust-script` as a shebang line in a Rust script.  This will allow you to execute a script file directly.
-
-If you are using Windows, you can associate the `.crs` extension (which is simply a renamed `.rs` file) with `rust-script`.  This allows you to execute Rust scripts simply by naming them like any other executable or script.
-
-This can be done using the `rust-script --install-file-association` command. It will also allow you to execute `.crs` scripts *without* having to specify the file extension, in the same way that `.exe` and `.bat` files can be used.
-
-Uninstall the file association with `rust-script --uninstall-file-association`.
-
-If you want to make a script usable across platforms, use *both* a hashbang line *and* give the file a `.crs` file extension.
 
 <a name="usage"></a>
 ## Usage
@@ -118,6 +105,19 @@ Useful command-line arguments:
 - `--force`: Force the script to be rebuilt.  Useful if you want to force a recompile with a different toolchain.
 - `--gen-pkg-only`: Generate the Cargo package, but don't compile or run it.  Effectively "unpacks" the script into a Cargo package.
 - `--test`: Compile and run tests.
+
+<a name="shebang"></a>
+### Executable Scripts
+
+On Unix systems, you can use `#!/usr/bin/env rust-script` as a shebang line in a Rust script.  This will allow you to execute a script file directly.
+
+If you are using Windows, you can associate the `.crs` extension (which is simply a renamed `.rs` file) with `rust-script`.  This allows you to execute Rust scripts simply by naming them like any other executable or script.
+
+This can be done using the `rust-script --install-file-association` command. It will also allow you to execute `.crs` scripts *without* having to specify the file extension, in the same way that `.exe` and `.bat` files can be used.
+
+Uninstall the file association with `rust-script --uninstall-file-association`.
+
+If you want to make a script usable across platforms, use *both* a hashbang line *and* give the file a `.crs` file extension.
 
 <a name="expressions"></a>
 ### Expressions
