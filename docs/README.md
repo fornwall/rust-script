@@ -63,7 +63,7 @@ $ rust-script hello # you can leave off the file extension
 Hello, World!
 ```
 
-The output of Cargo will be hidden unless compilation fails, or takes longer than a few seconds.
+The output of Cargo will be hidden unless compilation fails.
 
 `rust-script` will also look for embedded dependency and manifest information in the script.  For example, all of the following are equivalent:
 
@@ -103,25 +103,12 @@ The output of Cargo will be hidden unless compilation fails, or takes longer tha
 
 On running either of these, `rust-script` will generate a Cargo package, build it, and run the result.  The output may look something like:
 
-```shell
+```sh
 $ rust-script now
-    Updating registry `https://github.com/rust-lang/crates.io-index`
-   Compiling winapi-build v0.1.1
-   Compiling winapi v0.2.8
-   Compiling libc v0.2.30
-   Compiling kernel32-sys v0.2.2
-   Compiling time v0.1.38
-   Compiling now v0.1.0 (file:///C:/Users/drk/AppData/Local/Cargo/script-cache/file-now-37cb982cd51cc8b1)
-    Finished release [optimized] target(s) in 49.7 secs
-Sun, 17 Sep 2017 20:38:58 +1000
+Wed, 28 Oct 2020 00:38:45 +0100
 ```
 
-Subsequent runs, provided the script has not changed, will likely just run the cached executable directly:
-
-```shell
-$ rust-script now
-Sun, 17 Sep 2017 20:39:40 +1000
-```
+Subsequent runs will be a lot faster as `rust-script` reuses already built executables.
 
 Useful command-line arguments:
 
