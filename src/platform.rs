@@ -29,21 +29,21 @@ pub fn current_time() -> u128 {
         .as_millis()
 }
 
-pub fn get_cache_dir() -> Result<PathBuf, MainError> {
+pub fn cache_dir() -> Result<PathBuf, MainError> {
     dirs::cache_dir()
         .map(|dir| dir.join(consts::PROGRAM_NAME))
         .ok_or_else(|| (Blame::Human, "Cannot get cache directory").into())
 }
 
-pub fn get_script_cache_path() -> Result<PathBuf, MainError> {
-    get_cache_dir().map(|dir| dir.join("script-cache"))
+pub fn script_cache_path() -> Result<PathBuf, MainError> {
+    cache_dir().map(|dir| dir.join("scripts"))
 }
 
-pub fn get_binary_cache_path() -> Result<PathBuf, MainError> {
-    get_cache_dir().map(|dir| dir.join("binary-cache"))
+pub fn binary_cache_path() -> Result<PathBuf, MainError> {
+    cache_dir().map(|dir| dir.join("binaries"))
 }
 
-pub fn get_templates_dir() -> Result<PathBuf, MainError> {
+pub fn templates_dir() -> Result<PathBuf, MainError> {
     dirs::data_local_dir()
         .map(|dir| dir.join(consts::PROGRAM_NAME).join("templates"))
         .ok_or_else(|| (Blame::Human, "Cannot get cache directory").into())
@@ -99,9 +99,7 @@ pub mod inner {
     use std::ffi::OsString;
     use std::fmt;
 
-    use crate::error::MainError;
     use std::io;
-    use std::mem;
     use std::os::windows::ffi::{OsStrExt, OsStringExt};
     use std::path::{Path, PathBuf};
 

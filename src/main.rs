@@ -345,8 +345,8 @@ fn try_main() -> Result<i32> {
     info!("Arguments: {:?}", args);
 
     if log_enabled!(log::Level::Debug) {
-        let scp = platform::get_script_cache_path()?;
-        let bcp = platform::get_binary_cache_path()?;
+        let scp = platform::script_cache_path()?;
+        let bcp = platform::binary_cache_path()?;
         debug!("script-cache path: {:?}", scp);
         debug!("binary-cache path: {:?}", bcp);
     }
@@ -579,7 +579,7 @@ fn clean_cache(max_age: u128) -> Result<()> {
 
     if max_age == 0 {
         info!("max_age is 0, clearing binary cache...");
-        let cache_dir = platform::get_binary_cache_path()?;
+        let cache_dir = platform::binary_cache_path()?;
         if ALLOW_AUTO_REMOVE {
             if let Err(err) = fs::remove_dir_all(&cache_dir) {
                 error!("failed to remove binary cache {:?}: {}", cache_dir, err);
@@ -590,7 +590,7 @@ fn clean_cache(max_age: u128) -> Result<()> {
     let cutoff = platform::current_time() - max_age;
     info!("cutoff:     {:>20?} ms", cutoff);
 
-    let cache_dir = platform::get_script_cache_path()?;
+    let cache_dir = platform::script_cache_path()?;
     for child in fs::read_dir(cache_dir)? {
         let child = child?;
         let path = child.path();
@@ -892,7 +892,7 @@ fn decide_action_for(
         .map(|p| (p.into(), false))
         .unwrap_or_else(|| {
             // This can't fail.  Seriously, we're *fucked* if we can't work this out.
-            let cache_path = platform::get_script_cache_path().unwrap();
+            let cache_path = platform::script_cache_path().unwrap();
             info!("cache_path: {:?}", cache_path);
 
             let id = {
@@ -1380,7 +1380,7 @@ fn cargo(
     if use_bincache {
         let script_specific_binary_cache = format!(
             "{}/{}",
-            platform::get_binary_cache_path()?.display(),
+            platform::binary_cache_path()?.display(),
             meta.sha1_hash()
         );
         cmd.env("CARGO_TARGET_DIR", script_specific_binary_cache);

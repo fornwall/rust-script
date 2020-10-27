@@ -59,7 +59,7 @@ pub fn get_template_path() -> Result<PathBuf> {
         }
     }
 
-    let cache_path = platform::get_templates_dir()?;
+    let cache_path = platform::templates_dir()?;
     Ok(cache_path)
 }
 
