@@ -103,8 +103,6 @@ pub mod inner {
     use std::os::windows::ffi::{OsStrExt, OsStringExt};
     use std::path::{Path, PathBuf};
 
-    type WinResult<T> = Result<T, WinError>;
-
     struct WinError(winapi::HRESULT);
 
     impl fmt::Display for WinError {
