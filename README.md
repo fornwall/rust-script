@@ -1,9 +1,7 @@
-[![CI](https://github.com/fornwall/rust-script/workflows/CI/badge.svg)](https://github.com/fornwall/rust-script/actions?query=workflow%3ACI)
-[![Crates.io](https://img.shields.io/crates/v/rust-script.svg)](https://crates.io/crates/rust-script)
 
-# rust-script
+# rust-script [![CI](https://github.com/fornwall/rust-script/workflows/CI/badge.svg)](https://github.com/fornwall/rust-script/actions?query=workflow%3ACI) [![Crates.io](https://img.shields.io/crates/v/rust-script.svg)](https://crates.io/crates/rust-script)
 
-`rust-script` is a command-line tool to run Rust "scripts" which can make use of Cargo's package ecosystem.  It can also evaluate expressions and run filters.
+`rust-script` run Rust files and expressions without any setup or compilation necessary.
 
 Some of `rust-script`'s features include:
 
@@ -15,13 +13,9 @@ Some of `rust-script`'s features include:
 - Running unit tests and benchmarks from scripts.
 - Custom templates for command-line expressions and filters.
 
-**Note**: `rust-script` is a maintained fork of [cargo-script](https://github.com/DanielKeep/cargo-script).
-
 Table of contents:
 
 - [Installation](#installation)
-  - [Features](#features)
-  - [Manually Compiling and Installing](#compiling)
   - [Self-Executing Scripts](#shebang)
 - [Usage](#usage)
   - [Scripts](#scripts)
@@ -41,12 +35,7 @@ Install or update `rust-script` using Cargo:
 cargo install --force rust-script
 ```
 
-
-
-<a name="compiling"></a>
-### Manually Compiling and Installing
-
-`rust-script` requires latest stable Rust to build.
+Currently the latest stable version of Rust (1.47.0) is required.
 
 <a name="shebang"></a>
 ### Self-Executing Scripts
