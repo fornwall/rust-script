@@ -62,11 +62,6 @@ jobs:
       uses: hecrj/setup-rust-action@v1
     - name: Build debug
       run: cargo build
-    - name: Upload debug build (Windows)
-      uses: actions/upload-artifact@v2
-      with:
-        path: ./target/debug/rust-script
-        name: windows-binary
     - name: Upload Windows debug build
       if: runner.os == 'Windows'
       uses: actions/upload-artifact@v2
@@ -99,12 +94,11 @@ jobs:
       run: ./target/debug/rust-script.exe --install-file-association
     - name: Run example script with file extension
       run: cmd.exe /C .\examples\hello.crs
-    - name: Run example script without file extension
-      run: cmd.exe /C .\examples\hello
     - name: Uninstall file association
       run: ./target/debug/rust-script.exe --uninstall-file-association
     - name: Run example script with file extension
       run: cmd.exe /C .\examples\hello.crs
+      continue-on-error: true
 
   security-audit:
     runs-on: ubuntu-latest
