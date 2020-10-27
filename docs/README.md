@@ -55,7 +55,7 @@ Generally, you can get an overview of the available options using the `--help` f
 
 The primary use for `rust-script` is for running Rust source files as scripts. For example:
 
-```shell
+```sh
 $ echo 'fn main() { println!("Hello, World!"); }' > hello.rs
 $ rust-script hello.rs
 Hello, World!
@@ -156,7 +156,7 @@ Useful command-line arguments:
 
 You can use `rust-script` to write a quick stream filter, by specifying a closure to be called for each line read from stdin, like so:
 
-```text
+```sh
 $ cat now.crs | rust-script --loop \
     "let mut n=0; move |l| {n+=1; println!(\"{:>6}: {}\",n,l.trim_right())}"
    Compiling loop v0.1.0 (file:///C:/Users/drk/AppData/Local/Cargo/script-cache/loop-58079283761aab8433b1)
@@ -169,7 +169,7 @@ $ cat now.crs | rust-script --loop \
 
 You can achieve a similar effect to the above by using the `--count` flag, which causes the line number to be passed as a second argument to your closure:
 
-```text
+```sh
 $ cat now.crs | rust-script --count --loop \
     "|l,n| println!(\"{:>6}: {}\", n, l.trim_right())"
    Compiling loop v0.1.0 (file:///C:/Users/drk/AppData/Local/Cargo/script-cache/loop-58079283761aab8433b1)
@@ -223,7 +223,7 @@ fn main() {
 
 If stored in the templates folder as `grabbag.rs`, you can use it by passing the name `grabbag` via the `--template` option, like so:
 
-```text
+```sh
 $ rust-script -t grabbag -e "mem::size_of::<Box<Read>>()"
 16
 ```
@@ -233,4 +233,6 @@ In addition, there are three built-in templates: `expr`, `loop`, and `loop-count
 <a name="troubleshooting"></a>
 ### Troubleshooting
 
-Run with the `RUST_LOG=rust_script=trace` environment variable set to see debug log output.
+See and report issues at https://github.com/fornwall/rust-script/issues.
+
+Run with the `RUST_LOG=rust_script=trace` environment variable set to see verbose log output.
