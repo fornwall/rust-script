@@ -129,20 +129,20 @@ fn parse_args() -> Args {
                 .index(1)
                 .required(true)
                 .multiple(true)
+                .conflicts_with_all(&["test-file-association"])
             )
             .arg(Arg::with_name("expr")
                 .help("Execute <script> as a literal expression and display the result.")
                 .long("expr")
                 .short("e")
                 .takes_value(false)
-                //.conflicts_with_all(&["loop"])
+                .conflicts_with("loop")
                 .requires("command")
             )
             .arg(Arg::with_name("loop")
                 .help("Execute <script> as a literal closure once for each line from stdin.")
                 .long("loop")
                 .short("l")
-                //.conflicts_with_all(&["expr"])
                 .requires("command")
             )
             .group(ArgGroup::with_name("expr_or_loop")
@@ -266,12 +266,14 @@ fn parse_args() -> Args {
         .arg(
             Arg::with_name("install-file-association")
                 .help("Install a file association so that rust-script executes .crs files.")
-                .long("install-file-association"),
+                .long("install-file-association")
+                .conflicts_with_all(&["command", "expr_or_loop"]),
         )
         .arg(
             Arg::with_name("uninstall-file-association")
                 .help("Uninstall the file association that makes rust-script execute .crs files.")
-                .long("uninstall-file-association"),
+                .long("uninstall-file-association")
+                .conflicts_with_all(&["command", "expr_or_loop"]),
         );
 
     let m = app.get_matches();

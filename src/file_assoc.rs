@@ -68,7 +68,7 @@ pub fn install_file_association() -> Result<()> {
 
     let pathext: String = env.get_value("PATHEXT")?;
     if !pathext.split(';').any(|e| e.eq_ignore_ascii_case(".crs")) {
-        let pathext = pathext.split(";").chain(Some(".CRS")).join(";");
+        let pathext = pathext.split(';').chain(Some(".CRS")).join(";");
         env.set_value("PATHEXT", &pathext)?;
     }
 
@@ -107,7 +107,7 @@ pub fn uninstall_file_association() -> Result<()> {
             hklm.open_subkey(r#"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"#)?;
 
         let pathext: String = env.get_value("PATHEXT")?;
-        if pathext.split(";").any(|e| e.eq_ignore_ascii_case(".crs")) {
+        if pathext.split(';').any(|e| e.eq_ignore_ascii_case(".crs")) {
             let pathext = pathext
                 .split(';')
                 .filter(|e| !e.eq_ignore_ascii_case(".crs"))
