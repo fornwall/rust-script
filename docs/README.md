@@ -12,14 +12,13 @@ Table of contents:
 
 - [Installation](#installation)
 - [Usage](#usage)
-  - [Scripts](#scripts)
-  - [Executable Scripts](#shebang)
-  - [Expressions](#expressions)
-  - [Stream Filters](#filters)
-  - [Environment Variables](#env-vars)
-  - [Templates](#templates)
-  - [Troubleshooting](#troubleshooting)
-- [License](#license)
+- [Scripts](#scripts)
+- [Executable Scripts](#shebang)
+- [Expressions](#expressions)
+- [Stream Filters](#filters)
+- [Environment Variables](#env-vars)
+- [Templates](#templates)
+- [Troubleshooting](#troubleshooting)
 
 <a name="installation"></a>
 ## Installation
