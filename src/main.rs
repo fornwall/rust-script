@@ -126,6 +126,7 @@ fn parse_args() -> Args {
             .arg(Arg::with_name("command")
                 .help("Command (script file plus arguments) to execute.")
                 .index(1)
+                .required(true)
                 .multiple(true)
             )
             .arg(Arg::with_name("expr")
@@ -320,8 +321,7 @@ fn parse_args() -> Args {
 
 fn main() {
     env_logger::init();
-    info!("starting");
-    info!("args: {:?}", std::env::args().collect::<Vec<_>>());
+
     let stderr = &mut std::io::stderr();
     match try_main() {
         Ok(0) => (),
@@ -389,8 +389,8 @@ fn try_main() -> Result<i32> {
     let script_path: PathBuf;
     let content: String;
 
-    let input = match (args.command.get(0).cloned(), args.expr, args.loop_) {
-        (Some(script), false, false) => {
+    let input = match (args.command[0].clone(), args.expr, args.loop_) {
+        (script, false, false) => {
             let (path, mut file) = find_script(script).ok_or("could not find script")?;
 
             script_name = path
@@ -408,16 +408,17 @@ fn try_main() -> Result<i32> {
 
             Input::File(&script_name, &script_path, &content, mtime)
         }
-        (Some(expr), true, false) => {
+        (expr, true, false) => {
             content = expr;
             Input::Expr(&content, args.template.as_deref())
         }
-        (Some(loop_), false, true) => {
+        (loop_, false, true) => {
             content = loop_;
             Input::Loop(&content, args.count)
         }
-        (None, _, _) => return Err((Blame::Human, consts::NO_ARGS_MESSAGE).into()),
-        _ => return Err((Blame::Human, "cannot specify both --expr and --loop").into()),
+        (_, _, _) => {
+            panic!("Internal error: Invalid args");
+        }
     };
     info!("input: {:?}", input);
 
