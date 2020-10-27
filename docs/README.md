@@ -1,3 +1,16 @@
+- [Installation](#installation)
+- [Usage](#usage)
+- [Scripts](#scripts)
+- [Executable Scripts](#executable-scripts)
+- [Expressions](#expressions)
+- [Filters](#filters)
+- [Environment Variables](#environment-variables)
+- [Templates](#templates)
+- [Troubleshooting](#troubleshooting)
+
+<a name="overview"></a>
+## Overview
+
 Some of `rust-script`'s features include:
 
 - Reading Cargo manifests embedded in Rust scripts.
@@ -8,19 +21,8 @@ Some of `rust-script`'s features include:
 - Running unit tests and benchmarks from scripts.
 - Custom templates for command-line expressions and filters.
 
-Table of contents:
+Generally, you can get an overview of the available options using the `--help` flag.
 
-- [Installation](#installation)
-- [Usage](#usage)
-- [Scripts](#scripts)
-- [Executable Scripts](#shebang)
-- [Expressions](#expressions)
-- [Stream Filters](#filters)
-- [Environment Variables](#env-vars)
-- [Templates](#templates)
-- [Troubleshooting](#troubleshooting)
-
-<a name="installation"></a>
 ## Installation
 
 Install or update `rust-script` using Cargo:
@@ -31,13 +33,7 @@ cargo install --force rust-script
 
 The latest stable version of Rust (1.47.0) is required.
 
-<a name="usage"></a>
-## Usage
-
-Generally, you can get an overview of the available options using the `--help` flag.
-
-<a name="scripts"></a>
-### Scripts
+## Scripts
 
 The primary use for `rust-script` is for running Rust source files as scripts. For example:
 
@@ -105,8 +101,7 @@ Useful command-line arguments:
 - `--gen-pkg-only`: Generate the Cargo package, but don't compile or run it.  Effectively "unpacks" the script into a Cargo package.
 - `--test`: Compile and run tests.
 
-<a name="shebang"></a>
-### Executable Scripts
+## Executable Scripts
 
 On Unix systems, you can use `#!/usr/bin/env rust-script` as a shebang line in a Rust script.  This will allow you to execute a script file directly.
 
@@ -118,8 +113,7 @@ Uninstall the file association with `rust-script --uninstall-file-association`.
 
 If you want to make a script usable across platforms, use *both* a hashbang line *and* give the file a `.crs` file extension.
 
-<a name="expressions"></a>
-### Expressions
+## Expressions
 
 `rust-script` can also run pieces of Rust code directly from the command line.  This is done by providing the `--expr` option; this causes `rust-script` to interpret the `<script>` argument as source code *instead* of as a file path.  For example, code can be executed from the command line in a number of ways:
 
@@ -137,10 +131,9 @@ Useful command-line arguments:
 - `-D`/`--dep-extern`: do both of the above.
 - `-t`/`--template`: Specify a custom template for this expression (see section on templates).
 
-<a name="filters"></a>
-### Stream Filters
+## Filters
 
-You can use `rust-script` to write a quick stream filter, by specifying a closure to be called for each line read from stdin, like so:
+You can use `rust-script` to write a quick filter, by specifying a closure to be called for each line read from stdin, like so:
 
 ```sh
 $ cat now.crs | rust-script --loop \
@@ -168,8 +161,7 @@ $ cat now.crs | rust-script --count --loop \
 
 Note that, like with expressions, you can specify a custom template for stream filters.
 
-<a name="env-vars"></a>
-### Environment Variables
+## Environment Variables
 
 The following environment variables are provided to scripts by `rust-script`:
 
@@ -181,8 +173,7 @@ The following environment variables are provided to scripts by `rust-script`:
 
 - `CARGO_SCRIPT_SCRIPT_PATH`: absolute path to the script being run, assuming one exists.  Set to the empty string for expressions.
 
-<a name="templates"></a>
-### Templates
+## Templates
 
 You can use templates to avoid having to re-specify common code and dependencies.  You can view a list of your templates by running `rust-script templates list` (note the hyphen), or show the folder in which they should be stored by running `rust-script templates show`.  You can dump the contents of a template using `rust-script templates dump NAME`.
 
@@ -216,8 +207,7 @@ $ rust-script -t grabbag -e "mem::size_of::<Box<Read>>()"
 
 In addition, there are three built-in templates: `expr`, `loop`, and `loop-count`.  These are used for the `--expr`, `--loop`, and `--loop --count` invocation forms.  They can be overridden by placing templates with the same name in the template folder.  If you have *not* overridden them, you can dump the contents of these built-in templates using the `templates dump` command noted above.
 
-<a name="troubleshooting"></a>
-### Troubleshooting
+## Troubleshooting
 
 Please report all issues on [the GitHub issue tracker](https://github.com/fornwall/rust-script/issues).
 
