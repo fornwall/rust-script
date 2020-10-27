@@ -2,6 +2,8 @@
 This module just contains any big string literals I don't want cluttering up the rest of the code.
 */
 
+pub const PROGRAM_NAME: &str = "rust-script";
+
 /*
 What follows are the templates used to wrap script input.
 */

@@ -9,6 +9,7 @@ As such, `cargo-script` does two major things:
 
 2. It caches the generated and compiled packages, regenerating them only if the script or its metadata have changed.
 */
+#![forbid(unsafe_code)]
 extern crate env_logger;
 #[macro_use]
 extern crate lazy_static;
@@ -118,7 +119,7 @@ fn parse_args() -> Args {
     let version = option_env!("CARGO_PKG_VERSION").unwrap_or("unknown");
     let about = r#"Compiles and runs a Rust script."#;
 
-    let app = App::new("rust-script")
+    let app = App::new(consts::PROGRAM_NAME)
         .version(version)
         .setting(clap::AppSettings::TrailingVarArg)
         //.setting(clap::AppSettings::AllowLeadingHyphen)
@@ -344,8 +345,8 @@ fn try_main() -> Result<i32> {
     info!("Arguments: {:?}", args);
 
     if log_enabled!(log::Level::Debug) {
-        let scp = get_script_cache_path()?;
-        let bcp = get_binary_cache_path()?;
+        let scp = platform::get_script_cache_path()?;
+        let bcp = platform::get_binary_cache_path()?;
         debug!("script-cache path: {:?}", scp);
         debug!("binary-cache path: {:?}", bcp);
     }
@@ -578,7 +579,7 @@ fn clean_cache(max_age: u128) -> Result<()> {
 
     if max_age == 0 {
         info!("max_age is 0, clearing binary cache...");
-        let cache_dir = get_binary_cache_path()?;
+        let cache_dir = platform::get_binary_cache_path()?;
         if ALLOW_AUTO_REMOVE {
             if let Err(err) = fs::remove_dir_all(&cache_dir) {
                 error!("failed to remove binary cache {:?}: {}", cache_dir, err);
@@ -589,7 +590,7 @@ fn clean_cache(max_age: u128) -> Result<()> {
     let cutoff = platform::current_time() - max_age;
     info!("cutoff:     {:>20?} ms", cutoff);
 
-    let cache_dir = get_script_cache_path()?;
+    let cache_dir = platform::get_script_cache_path()?;
     for child in fs::read_dir(cache_dir)? {
         let child = child?;
         let path = child.path();
@@ -891,7 +892,7 @@ fn decide_action_for(
         .map(|p| (p.into(), false))
         .unwrap_or_else(|| {
             // This can't fail.  Seriously, we're *fucked* if we can't work this out.
-            let cache_path = get_script_cache_path().unwrap();
+            let cache_path = platform::get_script_cache_path().unwrap();
             info!("cache_path: {:?}", cache_path);
 
             let id = {
@@ -1123,22 +1124,6 @@ where
     write!(&mut meta_file, "{}", meta_str)?;
     meta_file.flush()?;
     Ok(())
-}
-
-/**
-Returns the path to the cache directory.
-*/
-fn get_script_cache_path() -> Result<PathBuf> {
-    let cache_path = platform::get_cache_dir()?;
-    Ok(cache_path.join("script-cache"))
-}
-
-/**
-Returns the path to the binary cache directory.
-*/
-fn get_binary_cache_path() -> Result<PathBuf> {
-    let cache_path = platform::get_cache_dir()?;
-    Ok(cache_path.join("binary-cache"))
 }
 
 /**
@@ -1395,7 +1380,7 @@ fn cargo(
     if use_bincache {
         let script_specific_binary_cache = format!(
             "{}/{}",
-            get_binary_cache_path()?.display(),
+            platform::get_binary_cache_path()?.display(),
             meta.sha1_hash()
         );
         cmd.env("CARGO_TARGET_DIR", script_specific_binary_cache);
