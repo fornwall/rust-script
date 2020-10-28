@@ -60,7 +60,6 @@ The output of Cargo will be hidden unless compilation fails.
     //! [dependencies]
     //! time = "0.1.25"
     //! ```
-    extern crate time;
     fn main() {
         println!("{}", time::now().rfc822z());
     }
@@ -74,7 +73,6 @@ The output of Cargo will be hidden unless compilation fails.
     // to be "*".  Also, the `cargo-deps` comment *must* be a single-line
     // comment, and it *must* be the first thing in the file, after the
     // hashbang.
-    extern crate time;
     fn main() {
         println!("{}", time::now().rfc822z());
     }
@@ -126,7 +124,6 @@ The code given is embedded into a block expression, evaluated, and printed out u
 Useful command-line arguments:
 
 - `-d`/`--dep`: add a dependency to the generated `Cargo.toml` manifest.
-- `-x`/`--extern`: inject `extern crate` into generated script.
 - `-D`/`--dep-extern`: do both of the above.
 - `-t`/`--template`: Specify a custom template for this expression (see section on templates).
 
@@ -137,9 +134,7 @@ You can use `rust-script` to write a quick filter, by specifying a closure to be
 ```sh
 $ cat now.crs | rust-script --loop \
     "let mut n=0; move |l| {n+=1; println!(\"{:>6}: {}\",n,l.trim_right())}"
-   Compiling loop v0.1.0 (file:///C:/Users/drk/AppData/Local/Cargo/script-cache/loop-58079283761aab8433b1)
      1: // cargo-deps: time="0.1.25"
-     2: extern crate time;
      3: fn main() {
      4:     println!("{}", time::now().rfc822z());
      5: }
@@ -150,12 +145,10 @@ You can achieve a similar effect to the above by using the `--count` flag, which
 ```sh
 $ cat now.crs | rust-script --count --loop \
     "|l,n| println!(\"{:>6}: {}\", n, l.trim_right())"
-   Compiling loop v0.1.0 (file:///C:/Users/drk/AppData/Local/Cargo/script-cache/loop-58079283761aab8433b1)
      1: // cargo-deps: time="0.1.25"
-     2: extern crate time;
-     3: fn main() {
-     4:     println!("{}", time::now().rfc822z());
-     5: }
+     2: fn main() {
+     3:     println!("{}", time::now().rfc822z());
+     4: }
 ```
 
 Note that, like with expressions, you can specify a custom template for stream filters.
@@ -184,7 +177,6 @@ For example, a minimal expression template that adds a dependency and imports so
 // cargo-deps: itertools="0.6.2"
 #![allow(unused_imports)]
 #{prelude}
-extern crate itertools;
 use std::io::prelude::*;
 use std::mem;
 use itertools::Itertools;
