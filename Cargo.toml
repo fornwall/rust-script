@@ -1,10 +1,12 @@
 [package]
 name = "rust-script"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2018"
 authors = ["Fredrik Fornwall <fredrik@fornwall.net>"]
 
 description = "Command-line tool to run Rust \"scripts\" which can make use of crates."
+homepage = "https://rust-script.org"
+documentation = "https://rust-script.org"
 repository = "https://github.com/fornwall/rust-script"
 readme = "README.md"
 license = "MIT/Apache-2.0"
@@ -12,8 +14,10 @@ keywords = ["cargo", "script"]
 categories = ["command-line-utilities", "development-tools"]
 
 exclude = [
-    "scripts/*",
-    ".travis.yml",
+    "_config.yml",
+    "CNAME",
+    ".github",
+    "target"
 ]
 
 [dependencies]
