@@ -59,7 +59,6 @@ struct Args {
     extern_: Vec<String>,
     force: bool,
     unstable_features: Vec<String>,
-    use_bincache: Option<bool>,
     build_kind: BuildKind,
     template: Option<String>,
     list_templates: bool,
@@ -218,12 +217,6 @@ fn parse_args() -> Args {
                 .requires("command")
                 .conflicts_with_all(&["clear_cache", "force"])
             )
-            .arg(Arg::with_name("use_bincache")
-                .help("Override whether or not the shared binary cache will be used for compilation.")
-                .long("use-shared-binary-cache")
-                .takes_value(true)
-                .possible_values(&["no", "yes"])
-            )
             .arg(Arg::with_name("test")
                 .help("Compile and run tests.")
                 .long("test")
@@ -275,14 +268,6 @@ fn parse_args() -> Args {
             .unwrap_or_default()
     }
 
-    fn yes_or_no(v: Option<&str>) -> Option<bool> {
-        v.map(|v| match v {
-            "yes" => true,
-            "no" => false,
-            _ => unreachable!(),
-        })
-    }
-
     Args {
         command: owned_vec_string(m.values_of("command")),
         features: m.value_of("features").map(Into::into),
@@ -300,7 +285,6 @@ fn parse_args() -> Args {
         extern_: owned_vec_string(m.values_of("extern")),
         force: m.is_present("force"),
         unstable_features: owned_vec_string(m.values_of("unstable_features")),
-        use_bincache: yes_or_no(m.value_of("use_bincache")),
         build_kind: BuildKind::from_flags(m.is_present("test"), m.is_present("bench")),
         template: m.value_of("template").map(Into::into),
         list_templates: m.is_present("list-templates"),
@@ -694,7 +678,6 @@ fn gen_pkg_and_compile(input: &Input, action: &InputAction) -> Result<()> {
         let mut cmd = cargo(
             "build",
             &*mani_path.to_string_lossy(),
-            action.use_bincache,
             action.use_nightly,
             &meta,
         )?;
@@ -721,19 +704,16 @@ fn gen_pkg_and_compile(input: &Input, action: &InputAction) -> Result<()> {
             input,
             pkg_path,
             &*mani_path.to_string_lossy(),
-            action.use_bincache,
             action.use_nightly,
             &meta,
         )?;
 
-        if action.use_bincache {
-            // Write out the metadata hash to tie this executable to a particular chunk of metadata.  This is to avoid issues with multiple scripts with the same name being compiled to a common target directory.
-            let meta_hash = action.metadata.sha1_hash();
-            info!("writing meta hash: {:?}...", meta_hash);
-            let exe_meta_hash_path = get_meta_hash_path(action.use_bincache, pkg_path)?;
-            let mut f = fs::File::create(&exe_meta_hash_path)?;
-            write!(&mut f, "{}", meta_hash)?;
-        }
+        // Write out the metadata hash to tie this executable to a particular chunk of metadata.  This is to avoid issues with multiple scripts with the same name being compiled to a common target directory.
+        let meta_hash = action.metadata.sha1_hash();
+        info!("writing meta hash: {:?}...", meta_hash);
+        let exe_meta_hash_path = get_meta_hash_path(pkg_path)?;
+        let mut f = fs::File::create(&exe_meta_hash_path)?;
+        write!(&mut f, "{}", meta_hash)?;
     }
 
     // Write out metadata *now*.  Remember that we check the timestamp in the metadata, *not* on the executable.
@@ -779,9 +759,6 @@ struct InputAction {
     */
     using_cache: bool,
 
-    /// Use shared binary cache?
-    use_bincache: bool,
-
     use_nightly: bool,
 
     /// The package metadata structure for the current invocation.
@@ -809,7 +786,6 @@ impl InputAction {
         cargo(
             cmd,
             &*self.manifest_path().to_string_lossy(),
-            self.use_bincache,
             self.use_nightly,
             &self.metadata,
         )
@@ -928,7 +904,6 @@ fn decide_action_for(
         execute: !build_only,
         pkg_path,
         using_cache,
-        use_bincache: args.use_bincache.unwrap_or(using_cache),
         use_nightly: matches!(args.build_kind, BuildKind::Bench),
         metadata: input_meta,
         old_metadata: None,
@@ -989,28 +964,23 @@ fn decide_action_for(
         bail!(compile: true)
     }
 
-    /*
-    Finally: check to see if `{exe_path}.meta-hash` exists and contains a hash that matches the metadata.  Yes, this is somewhat round-about, but we need to do this to account for cases where Cargo's target directory has been set to a fixed, shared location.
-
-    Note that we *do not* do this if we aren't using the cache.
-    */
-    if action.use_bincache {
-        let exe_meta_hash_path = get_meta_hash_path(action.use_bincache, &action.pkg_path).unwrap();
-        if !exe_meta_hash_path.is_file() {
-            info!("recompiling because: meta hash doesn't exist or isn't a file");
-            bail!(compile: true, force_compile: true)
-        }
-        let exe_meta_hash = {
-            let mut f = fs::File::open(&exe_meta_hash_path)?;
-            let mut s = String::new();
-            f.read_to_string(&mut s)?;
-            s
-        };
-        let meta_hash = action.metadata.sha1_hash();
-        if meta_hash != exe_meta_hash {
-            info!("recompiling because: meta hash doesn't match");
-            bail!(compile: true, force_compile: true)
-        }
+    // Finally  check to see if `{exe_path}.meta-hash` exists and contains a hash that matches the metadata.
+    // We need to do this to account for cases where Cargo's target directory has been set to a fixed, shared location.
+    let exe_meta_hash_path = get_meta_hash_path(&action.pkg_path).unwrap();
+    if !exe_meta_hash_path.is_file() {
+        info!("recompiling because: meta hash doesn't exist or isn't a file");
+        bail!(compile: true, force_compile: true)
+    }
+    let exe_meta_hash = {
+        let mut f = fs::File::open(&exe_meta_hash_path)?;
+        let mut s = String::new();
+        f.read_to_string(&mut s)?;
+        s
+    };
+    let meta_hash = action.metadata.sha1_hash();
+    if meta_hash != exe_meta_hash {
+        info!("recompiling because: meta hash doesn't match");
+        bail!(compile: true, force_compile: true)
     }
 
     Ok(action)
@@ -1047,13 +1017,10 @@ where
 /**
 Figures out where the `meta-hash` file should be.
 */
-fn get_meta_hash_path<P>(use_bincache: bool, pkg_path: P) -> Result<PathBuf>
+fn get_meta_hash_path<P>(pkg_path: P) -> Result<PathBuf>
 where
     P: AsRef<Path>,
 {
-    if !use_bincache {
-        panic!("tried to get meta-hash path when not using binary cache");
-    }
     Ok(pkg_path.as_ref().join("target.meta-hash"))
 }
 
@@ -1342,13 +1309,7 @@ where
 /**
 Constructs a Cargo command that runs on the script package.
 */
-fn cargo(
-    cmd_name: &str,
-    manifest: &str,
-    use_bincache: bool,
-    nightly: bool,
-    meta: &PackageMetadata,
-) -> Result<Command> {
+fn cargo(cmd_name: &str, manifest: &str, nightly: bool, meta: &PackageMetadata) -> Result<Command> {
     let mut cmd = Command::new("cargo");
     if nightly {
         cmd.arg("+nightly");
@@ -1359,14 +1320,12 @@ fn cargo(
         cmd.arg("--color").arg("always");
     }
 
-    if use_bincache {
-        let script_specific_binary_cache = format!(
-            "{}/{}",
-            platform::binary_cache_path()?.display(),
-            meta.sha1_hash()
-        );
-        cmd.env("CARGO_TARGET_DIR", script_specific_binary_cache);
-    }
+    let script_specific_binary_cache = format!(
+        "{}/{}",
+        platform::binary_cache_path()?.display(),
+        meta.sha1_hash()
+    );
+    cmd.env("CARGO_TARGET_DIR", script_specific_binary_cache);
 
     // Block `--release` on `bench`.
     if !meta.debug && cmd_name != "bench" {
@@ -1389,7 +1348,6 @@ fn cargo_target<P>(
     input: &Input,
     pkg_path: P,
     manifest: &str,
-    use_bincache: bool,
     use_nightly: bool,
     meta: &PackageMetadata,
 ) -> Result<PathBuf>
@@ -1397,13 +1355,12 @@ where
     P: AsRef<Path>,
 {
     trace!(
-        "cargo_target(_, {:?}, {:?}, {:?}, _)",
+        "cargo_target(_, {:?}, {:?}, _)",
         pkg_path.as_ref(),
         manifest,
-        use_bincache
     );
 
-    let exe_path = cargo_target_by_message(input, manifest, use_bincache, use_nightly, meta)?;
+    let exe_path = cargo_target_by_message(input, manifest, use_nightly, meta)?;
 
     trace!(".. exe_path: {:?}", exe_path);
 
@@ -1426,19 +1383,12 @@ where
 fn cargo_target_by_message(
     input: &Input,
     manifest: &str,
-    use_bincache: bool,
     use_nightly: bool,
     meta: &PackageMetadata,
 ) -> Result<PathBuf> {
     use std::io::{BufRead, BufReader};
 
-    trace!(
-        "cargo_target_by_message(_, {:?}, {:?}, _)",
-        manifest,
-        use_bincache
-    );
-
-    let mut cmd = cargo("build", manifest, use_bincache, use_nightly, meta)?;
+    let mut cmd = cargo("build", manifest, use_nightly, meta)?;
     cmd.arg("--message-format=json");
     cmd.stdout(process::Stdio::piped());
     cmd.stderr(process::Stdio::null());
