@@ -10,17 +10,16 @@
 
 ## Overview
 
-Some of `rust-script`'s features include:
+With `rust-script` Rust files and expressions can be executed just like a shell or Python script. Features include:
 
+- Caching compiled artifacts for speed.
 - Reading Cargo manifests embedded in Rust scripts.
-- Caching compiled artifacts (including dependencies) to amortise build times.
-- Supporting executable Rust scripts via UNIX shebangs and Windows file associations.
-- Evaluating expressions on the command-line.
+- Supporting executable Rust scripts via Unix shebangs and Windows file associations.
 - Using expressions as stream filters (*i.e.* for use in command pipelines).
 - Running unit tests and benchmarks from scripts.
 - Custom templates for command-line expressions and filters.
 
-Generally, you can get an overview of the available options using the `--help` flag.
+You can get an overview of the available options using the `--help` flag.
 
 ## Installation
 
