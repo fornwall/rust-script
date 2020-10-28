@@ -83,9 +83,9 @@ mod inner {
     }
 
     /**
-    Returns `true` if `cargo-script` should force Cargo to use coloured output.
+    Returns `true` if `rust-script` should force Cargo to use coloured output.
 
-    This depends on whether `cargo-script`'s STDERR is connected to a TTY or not.
+    This depends on whether `rust-script`'s STDERR is connected to a TTY or not.
     */
     pub fn force_cargo_color() -> bool {
         atty::is(atty::Stream::Stderr)
@@ -147,7 +147,7 @@ pub mod inner {
     }
 
     /**
-    Returns `true` if `cargo-script` should force Cargo to use coloured output.
+    Returns `true` if `rust-script` should force Cargo to use coloured output.
 
     Always returns `false` on Windows because colour is communicated over a side-channel.
     */

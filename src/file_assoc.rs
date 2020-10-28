@@ -59,7 +59,7 @@ pub fn install_file_association() -> Result<()> {
         }
     }
 
-    println!("Created run-cargo-script registry entry.");
+    println!("Created rust-script registry entry.");
     println!("- Handler set to: {}", rcs_path);
 
     let hklm = RegKey::predef(wre::HKEY_LOCAL_MACHINE);
@@ -99,7 +99,7 @@ pub fn uninstall_file_association() -> Result<()> {
     if ignored_missing {
         println!("Ignored some missing registry entries.");
     }
-    println!("Deleted run-cargo-script registry entry.");
+    println!("Deleted rust-script registry entry.");
 
     {
         let hklm = RegKey::predef(wre::HKEY_LOCAL_MACHINE);

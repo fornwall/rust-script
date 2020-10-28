@@ -1,5 +1,5 @@
 /*!
-This module is concerned with how `cargo-script` extracts the manfiest from a script file.
+This module is concerned with how `rust-script` extracts the manfiest from a script file.
 */
 extern crate pulldown_cmark;
 extern crate regex;
@@ -307,7 +307,7 @@ fn test_strip_hashbang() {
     assert_eq!(
         strip_hashbang(
             "\
-#!/usr/bin/env run-cargo-script
+#!/usr/bin/env rust-script
 and the rest
 \
         "

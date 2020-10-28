@@ -1,14 +1,3 @@
-/*!
-`cargo-script` is a Cargo subcommand designed to let people quickly and easily run Rust "scripts" which can make use of Cargo's package ecosystem.
-
-Or, to put it in other words, it lets you write useful, but small, Rust programs without having to create a new directory and faff about with `Cargo.toml`.
-
-As such, `cargo-script` does two major things:
-
-1. Given a script, it extracts the embedded Cargo manifest and merges it with some sensible defaults.  This manifest, along with the source code, is written to a fresh Cargo package on-disk.
-
-2. It caches the generated and compiled packages, regenerating them only if the script or its metadata have changed.
-*/
 #![forbid(unsafe_code)]
 extern crate env_logger;
 #[macro_use]
