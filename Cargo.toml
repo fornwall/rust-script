@@ -23,7 +23,7 @@ exclude = [
 [dependencies]
 crossbeam-channel = "0.5"
 clap = "2"
-dirs = "3"
+dirs-next = "2"
 env_logger = "0.8"
 itertools = "0.9"
 lazy_static = "1"
