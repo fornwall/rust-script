@@ -38,7 +38,7 @@ use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 
 use crate::error::{Blame, MainError, Result};
-use crate::util::{ChainMap, Defer};
+use crate::util::Defer;
 use sha1::{Digest, Sha1};
 
 #[derive(Debug)]
@@ -497,7 +497,6 @@ fn try_main() -> Result<i32> {
     };
     info!("prelude_items: {:?}", prelude_items);
 
-    // Work out what to do.
     let action = decide_action_for(&input, deps, prelude_items, &args)?;
     info!("action: {:?}", action);
 
@@ -515,12 +514,8 @@ fn try_main() -> Result<i32> {
         })
     };
 
-    // Run it!
-    if action.execute {
-        fn hint<F: FnOnce(&mut Command) -> &mut Command>(f: F) -> F {
-            f
-        }
-        let add_env = hint(move |cmd| {
+    let exit_code = if action.execute {
+        let add_env = |cmd: &mut Command| {
             cmd.env(
                 "RUST_SCRIPT_PATH",
                 input.path().unwrap_or_else(|| Path::new("")),
@@ -528,36 +523,27 @@ fn try_main() -> Result<i32> {
             cmd.env("RUST_SCRIPT_SAFE_NAME", input.safe_name());
             cmd.env("RUST_SCRIPT_PKG_NAME", input.package_name());
             cmd.env("RUST_SCRIPT_BASE_PATH", input.base_path());
-            cmd
-        });
+        };
 
         if action.build_kind.can_exec_directly() {
             let exe_path = get_exe_path(action.build_kind, &action.pkg_path)?;
             info!("executing {:?}", exe_path);
-            match {
-                Command::new(exe_path)
-                    .args(&args.command[1..])
-                    .chain_map(add_env)
-                    .status()
-                    .map(|st| st.code().unwrap_or(1))
-            }? {
-                0 => (),
-                n => return Ok(n),
-            }
+            let mut command = Command::new(exe_path);
+            command.args(&args.command[1..]);
+            add_env(&mut command);
+            command.status().map(|st| st.code().unwrap_or(1))?
         } else {
             let cmd_name = action.build_kind.exec_command();
             info!("running `cargo {}`", cmd_name);
             let mut cmd = action.cargo(cmd_name)?;
             add_env(&mut cmd);
-            match cmd.status().map(|st| st.code().unwrap_or(1))? {
-                0 => (),
-                n => return Ok(n),
-            }
+            cmd.status().map(|st| st.code().unwrap_or(1))?
         }
-    }
+    } else {
+        0
+    };
 
-    // If nothing else failed, I suppose we succeeded.
-    Ok(0)
+    Ok(exit_code)
 }
 
 /**
@@ -904,7 +890,6 @@ fn decide_action_for(
     info!("pkg_path: {:?}", pkg_path);
     info!("using_cache: {:?}", using_cache);
 
-    info!("splitting input...");
     let (mani_str, script_str) = manifest::split_input(input, &deps, &prelude)?;
 
     // Forcibly override some flags based on build kind.
@@ -914,7 +899,6 @@ fn decide_action_for(
         BuildKind::Bench => (false, false, false),
     };
 
-    // Construct input metadata.
     let input_meta = {
         let (path, mtime, template) = match *input {
             Input::File(_, path, _, mtime) => {
@@ -937,7 +921,6 @@ fn decide_action_for(
     };
     info!("input_meta: {:?}", input_meta);
 
-    // Lazy powers, ACTIVATE!
     let mut action = InputAction {
         compile: force,
         force_compile: force,
@@ -980,8 +963,10 @@ fn decide_action_for(
     let cache_meta = match get_pkg_metadata(&action.pkg_path) {
         Ok(meta) => meta,
         Err(err) => {
-            info!("recompiling because: failed to load metadata");
-            debug!("get_pkg_metadata error: {}", err.to_string());
+            info!(
+                "recompiling since failed to load metadata: {}",
+                err.to_string()
+            );
             bail!(compile: true)
         }
     };
@@ -995,9 +980,6 @@ fn decide_action_for(
 
     action.old_metadata = Some(cache_meta);
 
-    /*
-    Next test: does the executable exist at all?
-    */
     let exe_exists = match get_exe_path(action.build_kind, &action.pkg_path) {
         Ok(exe_path) => exe_path.is_file(),
         Err(_) => false,
@@ -1031,7 +1013,6 @@ fn decide_action_for(
         }
     }
 
-    // That's enough; let's just go with it.
     Ok(action)
 }
 
