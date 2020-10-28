@@ -44,6 +44,12 @@ pub fn binary_cache_path() -> Result<PathBuf, MainError> {
 }
 
 pub fn templates_dir() -> Result<PathBuf, MainError> {
+    if cfg!(debug_assertions) {
+        if let Ok(path) = std::env::var("RUST_SCRIPT_DEBUG_TEMPLATE_PATH") {
+            return Ok(path.into());
+        }
+    }
+
     dirs::data_local_dir()
         .map(|dir| dir.join(consts::PROGRAM_NAME).join("templates"))
         .ok_or_else(|| (Blame::Human, "Cannot get cache directory").into())

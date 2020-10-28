@@ -533,12 +533,12 @@ fn try_main() -> Result<i32> {
         }
         let add_env = hint(move |cmd| {
             cmd.env(
-                "CARGO_SCRIPT_SCRIPT_PATH",
+                "RUST_SCRIPT_PATH",
                 input.path().unwrap_or_else(|| Path::new("")),
             );
-            cmd.env("CARGO_SCRIPT_SAFE_NAME", input.safe_name());
-            cmd.env("CARGO_SCRIPT_PKG_NAME", input.package_name());
-            cmd.env("CARGO_SCRIPT_BASE_PATH", input.base_path());
+            cmd.env("RUST_SCRIPT_SAFE_NAME", input.safe_name());
+            cmd.env("RUST_SCRIPT_PKG_NAME", input.package_name());
+            cmd.env("RUST_SCRIPT_BASE_PATH", input.base_path());
             cmd
         });
 
