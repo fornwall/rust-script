@@ -6,7 +6,7 @@
 
 `rust-script` run Rust files and expressions without any setup or compilation necessary.
 
-See the documentation at [rust-script.org](https://rust-script.org).
+See |the documentation at rust-script.org](https://rust-script.org).
 
 ## License
 
