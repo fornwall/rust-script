@@ -30,7 +30,7 @@ Install or update `rust-script` using Cargo:
 cargo install --force rust-script
 ```
 
-The latest stable version of Rust (1.47.0) is required.
+The latest stable version of Rust (1.47) is required.
 
 ## Scripts
 
