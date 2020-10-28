@@ -73,12 +73,12 @@ The output of Cargo will be hidden unless compilation fails.
     // to be "*".  Also, the `cargo-deps` comment *must* be a single-line
     // comment, and it *must* be the first thing in the file, after the
     // hashbang.
+    // Multiple dependencies should be separated by commas:
+    // cargo-deps: time="0.1.25", libc="0.2.5"
     fn main() {
         println!("{}", time::now().rfc822z());
     }
     ```
-
-    > **Note**: you can write multiple dependencies by separating them with commas.  *E.g.* `time="0.1.25", libc="0.2.5"`.
 
 On running either of these, `rust-script` will generate a Cargo package, build it, and run the result.  The output may look something like:
 
