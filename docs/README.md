@@ -108,7 +108,7 @@ If you want to make a script usable across platforms, use *both* a hashbang line
 
 ## Expressions
 
-Using the `-e`/`--eval` option a Rust expression can be evaluated directly, with optionally dependencies added using the `-d`/`--dep` option:
+Using the `-e`/`--expr` option a Rust expression can be evaluated directly, with optionally dependencies added using the `-d`/`--dep` option:
 
 ```sh
 $ rust-script -e '1+2'
