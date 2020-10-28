@@ -8,6 +8,8 @@ Run Rust files and expressions without any setup or compilation necessary.
 
 See the [documentation at rust-script.org](https://rust-script.org).
 
+NOTE: `rust-script` is a maintained fork of the excellent (but abandoned) [cargo-script](https://github.com/DanielKeep/cargo-script) project.
+
 ## License
 
 `rust-script` is primarily distributed under the terms of both the [MIT license](LICENSE-MIT) and the [Apache License (Version 2.0)](LICENSE-APACHE).
