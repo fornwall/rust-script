@@ -45,7 +45,7 @@ Hello, World!
 
 The output of Cargo will be hidden unless compilation fails.
 
-`rust-script` will also look for embedded dependency and manifest information in the script using one of two syntaxes as shown by the below two equivalent `now.rs` variants:
+`rust-script` will also look for embedded dependency and manifest information in the script as shown by the below two equivalent `now.rs` variants:
 
 ```rust
 #!/usr/bin/env rust-script
