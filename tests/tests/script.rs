@@ -83,6 +83,18 @@ fn test_script_hyphens() {
 }
 
 #[test]
+fn test_script_hyphens_without_separator() {
+    use scan_rules::scanner::QuotedString;
+    let out = cargo_script!("tests/data/script-args.rs", "-NotAnArg").unwrap();
+    scan!(out.stdout_output();
+        ("[0]:", let _: QuotedString, "[1]:", let arg: QuotedString) => {
+            assert_eq!(arg, "-NotAnArg");
+        }
+    )
+    .unwrap()
+}
+
+#[test]
 fn test_script_has_weird_chars() {
     let out = cargo_script!("tests/data/script-has.weird§chars!.rs").unwrap();
     assert!(out.success());
