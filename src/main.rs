@@ -709,6 +709,7 @@ fn gen_pkg_and_compile(input: &Input, action: &InputAction) -> Result<()> {
             "build",
             &*mani_path.to_string_lossy(),
             action.use_bincache,
+            action.use_nightly,
             &meta,
         )?;
 
@@ -735,6 +736,7 @@ fn gen_pkg_and_compile(input: &Input, action: &InputAction) -> Result<()> {
             pkg_path,
             &*mani_path.to_string_lossy(),
             action.use_bincache,
+            action.use_nightly,
             &meta,
         )?;
 
@@ -794,6 +796,8 @@ struct InputAction {
     /// Use shared binary cache?
     use_bincache: bool,
 
+    use_nightly: bool,
+
     /// The package metadata structure for the current invocation.
     metadata: PackageMetadata,
 
@@ -820,6 +824,7 @@ impl InputAction {
             cmd,
             &*self.manifest_path().to_string_lossy(),
             self.use_bincache,
+            self.use_nightly,
             &self.metadata,
         )
     }
@@ -941,6 +946,7 @@ fn decide_action_for(
         pkg_path,
         using_cache,
         use_bincache: args.use_bincache.unwrap_or(using_cache),
+        use_nightly: matches!(args.build_kind, BuildKind::Bench),
         metadata: input_meta,
         old_metadata: None,
         manifest: mani_str,
@@ -1359,9 +1365,13 @@ fn cargo(
     cmd_name: &str,
     manifest: &str,
     use_bincache: bool,
+    nightly: bool,
     meta: &PackageMetadata,
 ) -> Result<Command> {
     let mut cmd = Command::new("cargo");
+    if nightly {
+        cmd.arg("+nightly");
+    }
     cmd.arg(cmd_name).arg("--manifest-path").arg(manifest);
 
     if platform::force_cargo_color() {
@@ -1399,6 +1409,7 @@ fn cargo_target<P>(
     pkg_path: P,
     manifest: &str,
     use_bincache: bool,
+    use_nightly: bool,
     meta: &PackageMetadata,
 ) -> Result<PathBuf>
 where
@@ -1411,7 +1422,7 @@ where
         use_bincache
     );
 
-    let exe_path = cargo_target_by_message(input, manifest, use_bincache, meta)?;
+    let exe_path = cargo_target_by_message(input, manifest, use_bincache, use_nightly, meta)?;
 
     trace!(".. exe_path: {:?}", exe_path);
 
@@ -1435,6 +1446,7 @@ fn cargo_target_by_message(
     input: &Input,
     manifest: &str,
     use_bincache: bool,
+    use_nightly: bool,
     meta: &PackageMetadata,
 ) -> Result<PathBuf> {
     use std::io::{BufRead, BufReader};
@@ -1445,7 +1457,7 @@ fn cargo_target_by_message(
         use_bincache
     );
 
-    let mut cmd = cargo("build", manifest, use_bincache, meta)?;
+    let mut cmd = cargo("build", manifest, use_bincache, use_nightly, meta)?;
     cmd.arg("--message-format=json");
     cmd.stdout(process::Stdio::piped());
     cmd.stderr(process::Stdio::null());
