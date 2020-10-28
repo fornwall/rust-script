@@ -46,39 +46,35 @@ Hello, World!
 
 The output of Cargo will be hidden unless compilation fails.
 
-`rust-script` will also look for embedded dependency and manifest information in the script.  For example, all of the following are equivalent:
+`rust-script` will also look for embedded dependency and manifest information in the script using one of two syntaxes as shown by the below two equivalent `now.rs` variants:
 
-- `now.crs` (code block manifest with UNIX hashbang and `.crs` extension):
+```rust
+#!/usr/bin/env rust-script
+//! This is a regular crate doc comment, but it also contains a partial
+//! Cargo manifest.  Note the use of a *fenced* code block, and the
+//! `cargo` "language".
+//!
+//! ```cargo
+//! [dependencies]
+//! time = "0.1.25"
+//! ```
+fn main() {
+    println!("{}", time::now().rfc822z());
+}
+```
 
-    ```rust
-    #!/usr/bin/env rust-script
-    //! This is a regular crate doc comment, but it also contains a partial
-    //! Cargo manifest.  Note the use of a *fenced* code block, and the
-    //! `cargo` "language".
-    //!
-    //! ```cargo
-    //! [dependencies]
-    //! time = "0.1.25"
-    //! ```
-    fn main() {
-        println!("{}", time::now().rfc822z());
-    }
-    ```
-
-- `now.rs` (dependency-only, short-hand manifest):
-
-    ```rust
-    // cargo-deps: time="0.1.25"
-    // You can also leave off the version number, in which case, it's assumed
-    // to be "*".  Also, the `cargo-deps` comment *must* be a single-line
-    // comment, and it *must* be the first thing in the file, after the
-    // hashbang.
-    // Multiple dependencies should be separated by commas:
-    // cargo-deps: time="0.1.25", libc="0.2.5"
-    fn main() {
-        println!("{}", time::now().rfc822z());
-    }
-    ```
+```rust
+// cargo-deps: time="0.1.25"
+// You can also leave off the version number, in which case, it's assumed
+// to be "*".  Also, the `cargo-deps` comment *must* be a single-line
+// comment, and it *must* be the first thing in the file, after the
+// hashbang.
+// Multiple dependencies should be separated by commas:
+// cargo-deps: time="0.1.25", libc="0.2.5"
+fn main() {
+    println!("{}", time::now().rfc822z());
+}
+```
 
 On running either of these, `rust-script` will generate a Cargo package, build it, and run the result.  The output may look something like:
 
