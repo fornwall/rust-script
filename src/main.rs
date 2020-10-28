@@ -252,12 +252,12 @@ fn parse_args() -> Args {
     let app = app
         .arg(
             Arg::with_name("install-file-association")
-                .help("Install a file association so that rust-script executes .crs files.")
+                .help("Install a file association so that rust-script executes .ers files.")
                 .long("install-file-association"),
         )
         .arg(
             Arg::with_name("uninstall-file-association")
-                .help("Uninstall the file association that makes rust-script execute .crs files.")
+                .help("Uninstall the file association that makes rust-script execute .ers files.")
                 .long("uninstall-file-association"),
         )
         .group(

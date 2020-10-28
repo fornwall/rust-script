@@ -96,15 +96,15 @@ Useful command-line arguments:
 
 ## Executable Scripts
 
-On Unix systems, you can use `#!/usr/bin/env rust-script` as a shebang line in a Rust script.  This will allow you to execute a script file directly.
+On Unix systems, you can use `#!/usr/bin/env rust-script` as a shebang line in a Rust script.  This will allow you to execute a script files (which don't need to have the `.rs` file extension) directly.
 
-If you are using Windows, you can associate the `.crs` extension (which is simply a renamed `.rs` file) with `rust-script`.  This allows you to execute Rust scripts simply by naming them like any other executable or script.
+If you are using Windows, you can associate the `.ers` extension (executable Rust - a renamed `.rs` file) with `rust-script`.  This allows you to execute Rust scripts simply by naming them like any other executable or script.
 
-This can be done using the `rust-script --install-file-association` command. It will also allow you to execute `.crs` scripts *without* having to specify the file extension, in the same way that `.exe` and `.bat` files can be used.
+This can be done using the `rust-script --install-file-association` command. It will also allow you to execute `.ers` scripts *without* having to specify the file extension, in the same way that `.exe` and `.bat` files can be used.
 
 Uninstall the file association with `rust-script --uninstall-file-association`.
 
-If you want to make a script usable across platforms, use *both* a hashbang line *and* give the file a `.crs` file extension.
+If you want to make a script usable across platforms, use *both* a hashbang line *and* give the file a `.ers` file extension.
 
 ## Expressions
 
@@ -127,7 +127,7 @@ The code given is embedded into a block expression, evaluated, and printed out u
 You can use `rust-script` to write a quick filter, by specifying a closure to be called for each line read from stdin, like so:
 
 ```sh
-$ cat now.crs | rust-script --loop \
+$ cat now.ers | rust-script --loop \
     "let mut n=0; move |l| {n+=1; println!(\"{:>6}: {}\",n,l.trim_right())}"
      1: // cargo-deps: time="0.1.25"
      3: fn main() {
@@ -138,7 +138,7 @@ $ cat now.crs | rust-script --loop \
 You can achieve a similar effect to the above by using the `--count` flag, which causes the line number to be passed as a second argument to your closure:
 
 ```sh
-$ cat now.crs | rust-script --count --loop \
+$ cat now.ers | rust-script --count --loop \
     "|l,n| println!(\"{:>6}: {}\", n, l.trim_right())"
      1: // cargo-deps: time="0.1.25"
      2: fn main() {

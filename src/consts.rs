@@ -154,7 +154,7 @@ pub const METADATA_FILE: &str = "metadata.json";
 /**
 Extensions to check when trying to find script input by name.
 */
-pub const SEARCH_EXTS: &[&str] = &["crs", "rs"];
+pub const SEARCH_EXTS: &[&str] = &["ers", "rs"];
 
 /**
 When generating a package's unique ID, how many hex nibbles of the digest should be used *at most*?

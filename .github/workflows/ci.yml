@@ -93,7 +93,7 @@ jobs:
     - name: Install file association
       run: ./target/debug/rust-script.exe --install-file-association
     - name: Run example script with file extension
-      run: cmd.exe /C .\examples\hello.crs
+      run: cmd.exe /C .\examples\hello.ers
     - name: Run example script without file extension
       run: cmd.exe /C hello
       working-directory: examples
@@ -101,7 +101,7 @@ jobs:
     - name: Uninstall file association
       run: ./target/debug/rust-script.exe --uninstall-file-association
     - name: Run example script with file extension
-      run: cmd.exe /C .\examples\hello.crs
+      run: cmd.exe /C .\examples\hello.ers
       continue-on-error: true
     - name: Run example script without file extension
       run: cmd.exe /C hello

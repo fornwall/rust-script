@@ -34,13 +34,13 @@ pub fn install_file_association() -> Result<()> {
 
     let res = (|| -> io::Result<()> {
         let hlcr = RegKey::predef(wre::HKEY_CLASSES_ROOT);
-        let dot_crs = hlcr.create_subkey(".crs")?;
-        dot_crs.set_value("", &"CargoScript.Crs")?;
+        let dot_ers = hlcr.create_subkey(".ers")?;
+        dot_ers.set_value("", &"RustScript.Ers")?;
 
-        let cs_crs = hlcr.create_subkey("CargoScript.Crs")?;
-        cs_crs.set_value("", &"Cargo Script")?;
+        let cs_ers = hlcr.create_subkey("RustScript.Ers")?;
+        cs_ers.set_value("", &"Rust Script")?;
 
-        let sh_o_c = cs_crs.create_subkey(r#"shell\open\command"#)?;
+        let sh_o_c = cs_ers.create_subkey(r#"shell\open\command"#)?;
         sh_o_c.set_value("", &format!(r#""{}" "%1" %*"#, rcs_path))?;
         Ok(())
     })();
@@ -67,12 +67,12 @@ pub fn install_file_association() -> Result<()> {
         hklm.open_subkey(r#"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"#)?;
 
     let pathext: String = env.get_value("PATHEXT")?;
-    if !pathext.split(';').any(|e| e.eq_ignore_ascii_case(".crs")) {
-        let pathext = pathext.split(';').chain(Some(".CRS")).join(";");
+    if !pathext.split(';').any(|e| e.eq_ignore_ascii_case(".ers")) {
+        let pathext = pathext.split(';').chain(Some(".ERS")).join(";");
         env.set_value("PATHEXT", &pathext)?;
     }
 
-    println!("Added `.crs` to PATHEXT.  You may need to log out for the change to take effect.");
+    println!("Added `.ers` to PATHEXT.  You may need to log out for the change to take effect.");
 
     Ok(())
 }
@@ -86,13 +86,13 @@ pub fn uninstall_file_association() -> Result<()> {
         let mut notify = || ignored_missing = true;
 
         let hlcr = RegKey::predef(wre::HKEY_CLASSES_ROOT);
-        hlcr.delete_subkey(r#"CargoScript.Crs\shell\open\command"#)
+        hlcr.delete_subkey(r#"RustScript.Ers\shell\open\command"#)
             .ignore_missing_and(&mut notify)?;
-        hlcr.delete_subkey(r#"CargoScript.Crs\shell\open"#)
+        hlcr.delete_subkey(r#"RustScript.Ers\shell\open"#)
             .ignore_missing_and(&mut notify)?;
-        hlcr.delete_subkey(r#"CargoScript.Crs\shell"#)
+        hlcr.delete_subkey(r#"RustScript.Ers\shell"#)
             .ignore_missing_and(&mut notify)?;
-        hlcr.delete_subkey(r#"CargoScript.Crs"#)
+        hlcr.delete_subkey(r#"RustScript.Ers"#)
             .ignore_missing_and(&mut notify)?;
     }
 
@@ -107,13 +107,13 @@ pub fn uninstall_file_association() -> Result<()> {
             hklm.open_subkey(r#"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"#)?;
 
         let pathext: String = env.get_value("PATHEXT")?;
-        if pathext.split(';').any(|e| e.eq_ignore_ascii_case(".crs")) {
+        if pathext.split(';').any(|e| e.eq_ignore_ascii_case(".ers")) {
             let pathext = pathext
                 .split(';')
-                .filter(|e| !e.eq_ignore_ascii_case(".crs"))
+                .filter(|e| !e.eq_ignore_ascii_case(".ers"))
                 .join(";");
             env.set_value("PATHEXT", &pathext)?;
-            println!("Removed `.crs` from PATHEXT.  You may need to log out for the change to take effect.");
+            println!("Removed `.ers` from PATHEXT.  You may need to log out for the change to take effect.");
         }
     }
 
