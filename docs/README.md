@@ -112,20 +112,15 @@ If you want to make a script usable across platforms, use *both* a hashbang line
 
 ## Expressions
 
-`rust-script` can also run pieces of Rust code directly from the command line.  This is done by providing the `-e`/`--eval` option; this causes `rust-script` to interpret the `<script>` argument as source code *instead* of as a file path.
-
-The - `-d`/`--dep` option can be used to specify dependencies to add before evaluating the expression.
-
-
-For example, code can be executed from the command line in a number of ways:
+Using the `-e`/`--eval` option a Rust expression can be evaluated directly, with optionally dependencies added using the `-d`/`--dep` option:
 
 ```sh
 $ rust-script -e '1+2'
 3
 $ rust-script --dep time --expr "time::OffsetDateTime::now_utc().format(time::Format::Rfc3339).to_string()"`
 "2020-10-28T11:42:10+00:00"
-$ # Use a specific version of the time crate instead of latest:
-$ rust-script --dep time=0.1.38 --e "time::now().rfc822z().to_string()"
+$ # Use a specific version of the time crate (instead of default latest):
+$ rust-script --dep time=0.1.38 -e "time::now().rfc822z().to_string()"
 "2020-10-28T11:42:10+00:00"
 ```
 
