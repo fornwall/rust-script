@@ -174,7 +174,7 @@ The following environment variables are provided to scripts by `rust-script`:
 
 ## Templates
 
-You can use templates to avoid having to re-specify common code and dependencies.  You can view a list of your templates by running `rust-script templates list` (note the hyphen), or show the folder in which they should be stored by running `rust-script templates show`.  You can dump the contents of a template using `rust-script templates dump NAME`.
+You can use templates to avoid having to re-specify common code and dependencies.  You can find out the directory where templates are store and view a list of your templates by running `rust-script --list-templates`.
 
 Templates are Rust source files with two placeholders: `#{prelude}` for the auto-generated prelude (which should be placed at the top of the template), and `#{script}` for the contents of the script itself.
 
@@ -204,7 +204,7 @@ $ rust-script -t grabbag -e "mem::size_of::<Box<Read>>()"
 16
 ```
 
-In addition, there are three built-in templates: `expr`, `loop`, and `loop-count`.  These are used for the `--expr`, `--loop`, and `--loop --count` invocation forms.  They can be overridden by placing templates with the same name in the template folder.  If you have *not* overridden them, you can dump the contents of these built-in templates using the `templates dump` command noted above.
+In addition, there are three built-in templates: `expr`, `loop`, and `loop-count`.  These are used for the `--expr`, `--loop`, and `--loop --count` invocation forms.  They can be overridden by placing templates with the same name in the template folder.
 
 ## Troubleshooting
 
