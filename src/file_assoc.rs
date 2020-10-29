@@ -3,27 +3,22 @@ This module deals with setting up file associations on Windows
 */
 use crate::error::{Blame, Result};
 use itertools::Itertools;
+use std::env;
 use std::io;
+use winreg::{enums as wre, RegKey};
 
 pub fn install_file_association() -> Result<()> {
-    use self::winreg::enums as wre;
-    use self::winreg::RegKey;
-    use std::env;
-
-    let cs_path = env::current_exe()?;
-    let cs_path = cs_path.canonicalize()?;
-    let rcs_path = cs_path.with_file_name("rust-script.exe");
-
-    if !rcs_path.exists() {
-        return Err((Blame::Human, format!("{:?} not found", rcs_path)).into());
+    let rust_script_path = env::current_exe()?.canonicalize()?;
+    if !rust_script_path.exists() {
+        return Err((Blame::Human, format!("{:?} not found", rust_script_path)).into());
     }
 
     // We have to remove the `\\?\` prefix because, if we don't, the shell freaks out.
-    let rcs_path = rcs_path.to_string_lossy();
-    let rcs_path = if rcs_path.starts_with(r#"\\?\"#) {
-        &rcs_path[4..]
+    let rust_script_path = rust_script_path.to_string_lossy();
+    let rust_script_path = if rust_script_path.starts_with(r#"\\?\"#) {
+        &rust_script_path[4..]
     } else {
-        &rcs_path[..]
+        &rust_script_path[..]
     };
 
     let res = (|| -> io::Result<()> {
@@ -35,7 +30,7 @@ pub fn install_file_association() -> Result<()> {
         cs_ers.set_value("", &"Rust Script")?;
 
         let (sh_o_c, _) = cs_ers.create_subkey(r#"shell\open\command"#)?;
-        sh_o_c.set_value("", &format!(r#""{}" "%1" %*"#, rcs_path))?;
+        sh_o_c.set_value("", &format!(r#""{}" "%1" %*"#, rust_script_path))?;
         Ok(())
     })();
 
@@ -54,7 +49,7 @@ pub fn install_file_association() -> Result<()> {
     }
 
     println!("Created rust-script registry entry.");
-    println!("- Handler set to: {}", rcs_path);
+    println!("- Handler set to: {}", rust_script_path);
 
     let hklm = RegKey::predef(wre::HKEY_LOCAL_MACHINE);
     let env =
@@ -72,9 +67,6 @@ pub fn install_file_association() -> Result<()> {
 }
 
 pub fn uninstall_file_association() -> Result<()> {
-    use self::winreg::enums as wre;
-    use self::winreg::RegKey;
-
     let mut ignored_missing = false;
     {
         let mut notify = || ignored_missing = true;
