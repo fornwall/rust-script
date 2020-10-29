@@ -37,10 +37,6 @@ sha-1 = "0.9"
 toml = "0.5"
 
 [target.'cfg(windows)'.dependencies]
-ole32-sys = "0.2.0"
-shell32-sys = "0.1.1"
-uuid-sys = "0.1.2" # WARNING: do not use with rustc < 1.15
-winapi = "0.2.8"
 winreg = "0.4.0"
 
 [target.'cfg(unix)'.dependencies]
