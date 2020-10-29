@@ -51,18 +51,6 @@ pub fn install_file_association() -> Result<()> {
     println!("Created rust-script registry entry.");
     println!("- Handler set to: {}", rust_script_path);
 
-    let hklm = RegKey::predef(wre::HKEY_LOCAL_MACHINE);
-    let env =
-        hklm.open_subkey(r#"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"#)?;
-
-    let pathext: String = env.get_value("PATHEXT")?;
-    if !pathext.split(';').any(|e| e.eq_ignore_ascii_case(".ers")) {
-        let pathext = pathext.split(';').chain(Some(".ERS")).join(";");
-        env.set_value("PATHEXT", &pathext)?;
-    }
-
-    println!("Added `.ers` to PATHEXT.  You may need to log out for the change to take effect.");
-
     Ok(())
 }
 
@@ -86,22 +74,6 @@ pub fn uninstall_file_association() -> Result<()> {
         println!("Ignored some missing registry entries.");
     }
     println!("Deleted rust-script registry entry.");
-
-    {
-        let hklm = RegKey::predef(wre::HKEY_LOCAL_MACHINE);
-        let env =
-            hklm.open_subkey(r#"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"#)?;
-
-        let pathext: String = env.get_value("PATHEXT")?;
-        if pathext.split(';').any(|e| e.eq_ignore_ascii_case(".ers")) {
-            let pathext = pathext
-                .split(';')
-                .filter(|e| !e.eq_ignore_ascii_case(".ers"))
-                .join(";");
-            env.set_value("PATHEXT", &pathext)?;
-            println!("Removed `.ers` from PATHEXT.  You may need to log out for the change to take effect.");
-        }
-    }
 
     Ok(())
 }
