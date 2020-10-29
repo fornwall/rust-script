@@ -398,14 +398,11 @@ fn try_main() -> Result<i32> {
     };
     info!("input: {:?}", input);
 
-    /*
-    Sort out the dependencies.  We want to do a few things:
-
-    - Sort them so that they hash consistently.
-    - Check for duplicates.
-    - Expand `pkg` into `pkg=*`.
-    */
-    let deps = {
+    // Sort out the dependencies.  We want to do a few things:
+    // - Sort them so that they hash consistently.
+    // - Check for duplicates.
+    // - Expand `pkg` into `pkg=*`.
+    let dependencies_from_args = {
         use std::collections::hash_map::Entry::{Occupied, Vacant};
         use std::collections::HashMap;
 
@@ -459,11 +456,8 @@ fn try_main() -> Result<i32> {
         deps.sort();
         deps
     };
-    info!("deps: {:?}", deps);
 
-    /*
-    Generate the prelude items, if we need any.  Again, ensure consistent and *valid* sorting.
-    */
+    // Generate the prelude items, if we need any. Ensure consistent and *valid* sorting.
     let prelude_items = {
         let unstable_features = args
             .unstable_features
@@ -481,7 +475,7 @@ fn try_main() -> Result<i32> {
     };
     info!("prelude_items: {:?}", prelude_items);
 
-    let action = decide_action_for(&input, deps, prelude_items, &args)?;
+    let action = decide_action_for(&input, dependencies_from_args, prelude_items, &args)?;
     info!("action: {:?}", action);
 
     gen_pkg_and_compile(&input, &action)?;
