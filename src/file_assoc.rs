@@ -4,6 +4,9 @@ This module deals with setting up file associations.
 Since this only makes sense on Windows, this entire module is Windows-only.
 */
 #![cfg(windows)]
+extern crate itertools;
+extern crate winreg;
+
 use self::itertools::Itertools;
 use crate::error::{Blame, Result};
 use std::io;
