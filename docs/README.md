@@ -99,9 +99,7 @@ On Unix systems, you can use `#!/usr/bin/env rust-script` as a shebang line in a
 
 If you are using Windows, you can associate the `.ers` extension (executable Rust - a renamed `.rs` file) with `rust-script`.  This allows you to execute Rust scripts simply by naming them like any other executable or script.
 
-This can be done using the `rust-script --install-file-association` command. It will also allow you to execute `.ers` scripts *without* having to specify the file extension, in the same way that `.exe` and `.bat` files can be used.
-
-Uninstall the file association with `rust-script --uninstall-file-association`.
+This can be done using the `rust-script --install-file-association` command. Uninstall the file association with `rust-script --uninstall-file-association`.
 
 If you want to make a script usable across platforms, use *both* a hashbang line *and* give the file a `.ers` file extension.
 

@@ -96,26 +96,13 @@ mod inner {
 pub mod inner {
     #![allow(non_snake_case)]
 
-    extern crate ole32;
-    extern crate shell32;
-    extern crate winapi;
-
     pub use super::*;
 
     use std::ffi::OsString;
-    use std::fmt;
 
     use std::io;
     use std::os::windows::ffi::{OsStrExt, OsStringExt};
     use std::path::{Path, PathBuf};
-
-    struct WinError(winapi::HRESULT);
-
-    impl fmt::Display for WinError {
-        fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-            write!(fmt, "HRESULT({})", self.0)
-        }
-    }
 
     pub fn write_path<W>(w: &mut W, path: &Path) -> io::Result<()>
     where
