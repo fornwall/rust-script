@@ -99,7 +99,6 @@ pub mod inner {
     pub use super::*;
 
     use std::ffi::OsString;
-    use std::fmt;
 
     use std::io;
     use std::os::windows::ffi::{OsStrExt, OsStringExt};
