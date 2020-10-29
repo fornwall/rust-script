@@ -4,9 +4,6 @@ This module deals with setting up file associations.
 Since this only makes sense on Windows, this entire module is Windows-only.
 */
 #![cfg(windows)]
-extern crate itertools;
-extern crate winreg;
-
 use self::itertools::Itertools;
 use crate::error::{Blame, Result};
 use std::io;
@@ -34,13 +31,13 @@ pub fn install_file_association() -> Result<()> {
 
     let res = (|| -> io::Result<()> {
         let hlcr = RegKey::predef(wre::HKEY_CLASSES_ROOT);
-        let dot_ers = hlcr.create_subkey(".ers")?;
+        let (dot_ers, _) = hlcr.create_subkey(".ers")?;
         dot_ers.set_value("", &"RustScript.Ers")?;
 
-        let cs_ers = hlcr.create_subkey("RustScript.Ers")?;
+        let (cs_ers, _) = hlcr.create_subkey("RustScript.Ers")?;
         cs_ers.set_value("", &"Rust Script")?;
 
-        let sh_o_c = cs_ers.create_subkey(r#"shell\open\command"#)?;
+        let (sh_o_c, _) = cs_ers.create_subkey(r#"shell\open\command"#)?;
         sh_o_c.set_value("", &format!(r#""{}" "%1" %*"#, rcs_path))?;
         Ok(())
     })();

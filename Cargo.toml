@@ -25,7 +25,6 @@ crossbeam-channel = "0.5"
 clap = "2"
 dirs-next = "2"
 env_logger = "0.8"
-itertools = "0.9"
 lazy_static = "1"
 log = "0.4"
 open = "1"
@@ -37,7 +36,8 @@ sha-1 = "0.9"
 toml = "0.5"
 
 [target.'cfg(windows)'.dependencies]
-winreg = "0.4.0"
+itertools = "0.9"
+winreg = "0.7"
 
 [target.'cfg(unix)'.dependencies]
 atty = "0.2"
