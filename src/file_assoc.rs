@@ -1,14 +1,8 @@
 /*!
-This module deals with setting up file associations.
-
-Since this only makes sense on Windows, this entire module is Windows-only.
+This module deals with setting up file associations on Windows
 */
-#![cfg(windows)]
-extern crate itertools;
-extern crate winreg;
-
-use self::itertools::Itertools;
 use crate::error::{Blame, Result};
+use itertools::Itertools;
 use std::io;
 
 pub fn install_file_association() -> Result<()> {
