@@ -142,12 +142,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "either"
-version = "1.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
-
-[[package]]
 name = "env_logger"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -210,15 +204,6 @@ name = "itertools"
 version = "0.4.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4a9b56eb56058f43dc66e58f40a214b2ccbc9f3df51861b63d51dec7b65bc3f"
-
-[[package]]
-name = "itertools"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "284f18f85651fe11e8a991b2adb42cb078325c996ed026d994719efcfca1d54b"
-dependencies = [
- "either",
-]
 
 [[package]]
 name = "itoa"
@@ -403,7 +388,6 @@ dependencies = [
  "crossbeam-channel",
  "dirs-next",
  "env_logger",
- "itertools 0.9.0",
  "lazy_static 1.4.0",
  "log",
  "open",
@@ -439,7 +423,7 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc8b462b0f8ce7deae199b4b5cecbbe01006f808408d815c09a9f7b11ee044ac"
 dependencies = [
- "itertools 0.4.19",
+ "itertools",
  "lazy_static 0.1.16",
  "rustc_version",
  "strcursor",

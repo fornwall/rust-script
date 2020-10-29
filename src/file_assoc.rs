@@ -2,7 +2,6 @@
 This module deals with setting up file associations on Windows
 */
 use crate::error::{Blame, Result};
-use itertools::Itertools;
 use std::env;
 use std::io;
 use winreg::{enums as wre, RegKey};

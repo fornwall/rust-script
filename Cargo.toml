@@ -36,7 +36,6 @@ sha-1 = "0.9"
 toml = "0.5"
 
 [target.'cfg(windows)'.dependencies]
-itertools = "0.9"
 winreg = "0.7"
 
 [target.'cfg(unix)'.dependencies]
