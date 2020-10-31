@@ -47,21 +47,6 @@ impl MainError {
             | OtherBorrowed(blame, _) => blame,
         }
     }
-
-    pub fn is_human(&self) -> bool {
-        self.blame() == Blame::Human
-    }
-
-    pub fn shift_blame(&mut self, blame: Blame) {
-        use self::MainError::*;
-        match *self {
-            Io(ref mut cur_blame, _)
-            | Tag(ref mut cur_blame, _, _)
-            | Other(ref mut cur_blame, _)
-            | OtherOwned(ref mut cur_blame, _)
-            | OtherBorrowed(ref mut cur_blame, _) => *cur_blame = blame,
-        }
-    }
 }
 
 impl fmt::Display for MainError {
@@ -111,8 +96,6 @@ pub trait ResultExt {
     fn err_tag<S>(self, msg: S) -> Result<Self::Ok>
     where
         S: Into<Cow<'static, str>>;
-
-    fn shift_blame(self, blame: Blame) -> Self;
 }
 
 impl<T> ResultExt for Result<T> {
@@ -122,19 +105,6 @@ impl<T> ResultExt for Result<T> {
     where
         S: Into<Cow<'static, str>>,
     {
-        match self {
-            Ok(v) => Ok(v),
-            Err(e) => Err(MainError::Tag(e.blame(), msg.into(), Box::new(e))),
-        }
-    }
-
-    fn shift_blame(self, blame: Blame) -> Self {
-        match self {
-            Ok(v) => Ok(v),
-            Err(mut e) => {
-                e.shift_blame(blame);
-                Err(e)
-            }
-        }
+        self.map_err(|e| MainError::Tag(e.blame(), msg.into(), Box::new(e)))
     }
 }

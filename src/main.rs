@@ -304,12 +304,8 @@ fn main() {
         Ok(code) => {
             std::process::exit(code);
         }
-        Err(ref err) if err.is_human() => {
-            writeln!(stderr, "error: {}", err).unwrap();
-            std::process::exit(1);
-        }
         Err(ref err) => {
-            writeln!(stderr, "internal error: {}", err).unwrap();
+            writeln!(stderr, "error: {}", err).unwrap();
             std::process::exit(1);
         }
     }

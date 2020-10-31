@@ -61,8 +61,7 @@ pub fn get_template(name: &str) -> Result<Cow<'static, str>> {
             "template file `{}.rs` does not exist in {}",
             name,
             base.display()
-        ))
-        .shift_blame(Blame::Human);
+        ));
 
     // If the template is one of the built-in ones, do fallback if it wasn't found on disk.
     if file.is_err() {
