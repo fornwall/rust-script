@@ -35,8 +35,8 @@ pub fn cache_dir() -> Result<PathBuf, MainError> {
         .ok_or_else(|| (Blame::Human, "Cannot get cache directory").into())
 }
 
-pub fn script_cache_path() -> Result<PathBuf, MainError> {
-    cache_dir().map(|dir| dir.join("scripts"))
+pub fn generated_projects_cache_path() -> Result<PathBuf, MainError> {
+    cache_dir().map(|dir| dir.join("projects"))
 }
 
 pub fn binary_cache_path() -> Result<PathBuf, MainError> {

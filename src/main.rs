@@ -319,13 +319,6 @@ fn try_main() -> Result<i32> {
     let args = parse_args();
     info!("Arguments: {:?}", args);
 
-    if log_enabled!(log::Level::Debug) {
-        let scp = platform::script_cache_path()?;
-        let bcp = platform::binary_cache_path()?;
-        debug!("script-cache path: {:?}", scp);
-        debug!("binary-cache path: {:?}", bcp);
-    }
-
     #[cfg(windows)]
     {
         if args.install_file_association {
@@ -337,18 +330,9 @@ fn try_main() -> Result<i32> {
         }
     }
 
-    /*
-    If we've been asked to clear the cache, do that *now*.  There are two reasons:
-
-    1. Do it *before* we call `decide_action_for` such that this flag *also* acts as a synonym for `--force`.
-    2. Do it *before* we start trying to read the input so that, later on, we can make `<script>` optional, but still supply `--clear-cache`.
-    */
     if args.clear_cache {
         clean_cache(0)?;
-
-        // If we *did not* get a `<script>` argument, that's OK.
         if args.command.is_empty() {
-            // Just let the user know that we did *actually* run.
             println!("cargo script cache cleared.");
             return Ok(0);
         }
@@ -403,7 +387,6 @@ fn try_main() -> Result<i32> {
     // - Check for duplicates.
     // - Expand `pkg` into `pkg=*`.
     let dependencies_from_args = {
-        use std::collections::hash_map::Entry::{Occupied, Vacant};
         use std::collections::HashMap;
 
         let mut deps: HashMap<String, String> = HashMap::new();
@@ -424,30 +407,12 @@ fn try_main() -> Result<i32> {
 
             if name == "" {
                 return Err((Blame::Human, "cannot have empty dependency package name").into());
-            }
-
-            if version == "" {
+            } else if version == "" {
                 return Err((Blame::Human, "cannot have empty dependency version").into());
             }
 
-            match deps.entry(name.into()) {
-                Vacant(ve) => {
-                    ve.insert(version.into());
-                }
-                Occupied(oe) => {
-                    // This is *only* a problem if the versions don't match.  We won't try to do anything clever in terms of upgrading or resolving or anything... exact match or go home.
-                    let existing = oe.get();
-                    if version != existing {
-                        return Err((
-                            Blame::Human,
-                            format!(
-                                "conflicting versions for dependency '{}': '{}', '{}'",
-                                name, existing, version
-                            ),
-                        )
-                            .into());
-                    }
-                }
+            if deps.insert(name.into(), version.into()).is_some() {
+                return Err((Blame::Human, format!("duplicated dependency: '{}'", name)).into());
             }
         }
 
@@ -545,7 +510,7 @@ fn clean_cache(max_age: u128) -> Result<()> {
     let cutoff = platform::current_time() - max_age;
     info!("cutoff:     {:>20?} ms", cutoff);
 
-    let cache_dir = platform::script_cache_path()?;
+    let cache_dir = platform::generated_projects_cache_path()?;
     for child in fs::read_dir(cache_dir)? {
         let child = child?;
         let path = child.path();
@@ -844,8 +809,7 @@ fn decide_action_for(
         .map(|p| (p.into(), false))
         .unwrap_or_else(|| {
             // This can't fail.  Seriously, we're *fucked* if we can't work this out.
-            let cache_path = platform::script_cache_path().unwrap();
-            info!("cache_path: {:?}", cache_path);
+            let cache_path = platform::generated_projects_cache_path().unwrap();
 
             let id = {
                 let deps_iter = deps.iter().map(|&(ref n, ref v)| (n as &str, v as &str));
