@@ -1,7 +1,7 @@
 /*!
 This module deals with setting up file associations on Windows
 */
-use crate::error::{Blame, MainResult};
+use crate::error::MainResult;
 use std::env;
 use std::io;
 use winreg::{enums as wre, RegKey};
@@ -9,7 +9,7 @@ use winreg::{enums as wre, RegKey};
 pub fn install_file_association() -> MainResult<()> {
     let rust_script_path = env::current_exe()?.canonicalize()?;
     if !rust_script_path.exists() {
-        return Err((Blame::Human, format!("{:?} not found", rust_script_path)).into());
+        return Err(format!("{:?} not found", rust_script_path).into());
     }
 
     // We have to remove the `\\?\` prefix because, if we don't, the shell freaks out.
@@ -40,10 +40,8 @@ pub fn install_file_association() -> MainResult<()> {
                 println!(
                     "Access denied.  Make sure you run this command from an administrator prompt."
                 );
-                return Err((Blame::Human, e).into());
-            } else {
-                return Err(e.into());
             }
+            return Err(e.into());
         }
     }
 
