@@ -38,6 +38,15 @@ fn test_script_full_line() {
 }
 
 #[test]
+fn test_script_full_line_without_main() {
+    let out = cargo_script!("tests/data/script-full-line-without-main.rs").unwrap();
+    scan!(out.stdout_output();
+        ("Some(1)") => ()
+    )
+    .unwrap()
+}
+
+#[test]
 fn test_script_invalid_doc_comment() {
     let out = cargo_script!("tests/data/script-invalid-doc-comment.rs").unwrap();
     scan!(out.stdout_output();
@@ -58,6 +67,15 @@ fn test_script_no_deps() {
 #[test]
 fn test_script_short() {
     let out = cargo_script!("tests/data/script-short.rs").unwrap();
+    scan!(out.stdout_output();
+        ("Some(1)") => ()
+    )
+    .unwrap()
+}
+
+#[test]
+fn test_script_short_without_main() {
+    let out = cargo_script!("tests/data/script-short-without-main.rs").unwrap();
     scan!(out.stdout_output();
         ("Some(1)") => ()
     )

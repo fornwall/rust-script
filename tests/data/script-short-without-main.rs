@@ -4,7 +4,6 @@
 // comment, and it *must* be the first thing in the file, after the
 // hashbang.
 use boolinator::Boolinator;
-fn main() {
-    println!("--output--");
-    println!("{:?}", true.as_some(1));
-}
+
+println!("--output--");
+println!("{:?}", true.as_some(1));
