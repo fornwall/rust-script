@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use crate::consts;
-use crate::error::{Blame, MainError, Result};
+use crate::error::{MainError, MainResult};
 use crate::templates;
 use crate::Input;
 
@@ -41,7 +41,7 @@ pub fn split_input(
     input: &Input,
     deps: &[(String, String)],
     prelude_items: &[String],
-) -> Result<(String, String)> {
+) -> MainResult<(String, String)> {
     let template_buf;
     let (part_mani, source, template, sub_prelude) = match *input {
         Input::File(_, _, content, _) => {
@@ -348,7 +348,7 @@ enum Manifest<'s> {
 }
 
 impl<'s> Manifest<'s> {
-    pub fn into_toml(self) -> Result<toml::value::Table> {
+    pub fn into_toml(self) -> MainResult<toml::value::Table> {
         use self::Manifest::*;
         match self {
             Toml(s) => toml::from_str(s),
@@ -357,9 +357,8 @@ impl<'s> Manifest<'s> {
         }
         .map_err(|e| {
             MainError::Tag(
-                Blame::Human,
                 "could not parse embedded manifest".into(),
-                Box::new(MainError::Other(Blame::Internal, Box::new(e))),
+                Box::new(MainError::Other(Box::new(e))),
             )
         })
     }
@@ -652,7 +651,7 @@ fn find_code_block_manifest(s: &str) -> Option<(Manifest, &str)> {
 /**
 Extracts the first `Cargo` fenced code block from a chunk of Markdown.
 */
-fn scrape_markdown_manifest(content: &str) -> Result<Option<String>> {
+fn scrape_markdown_manifest(content: &str) -> MainResult<Option<String>> {
     use self::pulldown_cmark::{CodeBlockKind, Event, Options, Parser, Tag};
 
     // To match librustdoc/html/markdown.rs, opts.
@@ -782,17 +781,17 @@ dependencies = { explode = true }
 /**
 Extracts the contents of a Rust doc comment.
 */
-fn extract_comment(s: &str) -> Result<String> {
+fn extract_comment(s: &str) -> MainResult<String> {
     use std::cmp::min;
 
-    fn n_leading_spaces(s: &str, n: usize) -> Result<()> {
+    fn n_leading_spaces(s: &str, n: usize) -> MainResult<()> {
         if !s.chars().take(n).all(|c| c == ' ') {
             return Err(format!("leading {:?} chars aren't all spaces: {:?}", n, s).into());
         }
         Ok(())
     }
 
-    fn extract_block(s: &str) -> Result<String> {
+    fn extract_block(s: &str) -> MainResult<String> {
         /*
         On every line:
 
@@ -877,7 +876,7 @@ fn extract_comment(s: &str) -> Result<String> {
         Ok(r)
     }
 
-    fn extract_line(s: &str) -> Result<String> {
+    fn extract_line(s: &str) -> MainResult<String> {
         let mut r = String::new();
 
         let comment_re = &*RE_COMMENT;
@@ -1010,7 +1009,7 @@ time = "*"
 /**
 Generates a default Cargo manifest for the given input.
 */
-fn default_manifest(input: &Input) -> Result<toml::value::Table> {
+fn default_manifest(input: &Input) -> MainResult<toml::value::Table> {
     let mani_str = {
         let pkg_name = input.package_name();
         let mut subs = HashMap::with_capacity(2);
@@ -1020,9 +1019,8 @@ fn default_manifest(input: &Input) -> Result<toml::value::Table> {
     };
     toml::from_str(&mani_str).map_err(|e| {
         MainError::Tag(
-            Blame::Internal,
             "could not parse default manifest".into(),
-            Box::new(MainError::Other(Blame::Internal, Box::new(e))),
+            Box::new(MainError::Other(Box::new(e))),
         )
     })
 }
@@ -1030,7 +1028,7 @@ fn default_manifest(input: &Input) -> Result<toml::value::Table> {
 /**
 Generates a partial Cargo manifest containing the specified dependencies.
 */
-fn deps_manifest(deps: &[(String, String)]) -> Result<toml::value::Table> {
+fn deps_manifest(deps: &[(String, String)]) -> MainResult<toml::value::Table> {
     let mut mani_str = String::new();
     mani_str.push_str("[dependencies]\n");
 
@@ -1051,9 +1049,8 @@ fn deps_manifest(deps: &[(String, String)]) -> Result<toml::value::Table> {
 
     toml::from_str(&mani_str).map_err(|e| {
         MainError::Tag(
-            Blame::Human,
             "could not parse dependency manifest".into(),
-            Box::new(MainError::Other(Blame::Internal, Box::new(e))),
+            Box::new(MainError::Other(Box::new(e))),
         )
     })
 }
@@ -1066,7 +1063,7 @@ Note that the "merge" in this case is relatively simple: only *top-level* tables
 fn merge_manifest(
     mut into_t: toml::value::Table,
     from_t: toml::value::Table,
-) -> Result<toml::value::Table> {
+) -> MainResult<toml::value::Table> {
     for (k, v) in from_t {
         match v {
             toml::Value::Table(from_t) => {
@@ -1076,11 +1073,10 @@ fn merge_manifest(
                         e.insert(toml::Value::Table(from_t));
                     }
                     toml::map::Entry::Occupied(e) => {
-                        let into_t = as_table_mut(e.into_mut()).ok_or((
-                            Blame::Human,
+                        let into_t = as_table_mut(e.into_mut()).ok_or(
                             "cannot merge manifests: cannot merge \
                                 table and non-table values",
-                        ))?;
+                        )?;
                         into_t.extend(from_t);
                     }
                 }
@@ -1105,7 +1101,7 @@ fn merge_manifest(
 /**
 Given a Cargo manifest, attempts to rewrite relative file paths to absolute ones, allowing the manifest to be relocated.
 */
-fn fix_manifest_paths(mani: toml::value::Table, base: &Path) -> Result<toml::value::Table> {
+fn fix_manifest_paths(mani: toml::value::Table, base: &Path) -> MainResult<toml::value::Table> {
     // Values that need to be rewritten:
     let paths: &[&[&str]] = &[
         &["build-dependencies", "*", "path"],
@@ -1140,9 +1136,13 @@ fn fix_manifest_paths(mani: toml::value::Table, base: &Path) -> Result<toml::val
 /**
 Iterates over the specified TOML values via a path specification.
 */
-fn iterate_toml_mut_path<F>(base: &mut toml::Value, path: &[&str], on_each: &mut F) -> Result<()>
+fn iterate_toml_mut_path<F>(
+    base: &mut toml::Value,
+    path: &[&str],
+    on_each: &mut F,
+) -> MainResult<()>
 where
-    F: FnMut(&mut toml::Value) -> Result<()>,
+    F: FnMut(&mut toml::Value) -> MainResult<()>,
 {
     if path.is_empty() {
         return on_each(base);

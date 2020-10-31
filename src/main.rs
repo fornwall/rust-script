@@ -37,7 +37,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 
-use crate::error::{Blame, MainError, Result};
+use crate::error::{MainError, MainResult};
 use crate::util::Defer;
 use sha1::{Digest, Sha1};
 
@@ -311,7 +311,7 @@ fn main() {
     }
 }
 
-fn try_main() -> Result<i32> {
+fn try_main() -> MainResult<i32> {
     let args = parse_args();
     info!("Arguments: {:?}", args);
 
@@ -402,13 +402,13 @@ fn try_main() -> Result<i32> {
             );
 
             if name == "" {
-                return Err((Blame::Human, "cannot have empty dependency package name").into());
+                return Err(("cannot have empty dependency package name").into());
             } else if version == "" {
-                return Err((Blame::Human, "cannot have empty dependency version").into());
+                return Err(("cannot have empty dependency version").into());
             }
 
             if deps.insert(name.into(), version.into()).is_some() {
-                return Err((Blame::Human, format!("duplicated dependency: '{}'", name)).into());
+                return Err((format!("duplicated dependency: '{}'", name)).into());
             }
         }
 
@@ -490,7 +490,7 @@ Clean up the cache folder.
 
 Looks for all folders whose metadata says they were created at least `max_age` in the past and kills them dead.
 */
-fn clean_cache(max_age: u128) -> Result<()> {
+fn clean_cache(max_age: u128) -> MainResult<()> {
     info!("cleaning cache with max_age: {:?}", max_age);
 
     if max_age == 0 {
@@ -560,7 +560,7 @@ Generate and compile a package from the input.
 
 Why take `PackageMetadata`?  To ensure that any information we need to depend on for compilation *first* passes through `decide_action_for` *and* is less likely to not be serialised with the rest of the metadata.
 */
-fn gen_pkg_and_compile(input: &Input, action: &InputAction) -> Result<()> {
+fn gen_pkg_and_compile(input: &Input, action: &InputAction) -> MainResult<()> {
     let pkg_path = &action.pkg_path;
     let meta = &action.metadata;
     let old_meta = action.old_metadata.as_ref();
@@ -737,7 +737,7 @@ impl InputAction {
         self.pkg_path.join("Cargo.toml")
     }
 
-    fn cargo(&self, cmd: &str) -> Result<Command> {
+    fn cargo(&self, cmd: &str) -> MainResult<Command> {
         cargo(
             cmd,
             &*self.manifest_path().to_string_lossy(),
@@ -798,7 +798,7 @@ fn decide_action_for(
     deps: Vec<(String, String)>,
     prelude: Vec<String>,
     args: &Args,
-) -> Result<InputAction> {
+) -> MainResult<InputAction> {
     let (pkg_path, using_cache) = args
         .pkg_path
         .as_ref()
@@ -945,7 +945,7 @@ Figures out where the output executable for the input should be.
 
 This *requires* that `cargo_target` has already been called on the package.
 */
-fn get_exe_path<P>(build_kind: BuildKind, pkg_path: P) -> Result<PathBuf>
+fn get_exe_path<P>(build_kind: BuildKind, pkg_path: P) -> MainResult<PathBuf>
 where
     P: AsRef<Path>,
 {
@@ -971,7 +971,7 @@ where
 /**
 Figures out where the `meta-hash` file should be.
 */
-fn get_meta_hash_path<P>(pkg_path: P) -> Result<PathBuf>
+fn get_meta_hash_path<P>(pkg_path: P) -> MainResult<PathBuf>
 where
     P: AsRef<Path>,
 {
@@ -981,7 +981,7 @@ where
 /**
 Load the package metadata, given the path to the package's cache folder.
 */
-fn get_pkg_metadata<P>(pkg_path: P) -> Result<PackageMetadata>
+fn get_pkg_metadata<P>(pkg_path: P) -> MainResult<PackageMetadata>
 where
     P: AsRef<Path>,
 {
@@ -1012,7 +1012,7 @@ where
 /**
 Save the package metadata, given the path to the package's cache folder.
 */
-fn write_pkg_metadata<P>(pkg_path: P, meta: &PackageMetadata) -> Result<()>
+fn write_pkg_metadata<P>(pkg_path: P, meta: &PackageMetadata) -> MainResult<()>
 where
     P: AsRef<Path>,
 {
@@ -1155,7 +1155,7 @@ impl<'a> Input<'a> {
     /**
     Compute the package ID for the input.  This is used as the name of the cache folder into which the Cargo package will be generated.
     */
-    pub fn compute_id<'dep, DepIt>(&self, deps: DepIt) -> Result<OsString>
+    pub fn compute_id<'dep, DepIt>(&self, deps: DepIt) -> MainResult<OsString>
     where
         DepIt: IntoIterator<Item = (&'dep str, &'dep str)>,
     {
@@ -1242,7 +1242,7 @@ enum FileOverwrite {
 /**
 Overwrite a file if and only if the contents have changed.
 */
-fn overwrite_file<P>(path: P, content: &str, hash: Option<&str>) -> Result<FileOverwrite>
+fn overwrite_file<P>(path: P, content: &str, hash: Option<&str>) -> MainResult<FileOverwrite>
 where
     P: AsRef<Path>,
 {
@@ -1263,7 +1263,12 @@ where
 /**
 Constructs a Cargo command that runs on the script package.
 */
-fn cargo(cmd_name: &str, manifest: &str, nightly: bool, meta: &PackageMetadata) -> Result<Command> {
+fn cargo(
+    cmd_name: &str,
+    manifest: &str,
+    nightly: bool,
+    meta: &PackageMetadata,
+) -> MainResult<Command> {
     let mut cmd = Command::new("cargo");
     if nightly {
         cmd.arg("+nightly");
@@ -1304,7 +1309,7 @@ fn cargo_target<P>(
     manifest: &str,
     use_nightly: bool,
     meta: &PackageMetadata,
-) -> Result<PathBuf>
+) -> MainResult<PathBuf>
 where
     P: AsRef<Path>,
 {
@@ -1339,7 +1344,7 @@ fn cargo_target_by_message(
     manifest: &str,
     use_nightly: bool,
     meta: &PackageMetadata,
-) -> Result<PathBuf> {
+) -> MainResult<PathBuf> {
     use std::io::{BufRead, BufReader};
 
     let mut cmd = cargo("build", manifest, use_nightly, meta)?;

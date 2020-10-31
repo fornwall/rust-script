@@ -1,64 +1,36 @@
 /*!
-This module contains the definition of the program's main error type.
+Definition of the program's main error type.
 */
 
 use std::borrow::Cow;
 use std::error::Error;
 use std::fmt;
 use std::io;
-use std::result::Result as StdResult;
+use std::result::Result;
 
-/**
-Shorthand for the program's common result type.
-*/
-pub type Result<T> = StdResult<T, MainError>;
+/// Shorthand for the program's common result type.
+pub type MainResult<T> = Result<T, MainError>;
 
-/**
-Represents an error in the program.
-*/
+/// An error in the program.
 #[derive(Debug)]
 pub enum MainError {
-    Io(Blame, io::Error),
-    Tag(Blame, Cow<'static, str>, Box<MainError>),
-    Other(Blame, Box<dyn Error>),
-    OtherOwned(Blame, String),
-    OtherBorrowed(Blame, &'static str),
-}
-
-/**
-Records who we have chosen to blame for a particular error.
-
-This is used to distinguish between "report this to a user" and "explode violently".
-*/
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Blame {
-    Human,
-    Internal,
-}
-
-impl MainError {
-    pub const fn blame(&self) -> Blame {
-        use self::MainError::*;
-        match *self {
-            Io(blame, _)
-            | Tag(blame, _, _)
-            | Other(blame, _)
-            | OtherOwned(blame, _)
-            | OtherBorrowed(blame, _) => blame,
-        }
-    }
+    Io(io::Error),
+    Tag(Cow<'static, str>, Box<MainError>),
+    Other(Box<dyn Error>),
+    OtherOwned(String),
+    OtherBorrowed(&'static str),
 }
 
 impl fmt::Display for MainError {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> StdResult<(), fmt::Error> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         use self::MainError::*;
         use std::fmt::Display;
         match *self {
-            Io(_, ref err) => Display::fmt(err, fmt),
-            Tag(_, ref msg, ref err) => write!(fmt, "{}: {}", msg, err),
-            Other(_, ref err) => Display::fmt(err, fmt),
-            OtherOwned(_, ref err) => Display::fmt(err, fmt),
-            OtherBorrowed(_, err) => Display::fmt(err, fmt),
+            Io(ref err) => Display::fmt(err, fmt),
+            Tag(ref msg, ref err) => write!(fmt, "{}: {}", msg, err),
+            Other(ref err) => Display::fmt(err, fmt),
+            OtherOwned(ref err) => Display::fmt(err, fmt),
+            OtherBorrowed(err) => Display::fmt(err, fmt),
         }
     }
 }
@@ -75,36 +47,15 @@ macro_rules! from_impl {
     };
 }
 
-from_impl! { (Blame, io::Error) => MainError, v -> MainError::Io(v.0, v.1) }
-from_impl! { (Blame, String) => MainError, v -> MainError::OtherOwned(v.0, v.1) }
-from_impl! { (Blame, &'static str) => MainError, v -> MainError::OtherBorrowed(v.0, v.1) }
-from_impl! { io::Error => MainError, v -> MainError::Io(Blame::Internal, v) }
-from_impl! { String => MainError, v -> MainError::OtherOwned(Blame::Internal, v) }
-from_impl! { &'static str => MainError, v -> MainError::OtherBorrowed(Blame::Internal, v) }
+from_impl! { io::Error => MainError, v -> MainError::Io(v) }
+from_impl! { String => MainError, v -> MainError::OtherOwned(v) }
+from_impl! { &'static str => MainError, v -> MainError::OtherBorrowed(v) }
 
 impl<T> From<Box<T>> for MainError
 where
     T: 'static + Error,
 {
     fn from(src: Box<T>) -> Self {
-        MainError::Other(Blame::Internal, src)
-    }
-}
-
-pub trait ResultExt {
-    type Ok;
-    fn err_tag<S>(self, msg: S) -> Result<Self::Ok>
-    where
-        S: Into<Cow<'static, str>>;
-}
-
-impl<T> ResultExt for Result<T> {
-    type Ok = T;
-
-    fn err_tag<S>(self, msg: S) -> Result<T>
-    where
-        S: Into<Cow<'static, str>>,
-    {
-        self.map_err(|e| MainError::Tag(e.blame(), msg.into(), Box::new(e)))
+        MainError::Other(src)
     }
 }

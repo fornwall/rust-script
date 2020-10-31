@@ -1,12 +1,12 @@
 /*!
 This module deals with setting up file associations on Windows
 */
-use crate::error::{Blame, Result};
+use crate::error::{Blame, MainResult};
 use std::env;
 use std::io;
 use winreg::{enums as wre, RegKey};
 
-pub fn install_file_association() -> Result<()> {
+pub fn install_file_association() -> MainResult<()> {
     let rust_script_path = env::current_exe()?.canonicalize()?;
     if !rust_script_path.exists() {
         return Err((Blame::Human, format!("{:?} not found", rust_script_path)).into());
@@ -53,7 +53,7 @@ pub fn install_file_association() -> Result<()> {
     Ok(())
 }
 
-pub fn uninstall_file_association() -> Result<()> {
+pub fn uninstall_file_association() -> MainResult<()> {
     let mut ignored_missing = false;
     {
         let mut notify = || ignored_missing = true;

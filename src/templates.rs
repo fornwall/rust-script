@@ -2,7 +2,7 @@
 This module contains code related to template support.
 */
 use crate::consts;
-use crate::error::{Blame, MainError, Result, ResultExt};
+use crate::error::{MainError, MainResult};
 use crate::platform;
 use regex::Regex;
 use std::borrow::Cow;
@@ -13,7 +13,7 @@ lazy_static! {
     static ref RE_SUB: Regex = Regex::new(r#"#\{([A-Za-z_][A-Za-z0-9_]*)}"#).unwrap();
 }
 
-pub fn expand(src: &str, subs: &HashMap<&str, &str>) -> Result<String> {
+pub fn expand(src: &str, subs: &HashMap<&str, &str>) -> MainResult<String> {
     // The estimate of final size is the sum of the size of all the input.
     let sub_size = subs.iter().map(|(_, v)| v.len()).sum::<usize>();
     let est_size = src.len() + sub_size;
@@ -36,10 +36,10 @@ pub fn expand(src: &str, subs: &HashMap<&str, &str>) -> Result<String> {
         match subs.get(sub_name) {
             Some(s) => result.push_str(s),
             None => {
-                return Err(MainError::OtherOwned(
-                    Blame::Human,
-                    format!("substitution `{}` in template is unknown", sub_name),
-                ))
+                return Err(MainError::OtherOwned(format!(
+                    "substitution `{}` in template is unknown",
+                    sub_name
+                )))
             }
         }
     }
@@ -50,18 +50,24 @@ pub fn expand(src: &str, subs: &HashMap<&str, &str>) -> Result<String> {
 /**
 Attempts to locate and load the contents of the specified template.
 */
-pub fn get_template(name: &str) -> Result<Cow<'static, str>> {
+pub fn get_template(name: &str) -> MainResult<Cow<'static, str>> {
     use std::io::Read;
 
     let base = platform::templates_dir()?;
 
     let file = fs::File::open(base.join(format!("{}.rs", name)))
         .map_err(MainError::from)
-        .err_tag(format!(
-            "template file `{}.rs` does not exist in {}",
-            name,
-            base.display()
-        ));
+        .map_err(|e| {
+            MainError::Tag(
+                format!(
+                    "template file `{}.rs` does not exist in {}",
+                    name,
+                    base.display()
+                )
+                .into(),
+                Box::new(e),
+            )
+        });
 
     // If the template is one of the built-in ones, do fallback if it wasn't found on disk.
     if file.is_err() {
@@ -87,7 +93,7 @@ fn builtin_template(name: &str) -> Option<&'static str> {
     })
 }
 
-pub fn list() -> Result<()> {
+pub fn list() -> MainResult<()> {
     use std::ffi::OsStr;
 
     let t_path = platform::templates_dir()?;

@@ -55,7 +55,7 @@ where
 pub use self::suppress_child_output::{suppress_child_output, ChildToken};
 
 mod suppress_child_output {
-    use crate::error::Result;
+    use crate::error::MainResult;
 
     use std::io;
     use std::process::{self, Command};
@@ -70,7 +70,7 @@ mod suppress_child_output {
 
     In other words: if the child successfully completes, it's stderr output is suppressed.  Otherwise, it's let through.
     */
-    pub fn suppress_child_output(cmd: &mut Command) -> Result<ChildToken> {
+    pub fn suppress_child_output(cmd: &mut Command) -> MainResult<ChildToken> {
         cmd.stderr(process::Stdio::piped());
 
         let mut child = cmd.spawn()?;

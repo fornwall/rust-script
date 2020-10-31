@@ -5,7 +5,7 @@ This module is for platform-specific stuff.
 pub use self::inner::{force_cargo_color, read_path, write_path};
 
 use crate::consts;
-use crate::error::{Blame, MainError};
+use crate::error::MainError;
 use std::fs;
 
 use std::path::PathBuf;
@@ -32,7 +32,7 @@ pub fn current_time() -> u128 {
 pub fn cache_dir() -> Result<PathBuf, MainError> {
     dirs_next::cache_dir()
         .map(|dir| dir.join(consts::PROGRAM_NAME))
-        .ok_or_else(|| (Blame::Human, "Cannot get cache directory").into())
+        .ok_or_else(|| ("Cannot get cache directory").into())
 }
 
 pub fn generated_projects_cache_path() -> Result<PathBuf, MainError> {
@@ -52,7 +52,7 @@ pub fn templates_dir() -> Result<PathBuf, MainError> {
 
     dirs_next::data_local_dir()
         .map(|dir| dir.join(consts::PROGRAM_NAME).join("templates"))
-        .ok_or_else(|| (Blame::Human, "Cannot get cache directory").into())
+        .ok_or_else(|| ("Cannot get cache directory").into())
 }
 
 #[cfg(unix)]
