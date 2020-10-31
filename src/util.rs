@@ -79,13 +79,13 @@ mod suppress_child_output {
         let (done_sig, done_gate) = crossbeam_channel::bounded(0);
 
         let _ = thread::spawn(move || {
-            let show_stderr;
+            let child_failed;
             select! {
                 recv(done_gate) -> success => {
-                    show_stderr = !success.unwrap_or(true);
+                    child_failed = !success.unwrap_or(true);
                 },
             }
-            if show_stderr {
+            if child_failed {
                 let mut stderr = stderr;
                 io::copy(&mut stderr, &mut io::stderr()).expect("could not copy child stderr");
             }
@@ -94,14 +94,12 @@ mod suppress_child_output {
         Ok(ChildToken {
             child,
             done_sig: Some(done_sig),
-            // stderr_join: stderr_join,
         })
     }
 
     pub struct ChildToken {
         child: process::Child,
         done_sig: Option<crossbeam_channel::Sender<bool>>,
-        // stderr_join: Option<thread::JoinHandle<()>>,
     }
 
     impl ChildToken {
@@ -118,10 +116,6 @@ mod suppress_child_output {
             if let Some(done_sig) = self.done_sig.take() {
                 done_sig.send(st.success()).unwrap();
             }
-            // if let Some(stderr_join) = self.stderr_join.take() {
-            //     stderr_join.join()
-            //         .expect("child stderr thread failed");
-            // }
             Ok(st)
         }
     }

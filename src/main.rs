@@ -53,6 +53,7 @@ struct Args {
     pkg_path: Option<String>,
     gen_pkg_only: bool,
     build_only: bool,
+    cargo_output: bool,
     clear_cache: bool,
     debug: bool,
     dep: Vec<String>,
@@ -139,6 +140,11 @@ fn parse_args() -> Args {
             /*
             Options that impact the script being executed.
             */
+            .arg(Arg::with_name("cargo-output")
+                .help("Show output from cargo when building.")
+                .short("o")
+                .long("cargo-output")
+            )
             .arg(Arg::with_name("count")
                 .help("Invoke the loop closure with two arguments: line, and line number.")
                 .long("count")
@@ -279,6 +285,7 @@ fn parse_args() -> Args {
         pkg_path: m.value_of("pkg_path").map(Into::into),
         gen_pkg_only: m.is_present("gen_pkg_only"),
         build_only: m.is_present("build_only"),
+        cargo_output: m.is_present("cargo-output"),
         clear_cache: m.is_present("clear_cache"),
         debug: m.is_present("debug"),
         dep: owned_vec_string(m.values_of("dep")),
@@ -637,13 +644,14 @@ fn gen_pkg_and_compile(input: &Input, action: &InputAction) -> MainResult<()> {
             &meta,
         )?;
 
-        macro_rules! get_status {
-            ($cmd:expr) => {
-                util::suppress_child_output(&mut $cmd)?.status()
-            };
-        }
+        let exit_status = if action.cargo_output {
+            cmd.spawn()?.wait()
+        } else {
+            util::suppress_child_output(&mut cmd)?.status()
+        };
 
-        let compile_err = get_status!(cmd)
+        let compile_err =
+            exit_status
             .map_err(Into::<MainError>::into)
             .and_then(|st| match st.code() {
                 Some(0) => Ok(()),
@@ -690,6 +698,9 @@ This represents what to do with the input provided by the user.
 struct InputAction {
     /// Compile the input into a fresh executable?
     compile: bool,
+
+    /// Always show cargo output?
+    cargo_output: bool,
 
     /**
     Force Cargo to do a recompile, even if it thinks it doesn't have to.
@@ -853,6 +864,7 @@ fn decide_action_for(
 
     let mut action = InputAction {
         compile: force,
+        cargo_output: args.cargo_output,
         force_compile: force,
         emit_metadata: true,
         execute: !build_only,
