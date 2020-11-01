@@ -652,12 +652,12 @@ fn gen_pkg_and_compile(input: &Input, action: &InputAction) -> MainResult<()> {
 
         let compile_err =
             exit_status
-            .map_err(Into::<MainError>::into)
-            .and_then(|st| match st.code() {
-                Some(0) => Ok(()),
-                Some(st) => Err(format!("cargo failed with status {}", st).into()),
-                None => Err("cargo failed".into()),
-            });
+                .map_err(Into::<MainError>::into)
+                .and_then(|st| match st.code() {
+                    Some(0) => Ok(()),
+                    Some(st) => Err(format!("cargo failed with status {}", st).into()),
+                    None => Err("cargo failed".into()),
+                });
 
         // Drop out now if compilation failed.
         let _ = compile_err?;
