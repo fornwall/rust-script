@@ -267,7 +267,7 @@ fn parse_args() -> Args {
                 .long("uninstall-file-association"),
         )
         .group(
-            ArgGroup::with_name("file-association")
+            ArgGroup::new("file-association")
                 .conflicts_with_all(&["script"])
                 .args(&["install-file-association", "uninstall-file-association"]),
         );
