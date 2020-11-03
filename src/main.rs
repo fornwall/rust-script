@@ -117,7 +117,11 @@ fn parse_args() -> Args {
             .arg(Arg::new("script")
                 .index(1)
                 .about("Script file or expression to execute.")
-                .required_unless_present_any(&["clear-cache"])
+                .required_unless_present_any(if cfg!(windows) {
+                    vec!["clear-cache", "list-templates", "file-association"]
+                } else {
+                    vec!["clear-cache", "list-templates"]
+                })
                 .number_of_values(1)
                 .conflicts_with_all(if cfg!(windows) {
                     &["list-templates", "file-association"]
@@ -156,6 +160,7 @@ fn parse_args() -> Args {
                 .about("Show output from cargo when building.")
                 .short('o')
                 .long("cargo-output")
+                .requires("script")
             )
             .arg(Arg::new("count")
                 .about("Invoke the loop closure with two arguments: line, and line number.")
@@ -167,7 +172,7 @@ fn parse_args() -> Args {
                 .long("debug")
             )
             .arg(Arg::new("dep")
-                .about("Add an additional Cargo dependency.  Each SPEC can be either just the package name (which will assume the latest version) or a full `name=version` spec.")
+                .about("Add an additional Cargo dependency. Each SPEC can be either just the package name (which will assume the latest version) or a full `name=version` spec.")
                 .long("dep")
                 .short('d')
                 .takes_value(true)
@@ -175,7 +180,7 @@ fn parse_args() -> Args {
                 .number_of_values(1)
             )
             .arg(Arg::new("dep_extern")
-                .about("Like `dep`, except that it *also* adds a `#[macro_use] extern crate name;` item for expression and loop scripts.  Note that this only works if the name of the dependency and the name of the library it generates are exactly the same.")
+                .about("Like `dep`, except that it *also* adds a `#[macro_use] extern crate name;` item for expression and loop scripts. Note that this only works if the name of the dependency and the name of the library it generates are exactly the same.")
                 .long("dep-extern")
                 .short('D')
                 .takes_value(true)
