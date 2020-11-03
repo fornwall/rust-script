@@ -1,6 +1,6 @@
 [package]
 name = "rust-script"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2018"
 authors = ["Fredrik Fornwall <fredrik@fornwall.net>"]
 description = "Command-line tool to run Rust \"scripts\" which can make use of crates."
