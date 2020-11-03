@@ -119,7 +119,11 @@ fn parse_args() -> Args {
                 .about("Script file or expression to execute.")
                 .required_unless_present_any(&["clear-cache"])
                 .number_of_values(1)
-                .conflicts_with_all(&["list-templates"])
+                .conflicts_with_all(if cfg!(windows) {
+                    &["list-templates", "file-association"]
+                } else {
+                    &["list-templates"]
+                })
             )
             .arg(Arg::new("script-args")
                 .index(2)
@@ -268,7 +272,6 @@ fn parse_args() -> Args {
         )
         .group(
             ArgGroup::new("file-association")
-                .conflicts_with_all(&["script"])
                 .args(&["install-file-association", "uninstall-file-association"]),
         );
 
