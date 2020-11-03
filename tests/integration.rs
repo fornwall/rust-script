@@ -14,6 +14,6 @@ mod util;
 
 mod tests {
     mod expr;
+    mod others;
     mod script;
-    mod version;
 }

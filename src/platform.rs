@@ -29,10 +29,19 @@ pub fn current_time() -> u128 {
         .as_millis()
 }
 
+#[cfg(not(test))]
 pub fn cache_dir() -> Result<PathBuf, MainError> {
     dirs_next::cache_dir()
         .map(|dir| dir.join(consts::PROGRAM_NAME))
         .ok_or_else(|| ("Cannot get cache directory").into())
+}
+
+#[cfg(test)]
+pub fn cache_dir() -> Result<PathBuf, MainError> {
+    lazy_static! {
+        static ref TEMP_DIR: tempfile::TempDir = tempfile::TempDir::new().unwrap();
+    }
+    Ok(TEMP_DIR.path().to_path_buf())
 }
 
 pub fn generated_projects_cache_path() -> Result<PathBuf, MainError> {

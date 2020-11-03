@@ -3,7 +3,6 @@ name = "rust-script"
 version = "0.7.0"
 edition = "2018"
 authors = ["Fredrik Fornwall <fredrik@fornwall.net>"]
-
 description = "Command-line tool to run Rust \"scripts\" which can make use of crates."
 homepage = "https://rust-script.org"
 documentation = "https://rust-script.org"
@@ -22,7 +21,7 @@ exclude = [
 
 [dependencies]
 crossbeam-channel = "0.5"
-clap = "2"
+clap = "3.0.0-beta.2"
 dirs-next = "2"
 env_logger = "0.8"
 lazy_static = "1"

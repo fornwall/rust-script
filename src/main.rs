@@ -43,7 +43,8 @@ use sha1::{Digest, Sha1};
 
 #[derive(Debug)]
 struct Args {
-    command: Vec<String>,
+    script: Option<String>,
+    script_args: Vec<String>,
     features: Option<String>,
 
     expr: bool,
@@ -111,82 +112,89 @@ fn parse_args() -> Args {
     let app = App::new(consts::PROGRAM_NAME)
         .version(version)
         .setting(clap::AppSettings::TrailingVarArg)
+        .setting(clap::AppSettings::AllowLeadingHyphen)
         .about(about)
-            .arg(Arg::with_name("command")
-                .help("Command (script file plus arguments) to execute.")
+            .arg(Arg::new("script")
                 .index(1)
-                .required(true)
+                .about("Script file or expression to execute.")
+                .required_unless_present_any(&["clear-cache"])
+                .number_of_values(1)
+                .conflicts_with_all(&["list-templates"])
+            )
+            .arg(Arg::new("script-args")
+                .index(2)
+                .about("Arguments for the script to execute.")
                 .multiple(true)
-                .conflicts_with_all(&["list-templates", "file-association"])
+                .min_values(0)
             )
-            .arg(Arg::with_name("expr")
-                .help("Execute <script> as a literal expression and display the result.")
+            .arg(Arg::new("expr")
+                .about("Execute <script> as a literal expression and display the result.")
                 .long("expr")
-                .short("e")
+                .short('e')
                 .takes_value(false)
-                .requires("command")
+                .requires("script")
             )
-            .arg(Arg::with_name("loop")
-                .help("Execute <script> as a literal closure once for each line from stdin.")
+            .arg(Arg::new("loop")
+                .about("Execute <script> as a literal closure once for each line from stdin.")
                 .long("loop")
-                .short("l")
+                .short('l')
                 .takes_value(false)
-                .requires("command")
+                .requires("script")
             )
-            .group(ArgGroup::with_name("expr_or_loop")
+            .group(ArgGroup::new("expr_or_loop")
                 .args(&["expr", "loop"])
                 .conflicts_with_all(&["list-templates", "file-association"])
             )
             /*
             Options that impact the script being executed.
             */
-            .arg(Arg::with_name("cargo-output")
-                .help("Show output from cargo when building.")
-                .short("o")
+            .arg(Arg::new("cargo-output")
+                .about("Show output from cargo when building.")
+                .short('o')
                 .long("cargo-output")
             )
-            .arg(Arg::with_name("count")
-                .help("Invoke the loop closure with two arguments: line, and line number.")
+            .arg(Arg::new("count")
+                .about("Invoke the loop closure with two arguments: line, and line number.")
                 .long("count")
                 .requires("loop")
             )
-            .arg(Arg::with_name("debug")
-                .help("Build a debug executable, not an optimised one.")
+            .arg(Arg::new("debug")
+                .about("Build a debug executable, not an optimised one.")
                 .long("debug")
             )
-            .arg(Arg::with_name("dep")
-                .help("Add an additional Cargo dependency.  Each SPEC can be either just the package name (which will assume the latest version) or a full `name=version` spec.")
+            .arg(Arg::new("dep")
+                .about("Add an additional Cargo dependency.  Each SPEC can be either just the package name (which will assume the latest version) or a full `name=version` spec.")
                 .long("dep")
-                .short("d")
+                .short('d')
                 .takes_value(true)
                 .multiple(true)
                 .number_of_values(1)
             )
-            .arg(Arg::with_name("dep_extern")
-                .help("Like `dep`, except that it *also* adds a `#[macro_use] extern crate name;` item for expression and loop scripts.  Note that this only works if the name of the dependency and the name of the library it generates are exactly the same.")
+            .arg(Arg::new("dep_extern")
+                .about("Like `dep`, except that it *also* adds a `#[macro_use] extern crate name;` item for expression and loop scripts.  Note that this only works if the name of the dependency and the name of the library it generates are exactly the same.")
                 .long("dep-extern")
-                .short("D")
+                .short('D')
                 .takes_value(true)
                 .multiple(true)
                 .requires("expr_or_loop")
             )
-            .arg(Arg::with_name("extern")
-                .help("Adds an `#[macro_use] extern crate name;` item for expressions and loop scripts.")
+            .arg(Arg::new("extern")
+                .about("Adds an `#[macro_use] extern crate name;` item for expressions and loop scripts.")
                 .long("extern")
-                .short("x")
+                .short('x')
                 .takes_value(true)
                 .multiple(true)
                 .requires("expr_or_loop")
             )
-            .arg(Arg::with_name("features")
-                 .help("Cargo features to pass when building and running.")
+            .arg(Arg::new("features")
+                 .about("Cargo features to pass when building and running.")
                  .long("features")
                  .takes_value(true)
             )
-            .arg(Arg::with_name("unstable_features")
-                .help("Add a #![feature] declaration to the crate.")
+            .arg(Arg::new("unstable_features")
+                .about("Add a #![feature] declaration to the crate.")
                 .long("unstable-feature")
-                .short("u")
+                .short('u')
                 .takes_value(true)
                 .multiple(true)
                 .requires("expr_or_loop")
@@ -195,72 +203,72 @@ fn parse_args() -> Args {
             /*
             Options that change how cargo script itself behaves, and don't alter what the script will do.
             */
-            .arg(Arg::with_name("build_only")
-                .help("Build the script, but don't run it.")
+            .arg(Arg::new("build_only")
+                .about("Build the script, but don't run it.")
                 .long("build-only")
                 .requires("script")
-                .conflicts_with_all(&["args"])
+                .conflicts_with_all(&["script-args"])
             )
-            .arg(Arg::with_name("clear_cache")
-                .help("Clears out the script cache.")
+            .arg(Arg::new("clear-cache")
+                .about("Clears out the script cache.")
                 .long("clear-cache")
             )
-            .arg(Arg::with_name("force")
-                .help("Force the script to be rebuilt.")
+            .arg(Arg::new("force")
+                .about("Force the script to be rebuilt.")
                 .long("force")
                 .requires("script")
             )
-            .arg(Arg::with_name("gen_pkg_only")
-                .help("Generate the Cargo package, but don't compile or run it.")
+            .arg(Arg::new("gen_pkg_only")
+                .about("Generate the Cargo package, but don't compile or run it.")
                 .long("gen-pkg-only")
                 .requires("script")
-                .conflicts_with_all(&["args", "build_only", "debug", "force", "test", "bench"])
+                .conflicts_with_all(&["script-args", "build_only", "debug", "force", "test", "bench"])
             )
-            .arg(Arg::with_name("pkg_path")
-                .help("Specify where to place the generated Cargo package.")
+            .arg(Arg::new("pkg_path")
+                .about("Specify where to place the generated Cargo package.")
                 .long("pkg-path")
                 .takes_value(true)
-                .requires("command")
-                .conflicts_with_all(&["clear_cache", "force"])
+                .requires("script")
+                .conflicts_with_all(&["clear-cache", "force"])
             )
-            .arg(Arg::with_name("test")
-                .help("Compile and run tests.")
+            .arg(Arg::new("test")
+                .about("Compile and run tests.")
                 .long("test")
-                .conflicts_with_all(&["bench", "debug", "args", "force"])
+                .conflicts_with_all(&["bench", "debug", "script-args", "force"])
             )
-            .arg(Arg::with_name("bench")
-                .help("Compile and run benchmarks. Requires a nightly toolchain.")
+            .arg(Arg::new("bench")
+                .about("Compile and run benchmarks. Requires a nightly toolchain.")
                 .long("bench")
-                .conflicts_with_all(&["test", "debug", "args", "force"])
+                .conflicts_with_all(&["test", "debug", "script-args", "force"])
             )
-            .arg(Arg::with_name("template")
-                .help("Specify a template to use for expression scripts.")
+            .arg(Arg::new("template")
+                .about("Specify a template to use for expression scripts.")
                 .long("template")
-                .short("t")
+                .short('t')
                 .takes_value(true)
                 .requires("expr")
             )
-        .arg(Arg::with_name("list-templates")
-            .help("List the available templates.")
+        .arg(Arg::new("list-templates")
+            .about("List the available templates.")
             .long("list-templates")
             .takes_value(false)
-            .conflicts_with("file-association")
         );
 
     #[cfg(windows)]
     let app = app
         .arg(
-            Arg::with_name("install-file-association")
-                .help("Install a file association so that rust-script executes .ers files.")
+            Arg::new("install-file-association")
+                .about("Install a file association so that rust-script executes .ers files.")
                 .long("install-file-association"),
         )
         .arg(
-            Arg::with_name("uninstall-file-association")
-                .help("Uninstall the file association that makes rust-script execute .ers files.")
+            Arg::new("uninstall-file-association")
+                .about("Uninstall the file association that makes rust-script execute .ers files.")
                 .long("uninstall-file-association"),
         )
         .group(
             ArgGroup::with_name("file-association")
+                .conflicts_with_all(&["script"])
                 .args(&["install-file-association", "uninstall-file-association"]),
         );
 
@@ -275,7 +283,8 @@ fn parse_args() -> Args {
     }
 
     Args {
-        command: owned_vec_string(m.values_of("command")),
+        script: m.value_of("script").map(Into::into),
+        script_args: owned_vec_string(m.values_of("script-args")),
         features: m.value_of("features").map(Into::into),
 
         expr: m.is_present("expr"),
@@ -286,7 +295,7 @@ fn parse_args() -> Args {
         gen_pkg_only: m.is_present("gen_pkg_only"),
         build_only: m.is_present("build_only"),
         cargo_output: m.is_present("cargo-output"),
-        clear_cache: m.is_present("clear_cache"),
+        clear_cache: m.is_present("clear-cache"),
         debug: m.is_present("debug"),
         dep: owned_vec_string(m.values_of("dep")),
         extern_: owned_vec_string(m.values_of("extern")),
@@ -335,7 +344,7 @@ fn try_main() -> MainResult<i32> {
 
     if args.clear_cache {
         clean_cache(0)?;
-        if args.command.is_empty() {
+        if args.script.is_none() {
             println!("cargo script cache cleared.");
             return Ok(0);
         }
@@ -352,9 +361,10 @@ fn try_main() -> MainResult<i32> {
     let script_path: PathBuf;
     let content: String;
 
-    let input = match (args.command[0].clone(), args.expr, args.loop_) {
+    let input = match (args.script.clone().unwrap(), args.expr, args.loop_) {
         (script, false, false) => {
-            let (path, mut file) = find_script(script).ok_or("could not find script")?;
+            let (path, mut file) =
+                find_script(&script).ok_or(format!("could not find script: {}", script))?;
 
             script_name = path
                 .file_stem()
@@ -384,6 +394,16 @@ fn try_main() -> MainResult<i32> {
         }
     };
     info!("input: {:?}", input);
+
+    // Setup environment variables early so it's available at compilation time of scripts,
+    // to allow e.g. include!(concat!(env!("RUST_SCRIPT_BASE_PATH"), "/script-module.rs"));
+    std::env::set_var(
+        "RUST_SCRIPT_PATH",
+        input.path().unwrap_or_else(|| Path::new("")),
+    );
+    std::env::set_var("RUST_SCRIPT_SAFE_NAME", input.safe_name());
+    std::env::set_var("RUST_SCRIPT_PKG_NAME", input.package_name());
+    std::env::set_var("RUST_SCRIPT_BASE_PATH", input.base_path());
 
     // Sort out the dependencies.  We want to do a few things:
     // - Sort them so that they hash consistently.
@@ -461,28 +481,16 @@ fn try_main() -> MainResult<i32> {
     };
 
     let exit_code = if action.execute {
-        let add_env = |cmd: &mut Command| {
-            cmd.env(
-                "RUST_SCRIPT_PATH",
-                input.path().unwrap_or_else(|| Path::new("")),
-            );
-            cmd.env("RUST_SCRIPT_SAFE_NAME", input.safe_name());
-            cmd.env("RUST_SCRIPT_PKG_NAME", input.package_name());
-            cmd.env("RUST_SCRIPT_BASE_PATH", input.base_path());
-        };
-
         if action.build_kind.can_exec_directly() {
             let exe_path = get_exe_path(action.build_kind, &action.pkg_path)?;
             info!("executing {:?}", exe_path);
             let mut command = Command::new(exe_path);
-            command.args(&args.command[1..]);
-            add_env(&mut command);
+            command.args(args.script_args);
             command.status().map(|st| st.code().unwrap_or(1))?
         } else {
             let cmd_name = action.build_kind.exec_command();
             info!("running `cargo {}`", cmd_name);
             let mut cmd = action.cargo(cmd_name)?;
-            add_env(&mut cmd);
             cmd.status().map(|st| st.code().unwrap_or(1))?
         }
     } else {

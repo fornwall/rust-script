@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 
-macro_rules! cargo_script {
+macro_rules! rust_script {
     (
         #[env($($env_k:ident=$env_v:expr),* $(,)*)]
         $($args:expr),* $(,)*
@@ -11,13 +11,11 @@ macro_rules! cargo_script {
 
             let cargo_lock = crate::util::CARGO_MUTEX.lock().expect("Could not acquire Cargo mutex");
 
-            let temp_dir = tempfile::TempDir::new().unwrap();
             let cmd_str;
             let out = {
                 let target_dir = ::std::env::var("CARGO_TARGET_DIR")
                     .unwrap_or_else(|_| String::from("target"));
                 let mut cmd = Command::new(format!("{}/debug/rust-script", target_dir));
-                cmd.arg("--pkg-path").arg(temp_dir.path());
                 $(
                     cmd.arg($args);
                 )*
@@ -43,7 +41,6 @@ macro_rules! cargo_script {
                 println!("-----");
             }
 
-            drop(temp_dir);
             drop(cargo_lock);
 
             out
@@ -51,7 +48,7 @@ macro_rules! cargo_script {
     };
 
     ($($args:expr),* $(,)*) => {
-        cargo_script!(#[env()] $($args),*)
+        rust_script!(#[env()] $($args),*)
     };
 }
 
