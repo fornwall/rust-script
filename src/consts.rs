@@ -41,7 +41,7 @@ fn try_main() -> Result<(), Box<dyn std::error::Error>> {
         TypeId::of::<()>() == TypeId::of::<T>()
     }
     match {#{script}} {
-        __cargo_script_expr if !_rust_script_is_empty_tuple(&__cargo_script_expr) => println!("{:?}", __cargo_script_expr),
+        __rust_script_expr if !_rust_script_is_empty_tuple(&__rust_script_expr) => println!("{:?}", __rust_script_expr),
         _ => {}
     }
     Ok(())
