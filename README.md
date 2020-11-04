@@ -7,8 +7,6 @@ Run Rust files and expressions without any setup or compilation necessary.
 
 See the [documentation at rust-script.org](https://rust-script.org).
 
-NOTE: `rust-script` is a maintained fork of the excellent (but abandoned) [cargo-script](https://github.com/DanielKeep/cargo-script) project.
-
 ## Related projects
 - [cargo-script](https://github.com/DanielKeep/cargo-script) - the unmaintained project that `rust-script` was forked from.
 - [cargo-eval](https://github.com/reitermarkus/cargo-eval/) - maintained fork of `cargo-script`.
