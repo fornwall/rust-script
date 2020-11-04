@@ -209,7 +209,7 @@ fn parse_args() -> Args {
             )
 
             /*
-            Options that change how .about itself behaves, and don't alter what the script will do.
+            Options that change how rust-script itself behaves, and don't alter what the script will do.
             */
             .arg(Arg::new("build_only")
                 .about("Build the script, but don't run it.")
