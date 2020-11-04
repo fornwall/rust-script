@@ -118,13 +118,13 @@ fn parse_args() -> Args {
                 .index(1)
                 .about("Script file or expression to execute.")
                 .required_unless_present_any(if cfg!(windows) {
-                    vec!["clear-cache", "list-templates", "file-association"]
+                    vec!["clear-cache", "list-templates", "install-file-association", "uninstall-file-association"]
                 } else {
                     vec!["clear-cache", "list-templates"]
                 })
                 .number_of_values(1)
                 .conflicts_with_all(if cfg!(windows) {
-                    &["list-templates", "file-association"]
+                    &["list-templates", "install-file-association", "uninstall-file-association"]
                 } else {
                     &["list-templates"]
                 })
@@ -151,7 +151,6 @@ fn parse_args() -> Args {
             )
             .group(ArgGroup::new("expr_or_loop")
                 .args(&["expr", "loop"])
-                .conflicts_with_all(&["list-templates", "file-association"])
             )
             /*
             Options that impact the script being executed.
