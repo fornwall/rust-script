@@ -53,7 +53,7 @@ pub fn split_input(
             let source = if source.lines().any(|line| line.starts_with("fn main()")) {
                 source.to_string()
             } else {
-                format!("fn main() {{\n{}\n}}", source)
+                format!("fn main() -> Result<(), Box<dyn std::error::Error+Sync+Send>> {{\n    {{\n    {}    }}\n    Ok(())\n}}", source)
             };
             (manifest, source, templates::get_template("file")?, false)
         }
