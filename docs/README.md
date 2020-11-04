@@ -36,16 +36,18 @@ The latest stable version of Rust (1.47) is required.
 The primary use for `rust-script` is for running Rust source files as scripts. For example:
 
 ```sh
-$ echo 'fn main() { println!("Hello, World!"); }' > hello.rs
+$ echo 'println!("Hello, World!");' > hello.rs
 $ rust-script hello.rs
 Hello, World!
 $ rust-script hello # you can leave off the file extension
 Hello, World!
 ```
 
-The output of Cargo will be hidden unless compilation fails.
+Under the hood, a Cargo project will be generated and built (with the Cargo output hidden unless compilation fails or the `-o`/`--cargo-output` option is used). The first invocation of the script will be slower as the script is compiled - subsequent invocations of unmodified scripts will be fast as the built executable is cached.
 
-`rust-script` will also look for embedded dependency and manifest information in the script as shown by the below two equivalent `now.rs` variants:
+As seen from the above example, using a `fn main() {}` function is not required. If not present, the script file will be wrapped in a `fn main() { ... }` block.
+
+`rust-script` will look for embedded dependency and manifest information in the script as shown by the below two equivalent `now.rs` variants:
 
 ```rust
 #!/usr/bin/env rust-script
@@ -75,14 +77,12 @@ fn main() {
 }
 ```
 
-On running either of these, `rust-script` will generate a Cargo package, build it, and run the result.  The output may look something like:
+The output from running one of the above scripts may look something like:
 
 ```sh
 $ rust-script now
 Wed, 28 Oct 2020 00:38:45 +0100
 ```
-
-Subsequent runs will be a lot faster as `rust-script` reuses already built executables.
 
 Useful command-line arguments:
 
@@ -194,4 +194,4 @@ In addition, there are three built-in templates: `expr`, `loop`, and `loop-count
 
 Please report all issues on [the GitHub issue tracker](https://github.com/fornwall/rust-script/issues).
 
-Run with the `RUST_LOG=rust_script=trace` environment variable set to see verbose log output if necessary.
+If relevant, run with the `RUST_LOG=rust_script=trace` environment variable set to see verbose log output and attach that output to an issue.
