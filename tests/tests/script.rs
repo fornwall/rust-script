@@ -135,3 +135,12 @@ fn test_script_including_relative() {
     )
     .unwrap()
 }
+
+#[test]
+fn script_with_same_name_as_dependency() {
+    let out = rust_script!("tests/data/time.rs").unwrap();
+    scan!(out.stdout_output();
+        ("Hello") => ()
+    )
+    .unwrap()
+}

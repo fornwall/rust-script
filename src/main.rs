@@ -209,7 +209,7 @@ fn parse_args() -> Args {
             )
 
             /*
-            Options that change how cargo script itself behaves, and don't alter what the script will do.
+            Options that change how .about itself behaves, and don't alter what the script will do.
             */
             .arg(Arg::new("build_only")
                 .about("Build the script, but don't run it.")
@@ -352,7 +352,7 @@ fn try_main() -> MainResult<i32> {
     if args.clear_cache {
         clean_cache(0)?;
         if args.script.is_none() {
-            println!("cargo script cache cleared.");
+            println!("rust-script cache cleared.");
             return Ok(0);
         }
     }
@@ -644,7 +644,9 @@ fn gen_pkg_and_compile(input: &Input, action: &InputAction) -> MainResult<()> {
     /*
     *bursts through wall* It's Cargo Time! (Possibly)
 
-    Note that there's a complication here: we want to *temporarily* continue *even if compilation fails*.  This is because if we don't, then every time you run `cargo script` on a script you're currently modifying, and it fails to compile, your compiled dependencies get obliterated.
+    Note that there's a complication here: we want to *temporarily* continue *even if compilation fails*.
+    This is because if we don't, then every time you run `rust-script` on a script you're currently modifying,
+    and it fails to compile, your compiled dependencies get obliterated.
 
     This is *really* annoying.
 
@@ -1391,6 +1393,7 @@ fn cargo_target_by_message(
     #[derive(Deserialize)]
     struct Target {
         name: String,
+        kind: Vec<String>,
     }
 
     #[derive(Deserialize)]
@@ -1400,9 +1403,13 @@ fn cargo_target_by_message(
         filenames: Vec<PathBuf>,
     }
 
+    let bin = "bin".to_string();
     while let Some(Ok(line)) = lines.next() {
         if let Ok(mut l) = serde_json::from_str::<Line>(&line).map_err(Box::new) {
-            if l.reason == "compiler-artifact" && l.target.name == package_name {
+            if l.reason == "compiler-artifact"
+                && l.target.name == package_name
+                && l.target.kind.contains(&bin)
+            {
                 let _ = child.kill();
                 return Ok(l.filenames.swap_remove(0));
             }
