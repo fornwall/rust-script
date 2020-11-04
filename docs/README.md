@@ -26,7 +26,7 @@ You can get an overview of the available options using the `--help` flag.
 Install or update `rust-script` using Cargo:
 
 ```sh
-cargo install --force rust-script
+cargo install rust-script
 ```
 
 The latest stable version of Rust (1.47) is required.
