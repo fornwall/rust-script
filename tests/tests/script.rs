@@ -147,7 +147,7 @@ fn script_with_same_name_as_dependency() {
 
 #[test]
 fn script_without_main_question_mark() {
-    let out = rust_script!("tests/data/script-without-main-question-mark.rs").unwrap();
+    let out = rust_script!("tests/data/question-mark").unwrap();
     assert_eq!(
         out.stderr,
         "Error: Os { code: 2, kind: NotFound, message: \"No such file or directory\" }\n"
