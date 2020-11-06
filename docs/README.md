@@ -1,3 +1,7 @@
+<style>
+  ul li:not(:last-child) { margin-bottom: 0.4em; }
+</style>
+
 - [Overview](#overview)
 - [Installation](#installation)
 - [Scripts](#scripts)
