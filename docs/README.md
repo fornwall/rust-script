@@ -73,7 +73,7 @@ fn main() {
 // You can also leave off the version number, in which case, it's assumed
 // to be "*".  Also, the `cargo-deps` comment *must* be a single-line
 // comment, and it *must* be the first thing in the file, after the
-// hashbang.
+// shebang.
 // Multiple dependencies should be separated by commas:
 // cargo-deps: time="0.1.25", libc="0.2.5"
 fn main() {
@@ -105,7 +105,7 @@ If you are using Windows, you can associate the `.ers` extension (executable Rus
 
 This can be done using the `rust-script --install-file-association` command. Uninstall the file association with `rust-script --uninstall-file-association`.
 
-If you want to make a script usable across platforms, use *both* a hashbang line *and* give the file a `.ers` file extension.
+If you want to make a script usable across platforms, use *both* a shebang line *and* give the file a `.ers` file extension.
 
 ## Expressions
 

@@ -20,11 +20,11 @@ lazy_static! {
     static ref RE_SPACE: Regex = Regex::new(r"^(\s+)").unwrap();
     static ref RE_NESTING: Regex = Regex::new(r"/\*|\*/").unwrap();
     static ref RE_COMMENT: Regex = Regex::new(r"^\s*//!").unwrap();
-    static ref RE_HASHBANG: Regex = Regex::new(r"^#![^\[].*?(\r\n|\n)").unwrap();
+    static ref RE_SHEBANG: Regex = Regex::new(r"^#![^\[].*?(\r\n|\n)").unwrap();
     static ref RE_CRATE_COMMENT: Regex = {
         Regex::new(
             r"(?x)
-                # We need to find the first `/*!` or `//!` that *isn't* preceeded by something that would make it apply to anything other than the crate itself.  Because we can't do this accurately, we'll just require that the doc comment is the *first* thing in the file (after the optional hashbang, which should already have been stripped).
+                # We need to find the first `/*!` or `//!` that *isn't* preceeded by something that would make it apply to anything other than the crate itself.  Because we can't do this accurately, we'll just require that the doc comment is the *first* thing in the file (after the optional shebang, which should already have been stripped).
                 ^\s*
                 (/\*!|//!)
             "
@@ -46,7 +46,7 @@ pub fn split_input(
     let (part_mani, source, template, sub_prelude) = match *input {
         Input::File(_, _, content, _) => {
             assert_eq!(prelude_items.len(), 0);
-            let content = strip_hashbang(content);
+            let content = strip_shebang(content);
             let (manifest, source) =
                 find_embedded_manifest(content).unwrap_or((Manifest::Toml(""), content));
 
@@ -299,19 +299,19 @@ fn main() {}
 }
 
 /**
-Returns a slice of the input string with the leading hashbang, if there is one, omitted.
+Returns a slice of the input string with the leading shebang, if there is one, omitted.
 */
-fn strip_hashbang(s: &str) -> &str {
-    match RE_HASHBANG.find(s) {
+fn strip_shebang(s: &str) -> &str {
+    match RE_SHEBANG.find(s) {
         Some(m) => &s[m.end()..],
         None => s,
     }
 }
 
 #[test]
-fn test_strip_hashbang() {
+fn test_strip_shebang() {
     assert_eq!(
-        strip_hashbang(
+        strip_shebang(
             "\
 #!/usr/bin/env rust-script
 and the rest
@@ -324,7 +324,7 @@ and the rest
         "
     );
     assert_eq!(
-        strip_hashbang(
+        strip_shebang(
             "\
 #![thingy]
 and the rest
