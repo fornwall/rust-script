@@ -17,7 +17,7 @@ pub fn install_file_association() -> MainResult<()> {
     let rust_script_path = if let Some(stripped) = rust_script_path.strip_prefix(r#"\\?\"#) {
         stripped
     } else {
-        rust_script_path
+        &rust_script_path[..]
     };
 
     let res = (|| -> io::Result<()> {
