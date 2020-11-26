@@ -927,8 +927,8 @@ fn extract_comment(s: &str) -> MainResult<String> {
         Ok(r)
     }
 
-    if s.starts_with("/*!") {
-        extract_block(&s[3..])
+    if let Some(stripped) = s.strip_prefix("/*!") {
+        extract_block(stripped)
     } else if s.starts_with("//!") {
         extract_line(s)
     } else {
