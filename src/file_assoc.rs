@@ -14,10 +14,10 @@ pub fn install_file_association() -> MainResult<()> {
 
     // We have to remove the `\\?\` prefix because, if we don't, the shell freaks out.
     let rust_script_path = rust_script_path.to_string_lossy();
-    let rust_script_path = if rust_script_path.starts_with(r#"\\?\"#) {
-        &rust_script_path[4..]
+    let rust_script_path = if let Some(stripped) = rust_script_path.strip_prefix(r#"\\?\"#) {
+        stripped
     } else {
-        &rust_script_path[..]
+        rust_script_path
     };
 
     let res = (|| -> io::Result<()> {
