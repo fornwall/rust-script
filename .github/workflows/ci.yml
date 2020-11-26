@@ -8,12 +8,15 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+        rust: ["1.47.0", "1.48.0"]
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout source
       uses: actions/checkout@v2
     - name: Setup rust
       uses: hecrj/setup-rust-action@v1
+      with:
+        rust-version: ${{ matrix.rust }}
     - name: Run unit tests
       run: cargo test
     - name: Run script tests
