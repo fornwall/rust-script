@@ -82,15 +82,7 @@ mod inner {
 
 #[cfg(windows)]
 pub mod inner {
-    #![allow(non_snake_case)]
-
     pub use super::*;
-
-    use std::ffi::OsString;
-
-    use std::io;
-    use std::os::windows::ffi::{OsStrExt, OsStringExt};
-    use std::path::{Path, PathBuf};
 
     /**
     Returns `true` if `rust-script` should force Cargo to use coloured output.
