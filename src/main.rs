@@ -4,8 +4,6 @@ extern crate env_logger;
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
-#[macro_use]
-extern crate crossbeam_channel;
 
 /**
 If this is set to `true`, the digests used for package IDs will be replaced with "stub" to make testing a bit easier.  Obviously, you don't want this `true` for release...
@@ -35,7 +33,7 @@ use std::ffi::OsString;
 use std::fs;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use std::process::{self, Command};
+use std::process::Command;
 
 use crate::error::{MainError, MainResult};
 use crate::util::Defer;
@@ -53,7 +51,6 @@ struct Args {
 
     pkg_path: Option<String>,
     gen_pkg_only: bool,
-    build_only: bool,
     cargo_output: bool,
     clear_cache: bool,
     debug: bool,
@@ -79,16 +76,9 @@ enum BuildKind {
 }
 
 impl BuildKind {
-    const fn can_exec_directly(&self) -> bool {
-        match *self {
-            Self::Normal => true,
-            Self::Test | Self::Bench => false,
-        }
-    }
-
     fn exec_command(&self) -> &'static str {
         match *self {
-            Self::Normal => panic!("asked for exec command for normal build"),
+            Self::Normal => "run",
             Self::Test => "test",
             Self::Bench => "bench",
         }
@@ -211,12 +201,6 @@ fn parse_args() -> Args {
             /*
             Options that change how rust-script itself behaves, and don't alter what the script will do.
             */
-            .arg(Arg::new("build_only")
-                .about("Build the script, but don't run it.")
-                .long("build-only")
-                .requires("script")
-                .conflicts_with_all(&["script-args"])
-            )
             .arg(Arg::new("clear-cache")
                 .about("Clears out the script cache.")
                 .long("clear-cache")
@@ -230,7 +214,7 @@ fn parse_args() -> Args {
                 .about("Generate the Cargo package, but don't compile or run it.")
                 .long("gen-pkg-only")
                 .requires("script")
-                .conflicts_with_all(&["script-args", "build_only", "debug", "force", "test", "bench"])
+                .conflicts_with_all(&["script-args", "debug", "force", "test", "bench"])
             )
             .arg(Arg::new("pkg_path")
                 .about("Specify where to place the generated Cargo package.")
@@ -300,7 +284,6 @@ fn parse_args() -> Args {
 
         pkg_path: m.value_of("pkg_path").map(Into::into),
         gen_pkg_only: m.is_present("gen_pkg_only"),
-        build_only: m.is_present("build_only"),
         cargo_output: m.is_present("cargo-output"),
         clear_cache: m.is_present("clear-cache"),
         debug: m.is_present("debug"),
@@ -475,7 +458,8 @@ fn try_main() -> MainResult<i32> {
 
     gen_pkg_and_compile(&input, &action)?;
 
-    // Once we're done, clean out old packages from the cache.  There's no point if we've already done a full clear, though.
+    // Once we're done, clean out old packages from the cache.
+    // There's no point if we've already done a full clear, though.
     let _defer_clear = {
         // To get around partially moved args problems.
         let cc = args.clear_cache;
@@ -488,18 +472,12 @@ fn try_main() -> MainResult<i32> {
     };
 
     let exit_code = if action.execute {
-        if action.build_kind.can_exec_directly() {
-            let exe_path = get_exe_path(action.build_kind, &action.pkg_path)?;
-            info!("executing {:?}", exe_path);
-            let mut command = Command::new(exe_path);
-            command.args(args.script_args);
-            command.status().map(|st| st.code().unwrap_or(1))?
-        } else {
-            let cmd_name = action.build_kind.exec_command();
-            info!("running `cargo {}`", cmd_name);
-            let mut cmd = action.cargo(cmd_name)?;
-            cmd.status().map(|st| st.code().unwrap_or(1))?
-        }
+        let cmd_name = action.build_kind.exec_command();
+        info!("running `cargo {}`", cmd_name);
+        let run_quietly = !action.cargo_output;
+        let mut cmd = action.cargo(cmd_name, &args.script_args, run_quietly)?;
+
+        cmd.status().map(|st| st.code().unwrap_or(1))?
     } else {
         0
     };
@@ -539,13 +517,16 @@ fn clean_cache(max_age: u128) -> MainResult<()> {
         info!("checking: {:?}", path);
 
         let remove_dir = || {
-            /*
-            Ok, so *why* aren't we using `modified in the package metadata?  The point of *that* is to track what we know about the input.  The problem here is that `--expr` and `--loop` don't *have* modification times; they just *are*.
-
-            Now, `PackageMetadata` *could* be modified to store, say, the moment in time the input was compiled, but then we couldn't use that field for metadata matching when decided whether or not a *file* input should be recompiled.
-
-            So, instead, we're just going to go by the timestamp on the metadata file *itself*.
-            */
+            // Ok, so *why* aren't we using `modified in the package metadata?
+            // The point of *that* is to track what we know about the input.
+            // The problem here is that `--expr` and `--loop` don't *have*
+            // modification times; they just *are*.
+            // Now, `PackageMetadata` *could* be modified to store, say, the
+            // moment in time the input was compiled, but then we couldn't use
+            // that field for metadata matching when decided whether or not a
+            // *file* input should be recompiled.
+            // So, instead, we're just going to go by the timestamp on the
+            // metadata file *itself*.
             let meta_mtime = {
                 let meta_path = get_pkg_metadata_path(&path);
                 let meta_file = match fs::File::open(&meta_path) {
@@ -608,23 +589,21 @@ fn gen_pkg_and_compile(input: &Input, action: &InputAction) -> MainResult<()> {
     let mut meta = meta.clone();
 
     info!("generating Cargo package...");
-    let mani_path = {
-        let mani_path = action.manifest_path();
-        let mani_hash = old_meta.map(|m| &*m.manifest_hash);
-        match overwrite_file(&mani_path, mani_str, mani_hash)? {
-            FileOverwrite::Same => (),
-            FileOverwrite::Changed { new_hash } => {
-                meta.manifest_hash = new_hash;
-            }
+    let mani_path = action.manifest_path();
+    let mani_hash = old_meta.map(|m| &*m.manifest_hash);
+    match overwrite_file(&mani_path, mani_str, mani_hash)? {
+        FileOverwrite::Same => (),
+        FileOverwrite::Changed { new_hash } => {
+            meta.manifest_hash = new_hash;
         }
-        mani_path
-    };
+    }
 
     {
         let script_path = pkg_path.join(format!("{}.rs", input.safe_name()));
-        /*
-        There are times (particularly involving shared target dirs) where we can't rely on Cargo to correctly detect invalidated builds.  As such, if we've been told to *force* a recompile, we'll deliberately force the script to be overwritten, which will invalidate the timestamp, which will lead to a recompile.
-        */
+        // There are times (particularly involving shared target dirs) where we can't rely
+        // on Cargo to correctly detect invalidated builds. As such, if we've been told to
+        // *force* a recompile, we'll deliberately force the script to be overwritten,
+        // which will invalidate the timestamp, which will lead to a recompile.
         let script_hash = if action.force_compile {
             debug!("told to force compile, ignoring script hash");
             None
@@ -640,61 +619,6 @@ fn gen_pkg_and_compile(input: &Input, action: &InputAction) -> MainResult<()> {
     }
 
     let meta = meta;
-
-    /*
-    *bursts through wall* It's Cargo Time! (Possibly)
-
-    Note that there's a complication here: we want to *temporarily* continue *even if compilation fails*.
-    This is because if we don't, then every time you run `rust-script` on a script you're currently modifying,
-    and it fails to compile, your compiled dependencies get obliterated.
-
-    This is *really* annoying.
-
-    As such, we want to ignore any compilation problems until *after* we've written the metadata and disarmed the cleanup callback.
-    */
-    if action.compile {
-        info!("compiling...");
-        let mut cmd = cargo(
-            "build",
-            &*mani_path.to_string_lossy(),
-            action.use_nightly,
-            &meta,
-        )?;
-
-        let exit_status = if action.cargo_output {
-            cmd.spawn()?.wait()
-        } else {
-            util::suppress_child_output(&mut cmd)?.status()
-        };
-
-        let compile_err =
-            exit_status
-                .map_err(Into::<MainError>::into)
-                .and_then(|st| match st.code() {
-                    Some(0) => Ok(()),
-                    Some(st) => Err(format!("cargo failed with status {}", st).into()),
-                    None => Err("cargo failed".into()),
-                });
-
-        // Drop out now if compilation failed.
-        let _ = compile_err?;
-
-        // Find out and cache what the executable was called.
-        let _ = cargo_target(
-            input,
-            pkg_path,
-            &*mani_path.to_string_lossy(),
-            action.use_nightly,
-            &meta,
-        )?;
-
-        // Write out the metadata hash to tie this executable to a particular chunk of metadata.  This is to avoid issues with multiple scripts with the same name being compiled to a common target directory.
-        let meta_hash = action.metadata.sha1_hash();
-        info!("writing meta hash: {:?}...", meta_hash);
-        let exe_meta_hash_path = get_meta_hash_path(pkg_path)?;
-        let mut f = fs::File::create(&exe_meta_hash_path)?;
-        write!(&mut f, "{}", meta_hash)?;
-    }
 
     // Write out metadata *now*.  Remember that we check the timestamp in the metadata, *not* on the executable.
     if action.emit_metadata {
@@ -765,12 +689,14 @@ impl InputAction {
         self.pkg_path.join("Cargo.toml")
     }
 
-    fn cargo(&self, cmd: &str) -> MainResult<Command> {
+    fn cargo(&self, cmd: &str, script_args: &[String], run_quietly: bool) -> MainResult<Command> {
         cargo(
             cmd,
             &*self.manifest_path().to_string_lossy(),
             self.use_nightly,
             &self.metadata,
+            script_args,
+            run_quietly,
         )
     }
 }
@@ -851,10 +777,10 @@ fn decide_action_for(
     let (mani_str, script_str) = manifest::split_input(input, &deps, &prelude)?;
 
     // Forcibly override some flags based on build kind.
-    let (debug, force, build_only) = match args.build_kind {
-        BuildKind::Normal => (args.debug, args.force, args.build_only),
-        BuildKind::Test => (true, false, false),
-        BuildKind::Bench => (false, false, false),
+    let (debug, force) = match args.build_kind {
+        BuildKind::Normal => (args.debug, args.force),
+        BuildKind::Test => (true, false),
+        BuildKind::Bench => (false, false),
     };
 
     let input_meta = {
@@ -884,7 +810,7 @@ fn decide_action_for(
         cargo_output: args.cargo_output,
         force_compile: force,
         emit_metadata: true,
-        execute: !build_only,
+        execute: true,
         pkg_path,
         using_cache,
         use_nightly: matches!(args.build_kind, BuildKind::Bench),
@@ -938,73 +864,7 @@ fn decide_action_for(
 
     action.old_metadata = Some(cache_meta);
 
-    let exe_exists = match get_exe_path(action.build_kind, &action.pkg_path) {
-        Ok(exe_path) => exe_path.is_file(),
-        Err(_) => false,
-    };
-    if !exe_exists {
-        info!("recompiling because: executable doesn't exist or isn't a file");
-        bail!(compile: true)
-    }
-
-    // Finally  check to see if `{exe_path}.meta-hash` exists and contains a hash that matches the metadata.
-    // We need to do this to account for cases where Cargo's target directory has been set to a fixed, shared location.
-    let exe_meta_hash_path = get_meta_hash_path(&action.pkg_path).unwrap();
-    if !exe_meta_hash_path.is_file() {
-        info!("recompiling because: meta hash doesn't exist or isn't a file");
-        bail!(compile: true, force_compile: true)
-    }
-    let exe_meta_hash = {
-        let mut f = fs::File::open(&exe_meta_hash_path)?;
-        let mut s = String::new();
-        f.read_to_string(&mut s)?;
-        s
-    };
-    let meta_hash = action.metadata.sha1_hash();
-    if meta_hash != exe_meta_hash {
-        info!("recompiling because: meta hash doesn't match");
-        bail!(compile: true, force_compile: true)
-    }
-
     Ok(action)
-}
-
-/**
-Figures out where the output executable for the input should be.
-
-This *requires* that `cargo_target` has already been called on the package.
-*/
-fn get_exe_path<P>(build_kind: BuildKind, pkg_path: P) -> MainResult<PathBuf>
-where
-    P: AsRef<Path>,
-{
-    use std::fs::File;
-
-    // We don't directly run tests and benchmarks.
-    match build_kind {
-        BuildKind::Normal => (),
-        BuildKind::Test | BuildKind::Bench => {
-            return Err("tried to get executable path for test/bench build".into());
-        }
-    }
-
-    let package_path = pkg_path.as_ref();
-    let cache_path = package_path.join("target.exe_path");
-
-    let mut f = File::open(&cache_path)?;
-    let exe_path = platform::read_path(&mut f)?;
-
-    Ok(exe_path)
-}
-
-/**
-Figures out where the `meta-hash` file should be.
-*/
-fn get_meta_hash_path<P>(pkg_path: P) -> MainResult<PathBuf>
-where
-    P: AsRef<Path>,
-{
-    Ok(pkg_path.as_ref().join("target.meta-hash"))
 }
 
 /**
@@ -1181,9 +1041,9 @@ impl<'a> Input<'a> {
         }
     }
 
-    /**
-    Compute the package ID for the input.  This is used as the name of the cache folder into which the Cargo package will be generated.
-    */
+    // Compute the package ID for the input.
+    // This is used as the name of the cache folder into which the Cargo package
+    // will be generated.
     pub fn compute_id<'dep, DepIt>(&self, deps: DepIt) -> MainResult<OsString>
     where
         DepIt: IntoIterator<Item = (&'dep str, &'dep str)>,
@@ -1297,12 +1157,20 @@ fn cargo(
     manifest: &str,
     nightly: bool,
     meta: &PackageMetadata,
+    script_args: &[String],
+    run_quietly: bool,
 ) -> MainResult<Command> {
     let mut cmd = Command::new("cargo");
     if nightly {
         cmd.arg("+nightly");
     }
-    cmd.arg(cmd_name).arg("--manifest-path").arg(manifest);
+    cmd.arg(cmd_name);
+
+    if cmd_name == "run" && run_quietly {
+        cmd.arg("-q");
+    }
+
+    cmd.arg("--manifest-path").arg(manifest);
 
     if platform::force_cargo_color() {
         cmd.arg("--color").arg("always");
@@ -1324,108 +1192,10 @@ fn cargo(
         cmd.arg("--features").arg(features);
     }
 
+    if cmd_name == "run" && !script_args.is_empty() {
+        cmd.arg("--");
+        cmd.args(script_args.iter());
+    }
+
     Ok(cmd)
-}
-
-/**
-Tries to find the path to a package's target file.
-
-This will also cache this information such that `exe_path` can find it later.
-*/
-fn cargo_target<P>(
-    input: &Input,
-    pkg_path: P,
-    manifest: &str,
-    use_nightly: bool,
-    meta: &PackageMetadata,
-) -> MainResult<PathBuf>
-where
-    P: AsRef<Path>,
-{
-    trace!(
-        "cargo_target(_, {:?}, {:?}, _)",
-        pkg_path.as_ref(),
-        manifest,
-    );
-
-    let exe_path = cargo_target_by_message(input, manifest, use_nightly, meta)?;
-
-    trace!(".. exe_path: {:?}", exe_path);
-
-    // Before we return, cache the result.
-    {
-        use std::fs::File;
-
-        let manifest_path = Path::new(manifest);
-        let package_path = manifest_path.parent().unwrap();
-        let cache_path = package_path.join("target.exe_path");
-
-        let mut f = File::create(&cache_path)?;
-        platform::write_path(&mut f, &exe_path)?;
-    }
-
-    Ok(exe_path)
-}
-
-// Gets the path to the package's target file by parsing the output of `cargo build`.
-fn cargo_target_by_message(
-    input: &Input,
-    manifest: &str,
-    use_nightly: bool,
-    meta: &PackageMetadata,
-) -> MainResult<PathBuf> {
-    use std::io::{BufRead, BufReader};
-
-    let mut cmd = cargo("build", manifest, use_nightly, meta)?;
-    cmd.arg("--message-format=json");
-    cmd.stdout(process::Stdio::piped());
-    cmd.stderr(process::Stdio::null());
-
-    trace!(".. cmd: {:?}", cmd);
-
-    let mut child = cmd.spawn()?;
-
-    let package_name = input.package_name();
-
-    let stdout = BufReader::new(child.stdout.take().unwrap());
-    let mut lines = stdout.lines();
-
-    #[derive(Deserialize)]
-    struct Target {
-        name: String,
-        kind: Vec<String>,
-    }
-
-    #[derive(Deserialize)]
-    struct Line {
-        reason: String,
-        target: Target,
-        filenames: Vec<PathBuf>,
-    }
-
-    let bin = "bin".to_string();
-    while let Some(Ok(line)) = lines.next() {
-        if let Ok(mut l) = serde_json::from_str::<Line>(&line).map_err(Box::new) {
-            if l.reason == "compiler-artifact"
-                && l.target.name == package_name
-                && l.target.kind.contains(&bin)
-            {
-                let _ = child.kill();
-                return Ok(l.filenames.swap_remove(0));
-            }
-        }
-    }
-
-    match child.wait()?.code() {
-        Some(st) => Err(format!(
-            "could not determine target filename: cargo exited with status {}",
-            st
-        )
-        .into()),
-        None => Err(
-            "could not determine target filename: cargo exited abnormally"
-                .to_string()
-                .into(),
-        ),
-    }
 }

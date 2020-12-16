@@ -1,6 +1,6 @@
 [package]
 name = "rust-script"
-version = "0.9.0"
+version = "0.10.0"
 edition = "2018"
 authors = ["Fredrik Fornwall <fredrik@fornwall.net>"]
 description = "Command-line tool to run Rust \"scripts\" which can make use of crates."
@@ -20,13 +20,11 @@ exclude = [
 ]
 
 [dependencies]
-crossbeam-channel = "0.5"
 clap = "3.0.0-beta.2"
 dirs-next = "2"
 env_logger = "0.8"
 lazy_static = "1"
 log = "0.4"
-open = "1"
 pulldown-cmark = "0.8"
 regex = "1"
 serde = { version = "1", features = ["derive"] }

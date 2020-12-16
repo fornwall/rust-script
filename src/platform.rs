@@ -2,7 +2,7 @@
 This module is for platform-specific stuff.
 */
 
-pub use self::inner::{force_cargo_color, read_path, write_path};
+pub use self::inner::force_cargo_color;
 
 use crate::consts;
 use crate::error::MainError;
@@ -70,27 +70,6 @@ mod inner {
 
     pub use super::*;
 
-    use std::io;
-    use std::os::unix::ffi::OsStrExt;
-    use std::path::{Path, PathBuf};
-
-    pub fn write_path<W>(w: &mut W, path: &Path) -> io::Result<()>
-    where
-        W: io::Write,
-    {
-        w.write_all(path.as_os_str().as_bytes())
-    }
-
-    pub fn read_path<R>(r: &mut R) -> io::Result<PathBuf>
-    where
-        R: io::Read,
-    {
-        use std::ffi::OsStr;
-        let mut buf = vec![];
-        r.read_to_end(&mut buf)?;
-        Ok(OsStr::from_bytes(&buf).into())
-    }
-
     /**
     Returns `true` if `rust-script` should force Cargo to use coloured output.
 
@@ -112,35 +91,6 @@ pub mod inner {
     use std::io;
     use std::os::windows::ffi::{OsStrExt, OsStringExt};
     use std::path::{Path, PathBuf};
-
-    pub fn write_path<W>(w: &mut W, path: &Path) -> io::Result<()>
-    where
-        W: io::Write,
-    {
-        for word in path.as_os_str().encode_wide() {
-            let lo = (word & 0xff) as u8;
-            let hi = (word >> 8) as u8;
-            w.write_all(&[lo, hi])?;
-        }
-        Ok(())
-    }
-
-    pub fn read_path<R>(r: &mut R) -> io::Result<PathBuf>
-    where
-        R: io::Read,
-    {
-        let mut buf = vec![];
-        r.read_to_end(&mut buf)?;
-
-        let mut words = Vec::with_capacity(buf.len() / 2);
-        let mut it = buf.iter().cloned();
-        while let Some(lo) = it.next() {
-            let hi = it.next().unwrap();
-            words.push(lo as u16 | ((hi as u16) << 8));
-        }
-
-        Ok(OsString::from_wide(&words).into())
-    }
 
     /**
     Returns `true` if `rust-script` should force Cargo to use coloured output.
