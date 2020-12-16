@@ -1045,7 +1045,7 @@ impl<'a> Input<'a> {
                 digest.truncate(consts::ID_DIGEST_LEN_MAX);
 
                 let mut id = OsString::new();
-                id.push(&*digest );
+                id.push(&*digest);
                 Ok(id)
             }
             Expr(content, template) => {
@@ -1144,10 +1144,7 @@ fn cargo(
         cmd.arg("--color").arg("always");
     }
 
-    let cargo_target_dir = format!(
-        "{}",
-        platform::binary_cache_path()?.display(),
-    );
+    let cargo_target_dir = format!("{}", platform::binary_cache_path()?.display(),);
     cmd.env("CARGO_TARGET_DIR", cargo_target_dir);
 
     // Block `--release` on `bench`.
