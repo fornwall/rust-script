@@ -6,11 +6,6 @@ extern crate lazy_static;
 extern crate log;
 
 /**
-If this is set to `true`, the digests used for package IDs will be replaced with "stub" to make testing a bit easier.  Obviously, you don't want this `true` for release...
-*/
-const STUB_HASHES: bool = false;
-
-/**
 If this is set to `false`, then code that automatically deletes stuff *won't*.
 */
 const ALLOW_AUTO_REMOVE: bool = true;
@@ -637,9 +632,6 @@ This represents what to do with the input provided by the user.
 */
 #[derive(Debug)]
 struct InputAction {
-    /// Compile the input into a fresh executable?
-    compile: bool,
-
     /// Always show cargo output?
     cargo_output: bool,
 
@@ -737,13 +729,6 @@ struct PackageMetadata {
     script_hash: String,
 }
 
-impl PackageMetadata {
-    pub fn sha1_hash(&self) -> String {
-        // Yes, I *do* feel dirty for doing it like this.  :D
-        hash_str(&format!("{:?}", self))
-    }
-}
-
 /**
 For the given input, this constructs the package metadata and checks the cache to see what should be done.
 */
@@ -753,6 +738,13 @@ fn decide_action_for(
     prelude: Vec<String>,
     args: &Args,
 ) -> MainResult<InputAction> {
+    let input_id = {
+        let deps_iter = deps.iter().map(|&(ref n, ref v)| (n as &str, v as &str));
+        // Again, also fucked if we can't work this out.
+        input.compute_id(deps_iter).unwrap()
+    };
+    info!("id: {:?}", input_id);
+
     let (pkg_path, using_cache) = args
         .pkg_path
         .as_ref()
@@ -760,21 +752,12 @@ fn decide_action_for(
         .unwrap_or_else(|| {
             // This can't fail.  Seriously, we're *fucked* if we can't work this out.
             let cache_path = platform::generated_projects_cache_path().unwrap();
-
-            let id = {
-                let deps_iter = deps.iter().map(|&(ref n, ref v)| (n as &str, v as &str));
-
-                // Again, also fucked if we can't work this out.
-                input.compute_id(deps_iter).unwrap()
-            };
-            info!("id: {:?}", id);
-
-            (cache_path.join(&id), true)
+            (cache_path.join(&input_id), true)
         });
     info!("pkg_path: {:?}", pkg_path);
     info!("using_cache: {:?}", using_cache);
 
-    let (mani_str, script_str) = manifest::split_input(input, &deps, &prelude)?;
+    let (mani_str, script_str) = manifest::split_input(input, &deps, &prelude, &input_id)?;
 
     // Forcibly override some flags based on build kind.
     let (debug, force) = match args.build_kind {
@@ -806,7 +789,6 @@ fn decide_action_for(
     info!("input_meta: {:?}", input_meta);
 
     let mut action = InputAction {
-        compile: force,
         cargo_output: args.cargo_output,
         force_compile: force,
         emit_metadata: true,
@@ -832,7 +814,7 @@ fn decide_action_for(
 
     // If we were told to only generate the package, we need to stop *now*
     if args.gen_pkg_only {
-        bail!(compile: false, execute: false)
+        bail!(execute: false)
     }
 
     // If we're not doing a regular build, stop.
@@ -840,29 +822,20 @@ fn decide_action_for(
         BuildKind::Normal => (),
         BuildKind::Test | BuildKind::Bench => {
             info!("not recompiling because: user asked for test/bench");
-            bail!(compile: false, force_compile: false)
+            bail!(force_compile: false)
         }
     }
 
-    let cache_meta = match get_pkg_metadata(&action.pkg_path) {
-        Ok(meta) => meta,
+    action.old_metadata = match get_pkg_metadata(&action.pkg_path) {
+        Ok(meta) => Some(meta),
         Err(err) => {
             info!(
                 "recompiling since failed to load metadata: {}",
                 err.to_string()
             );
-            bail!(compile: true)
+            None
         }
     };
-
-    if cache_meta != action.metadata {
-        info!("recompiling because: metadata did not match");
-        debug!("input metadata: {:?}", action.metadata);
-        debug!("cache metadata: {:?}", cache_meta);
-        bail!(old_metadata: Some(cache_meta), compile: true)
-    }
-
-    action.old_metadata = Some(cache_meta);
 
     Ok(action)
 }
@@ -1063,7 +1036,7 @@ impl<'a> Input<'a> {
         };
 
         match *self {
-            File(name, path, _, _) => {
+            File(_, path, _, _) => {
                 let mut hasher = Sha1::new();
 
                 // Hash the path to the script.
@@ -1072,10 +1045,7 @@ impl<'a> Input<'a> {
                 digest.truncate(consts::ID_DIGEST_LEN_MAX);
 
                 let mut id = OsString::new();
-                id.push("file-");
-                id.push(name);
-                id.push("-");
-                id.push(if STUB_HASHES { "stub" } else { &*digest });
+                id.push(&*digest );
                 Ok(id)
             }
             Expr(content, template) => {
@@ -1090,8 +1060,7 @@ impl<'a> Input<'a> {
                 digest.truncate(consts::ID_DIGEST_LEN_MAX);
 
                 let mut id = OsString::new();
-                id.push("expr-");
-                id.push(if STUB_HASHES { "stub" } else { &*digest });
+                id.push(&*digest);
                 Ok(id)
             }
             Loop(content, count) => {
@@ -1106,8 +1075,7 @@ impl<'a> Input<'a> {
                 digest.truncate(consts::ID_DIGEST_LEN_MAX);
 
                 let mut id = OsString::new();
-                id.push("loop-");
-                id.push(if STUB_HASHES { "stub" } else { &*digest });
+                id.push(&*digest);
                 Ok(id)
             }
         }
@@ -1176,12 +1144,11 @@ fn cargo(
         cmd.arg("--color").arg("always");
     }
 
-    let script_specific_binary_cache = format!(
-        "{}/{}",
+    let cargo_target_dir = format!(
+        "{}",
         platform::binary_cache_path()?.display(),
-        meta.sha1_hash()
     );
-    cmd.env("CARGO_TARGET_DIR", script_specific_binary_cache);
+    cmd.env("CARGO_TARGET_DIR", cargo_target_dir);
 
     // Block `--release` on `bench`.
     if !meta.debug && cmd_name != "bench" {

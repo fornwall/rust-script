@@ -12,6 +12,7 @@ use crate::consts;
 use crate::error::{MainError, MainResult};
 use crate::templates;
 use crate::Input;
+use std::ffi::OsString;
 
 lazy_static! {
     static ref RE_SHORT_MANIFEST: Regex =
@@ -41,6 +42,7 @@ pub fn split_input(
     input: &Input,
     deps: &[(String, String)],
     prelude_items: &[String],
+    input_id: &OsString,
 ) -> MainResult<(String, String)> {
     let template_buf;
     let (part_mani, source, template, sub_prelude) = match *input {
@@ -98,7 +100,7 @@ pub fn split_input(
     info!("part_mani: {:?}", part_mani);
 
     // It's-a mergin' time!
-    let def_mani = default_manifest(input)?;
+    let def_mani = default_manifest(input, input_id)?;
     let dep_mani = deps_manifest(deps)?;
 
     let mani = merge_manifest(def_mani, part_mani)?;
@@ -116,9 +118,10 @@ pub fn split_input(
 
 #[test]
 fn test_split_input() {
+    let input_id = OsString::from("input_id");
     macro_rules! si {
         ($i:expr) => {
-            split_input(&$i, &[], &[]).ok()
+            split_input(&$i, &[], &[], &input_id).ok()
         };
     }
 
@@ -136,7 +139,7 @@ fn test_split_input() {
         si!(f(r#"fn main() {}"#)),
         r!(
             r#"[[bin]]
-name = "n"
+name = "n_input_id"
 path = "n.rs"
 
 [dependencies]
@@ -159,7 +162,7 @@ fn main() {}
 "#)),
         r!(
             r#"[[bin]]
-name = "n"
+name = "n_input_id"
 path = "n.rs"
 
 [dependencies]
@@ -185,7 +188,7 @@ fn main() {}
 "#)),
         r!(
             r#"[[bin]]
-name = "n"
+name = "n_input_id"
 path = "n.rs"
 
 [dependencies]
@@ -211,7 +214,7 @@ fn main() {}
 "#)),
         r!(
             r#"[[bin]]
-name = "n"
+name = "n_input_id"
 path = "n.rs"
 
 [dependencies]
@@ -237,7 +240,7 @@ fn main() {}
 "#)),
         r!(
             r#"[[bin]]
-name = "n"
+name = "n_input_id"
 path = "n.rs"
 
 [dependencies]
@@ -271,7 +274,7 @@ fn main() {}
 "#)),
         r!(
             r#"[[bin]]
-name = "n"
+name = "n_input_id"
 path = "n.rs"
 
 [dependencies]
@@ -1015,11 +1018,13 @@ time = "*"
 /**
 Generates a default Cargo manifest for the given input.
 */
-fn default_manifest(input: &Input) -> MainResult<toml::value::Table> {
+fn default_manifest(input: &Input, input_id: &OsString) -> MainResult<toml::value::Table> {
     let mani_str = {
         let pkg_name = input.package_name();
-        let mut subs = HashMap::with_capacity(2);
+        let bin_name = format!("{}_{}", &*pkg_name, input_id.to_str().unwrap());
+        let mut subs = HashMap::with_capacity(3);
         subs.insert(consts::MANI_NAME_SUB, &*pkg_name);
+        subs.insert(consts::MANI_BIN_NAME_SUB, &*bin_name);
         subs.insert(consts::MANI_FILE_SUB, &input.safe_name()[..]);
         templates::expand(consts::DEFAULT_MANIFEST, &subs)?
     };

@@ -125,8 +125,11 @@ where F: FnMut(&str, usize) -> T, T: 'static {
 }
 "#;
 
-/// Substitution for the identifier-safe name of the script.
+/// Substitution for the identifier-safe package name of the script.
 pub const MANI_NAME_SUB: &str = "name";
+
+/// Substitution for the identifier-safe bin name of the script.
+pub const MANI_BIN_NAME_SUB: &str = "bin_name";
 
 /// Substitution for the filesystem-safe name of the script.
 pub const MANI_FILE_SUB: &str = "file";
@@ -142,7 +145,7 @@ authors = ["Anonymous"]
 edition = "2018"
 
 [[bin]]
-name = "#{name}"
+name = "#{bin_name}"
 path = "#{file}.rs"
 "##;
 
@@ -161,7 +164,7 @@ When generating a package's unique ID, how many hex nibbles of the digest should
 
 The largest meaningful value is `40`.
 */
-pub const ID_DIGEST_LEN_MAX: usize = 16;
+pub const ID_DIGEST_LEN_MAX: usize = 24;
 
 /**
 How old can stuff in the cache be before we automatically clear it out?
