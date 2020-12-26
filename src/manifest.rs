@@ -52,7 +52,10 @@ pub fn split_input(
             let (manifest, source) =
                 find_embedded_manifest(content).unwrap_or((Manifest::Toml(""), content));
 
-            let source = if source.lines().any(|line| line.starts_with("fn main()")) {
+            let source = if source
+                .lines()
+                .any(|line| line.starts_with("fn main()") || line.starts_with("async fn main()"))
+            {
                 source.to_string()
             } else {
                 format!("fn main() -> Result<(), Box<dyn std::error::Error+Sync+Send>> {{\n    {{\n    {}    }}\n    Ok(())\n}}", source)
