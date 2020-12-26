@@ -152,3 +152,12 @@ fn script_without_main_question_mark() {
         .stderr
         .starts_with("Error: Os { code: 2, kind: NotFound, message:"));
 }
+
+#[test]
+fn test_script_async_main() {
+    let out = rust_script!("tests/data/script-async-main.rs").unwrap();
+    scan!(out.stdout_output();
+        ("Some(1)") => ()
+    )
+    .unwrap()
+}
