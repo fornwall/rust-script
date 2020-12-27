@@ -43,8 +43,6 @@ The primary use for `rust-script` is for running Rust source files as scripts. F
 $ echo 'println!("Hello, World!");' > hello.rs
 $ rust-script hello.rs
 Hello, World!
-$ rust-script hello # you can leave off the file extension
-Hello, World!
 ```
 
 Under the hood, a Cargo project will be generated and built (with the Cargo output hidden unless compilation fails or the `-o`/`--cargo-output` option is used). The first invocation of the script will be slower as the script is compiled - subsequent invocations of unmodified scripts will be fast as the built executable is cached.
