@@ -161,3 +161,12 @@ fn test_script_async_main() {
     )
     .unwrap()
 }
+
+#[test]
+fn test_pub_fn_main() {
+    let out = rust_script!("tests/data/pub-fn-main.rs").unwrap();
+    scan!(out.stdout_output();
+        ("Some(1)") => ()
+    )
+    .unwrap()
+}
