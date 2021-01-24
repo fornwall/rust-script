@@ -413,9 +413,9 @@ fn try_main() -> MainResult<i32> {
                 "dependency somehow has three parts?!"
             );
 
-            if name == "" {
+            if name.is_empty() {
                 return Err(("cannot have empty dependency package name").into());
-            } else if version == "" {
+            } else if version.is_empty() {
                 return Err(("cannot have empty dependency version").into());
             }
 

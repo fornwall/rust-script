@@ -44,6 +44,13 @@ pub fn split_input(
     prelude_items: &[String],
     input_id: &OsString,
 ) -> MainResult<(String, String)> {
+    fn contains_main_method(line: &str) -> bool {
+        line.starts_with("fn main()")
+            || line.starts_with("pub fn main()")
+            || line.starts_with("async fn main()")
+            || line.starts_with("pub async fn main()")
+    }
+
     let template_buf;
     let (part_mani, source, template, sub_prelude) = match *input {
         Input::File(_, _, content, _) => {
@@ -52,10 +59,7 @@ pub fn split_input(
             let (manifest, source) =
                 find_embedded_manifest(content).unwrap_or((Manifest::Toml(""), content));
 
-            let source = if source
-                .lines()
-                .any(|line| line.starts_with("fn main()") || line.starts_with("async fn main()"))
-            {
+            let source = if source.lines().any(contains_main_method) {
                 source.to_string()
             } else {
                 format!("fn main() -> Result<(), Box<dyn std::error::Error+Sync+Send>> {{\n    {{\n    {}    }}\n    Ok(())\n}}", source)
