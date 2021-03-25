@@ -45,6 +45,7 @@ pub fn split_input(
     input_id: &OsString,
 ) -> MainResult<(String, String)> {
     fn contains_main_method(line: &str) -> bool {
+        let line = line.trim_start();
         line.starts_with("fn main()")
             || line.starts_with("pub fn main()")
             || line.starts_with("async fn main()")
