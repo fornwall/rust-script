@@ -625,7 +625,7 @@ fn find_short_comment_manifest(s: &str) -> Option<(Manifest, &str)> {
     let re = &*RE_SHORT_MANIFEST;
     if let Some(cap) = re.captures(s) {
         if let Some(m) = cap.get(1) {
-            return Some((Manifest::DepList(m.as_str()), &s[..]));
+            return Some((Manifest::DepList(m.as_str()), s));
         }
     }
     None
@@ -660,15 +660,13 @@ fn find_code_block_manifest(s: &str) -> Option<(Manifest, &str)> {
         }
     };
 
-    scrape_markdown_manifest(&comment)
-        .unwrap_or(None)
-        .map(|m| (Manifest::TomlOwned(m), s))
+    scrape_markdown_manifest(&comment).map(|m| (Manifest::TomlOwned(m), s))
 }
 
 /**
 Extracts the first `Cargo` fenced code block from a chunk of Markdown.
 */
-fn scrape_markdown_manifest(content: &str) -> MainResult<Option<String>> {
+fn scrape_markdown_manifest(content: &str) -> Option<String> {
     use self::pulldown_cmark::{CodeBlockKind, Event, Options, Parser, Tag};
 
     // To match librustdoc/html/markdown.rs, opts.
@@ -697,14 +695,14 @@ fn scrape_markdown_manifest(content: &str) -> MainResult<Option<String>> {
         }
     }
 
-    Ok(output)
+    output
 }
 
 #[test]
 fn test_scrape_markdown_manifest() {
     macro_rules! smm {
         ($c:expr) => {
-            scrape_markdown_manifest($c).map_err(|e| e.to_string())
+            scrape_markdown_manifest($c)
         };
     }
 
@@ -713,7 +711,7 @@ fn test_scrape_markdown_manifest() {
             r#"There is no manifest in this comment.
 "#
         ),
-        Ok(None)
+        None
     );
 
     assert_eq!(
@@ -731,7 +729,7 @@ println!("Nor is this.");
     Or this.
 "#
         ),
-        Ok(None)
+        None
     );
 
     assert_eq!(
@@ -743,11 +741,11 @@ dependencies = { time = "*" }
 ```
 "#
         ),
-        Ok(Some(
+        Some(
             r#"dependencies = { time = "*" }
 "#
             .into()
-        ))
+        )
     );
 
     assert_eq!(
@@ -765,11 +763,11 @@ dependencies = { time = "*" }
 ```
 "#
         ),
-        Ok(Some(
+        Some(
             r#"dependencies = { time = "*" }
 "#
             .into()
-        ))
+        )
     );
 
     assert_eq!(
@@ -787,11 +785,11 @@ dependencies = { explode = true }
 ```
 "#
         ),
-        Ok(Some(
+        Some(
             r#"dependencies = { time = "*" }
 "#
             .into()
-        ))
+        )
     );
 }
 
@@ -1033,7 +1031,7 @@ fn default_manifest(input: &Input, input_id: &OsString) -> MainResult<toml::valu
         let mut subs = HashMap::with_capacity(3);
         subs.insert(consts::MANI_NAME_SUB, &*pkg_name);
         subs.insert(consts::MANI_BIN_NAME_SUB, &*bin_name);
-        subs.insert(consts::MANI_FILE_SUB, &input.safe_name()[..]);
+        subs.insert(consts::MANI_FILE_SUB, input.safe_name());
         templates::expand(consts::DEFAULT_MANIFEST, &subs)?
     };
     toml::from_str(&mani_str).map_err(|e| {
