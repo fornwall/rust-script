@@ -170,3 +170,12 @@ fn test_pub_fn_main() {
     )
     .unwrap()
 }
+
+#[test]
+fn test_whitespace_before_main() {
+    let out = rust_script!("tests/data/whitespace-before-main.rs").unwrap();
+    scan!(out.stdout_output();
+        ("hello, world") => ()
+    )
+    .unwrap()
+}
