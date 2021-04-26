@@ -987,8 +987,12 @@ impl<'a> Input<'a> {
                     r.push('_');
                     r.push(c);
                 }
-                (_, '0'..='9') | (_, 'a'..='z') | (_, 'A'..='Z') | (_, '_') | (_, '-') => {
+                (_, '0'..='9') | (_, 'a'..='z') | (_, '_') | (_, '-') => {
                     r.push(c);
+                }
+                (_, 'A'..='Z') => {
+                    // Convert uppercase characters to lowercase to avoid `non_snake_case` warnings.
+                    r.push(c.to_ascii_lowercase());
                 }
                 (_, _) => {
                     r.push('_');
