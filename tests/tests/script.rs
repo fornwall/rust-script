@@ -179,3 +179,20 @@ fn test_whitespace_before_main() {
     )
     .unwrap()
 }
+
+#[test]
+fn test_stable_toolchain() {
+    let out = rust_script!("--toolchain-version", "stable", "tests/data/script-unstable-feature.rs").unwrap();
+    assert!(out.stderr.contains("`#![feature]` may not be used"));
+    assert!(!out.success());
+}
+
+#[test]
+fn test_nightly_toolchain() {
+    let out = rust_script!("--toolchain-version", "nightly", "tests/data/script-unstable-feature.rs").unwrap();
+    scan!(out.stdout_output();
+        ("`#![feature]` *may* be used!") => ()
+    )
+    .unwrap();
+    assert!(out.success());
+}
