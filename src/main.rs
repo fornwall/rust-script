@@ -56,6 +56,11 @@ struct Args {
     build_kind: BuildKind,
     template: Option<String>,
     list_templates: bool,
+    // This is a String instead of an
+    // enum since one can have custom
+    // toolchains (ex. a rustc developer
+    // will probably have `stage1`).
+    toolchain_version: Option<String>,
 
     #[cfg(windows)]
     install_file_association: bool,
@@ -235,6 +240,15 @@ fn parse_args() -> Args {
                 .takes_value(true)
                 .requires("expr")
             )
+            .arg(Arg::new("toolchain-version")
+                .about("Build the script using the given toolchain version.")
+                .long("toolchain-version")
+                // "channel"
+                .short('c')
+                .takes_value(true)
+                // FIXME: remove if benchmarking is stabilized
+                .conflicts_with("bench")
+            )
         .arg(Arg::new("list-templates")
             .about("List the available templates.")
             .long("list-templates")
@@ -289,6 +303,7 @@ fn parse_args() -> Args {
         build_kind: BuildKind::from_flags(m.is_present("test"), m.is_present("bench")),
         template: m.value_of("template").map(Into::into),
         list_templates: m.is_present("list-templates"),
+        toolchain_version: m.value_of("toolchain-version").map(Into::into),
         #[cfg(windows)]
         install_file_association: m.is_present("install-file-association"),
         #[cfg(windows)]
@@ -658,7 +673,12 @@ struct InputAction {
     */
     using_cache: bool,
 
-    use_nightly: bool,
+    /**
+    Which toolchain the script should be built with.
+
+    `None` indicates that the script should be built with a stable toolchain.
+    */
+    toolchain_version: Option<String>,
 
     /// The package metadata structure for the current invocation.
     metadata: PackageMetadata,
@@ -685,7 +705,7 @@ impl InputAction {
         cargo(
             cmd,
             &*self.manifest_path().to_string_lossy(),
-            self.use_nightly,
+            self.toolchain_version.as_ref().map(|s| s.as_str()),
             &self.metadata,
             script_args,
             run_quietly,
@@ -788,6 +808,14 @@ fn decide_action_for(
     };
     info!("input_meta: {:?}", input_meta);
 
+    let toolchain_version = args.toolchain_version.clone().or_else(|| {
+        if matches!(args.build_kind, BuildKind::Bench) {
+            Some("nightly".into())
+        } else {
+            None
+        }
+    });
+
     let mut action = InputAction {
         cargo_output: args.cargo_output,
         force_compile: force,
@@ -795,7 +823,7 @@ fn decide_action_for(
         execute: true,
         pkg_path,
         using_cache,
-        use_nightly: matches!(args.build_kind, BuildKind::Bench),
+        toolchain_version,
         metadata: input_meta,
         old_metadata: None,
         manifest: mani_str,
@@ -1123,14 +1151,14 @@ Constructs a Cargo command that runs on the script package.
 fn cargo(
     cmd_name: &str,
     manifest: &str,
-    nightly: bool,
+    maybe_toolchain_version: Option<&str>,
     meta: &PackageMetadata,
     script_args: &[String],
     run_quietly: bool,
 ) -> MainResult<Command> {
     let mut cmd = Command::new("cargo");
-    if nightly {
-        cmd.arg("+nightly");
+    if let Some(toolchain_version) = maybe_toolchain_version {
+        cmd.arg(format!("+{}", toolchain_version));
     }
     cmd.arg(cmd_name);
 
