@@ -808,13 +808,13 @@ fn decide_action_for(
     };
     info!("input_meta: {:?}", input_meta);
 
-    let toolchain_version = args.toolchain_version.clone().or_else(|| {
-        if matches!(args.build_kind, BuildKind::Bench) {
-            Some("nightly".into())
-        } else {
-            None
-        }
-    });
+    let toolchain_version = args
+        .toolchain_version
+        .clone()
+        .or_else(|| match args.build_kind {
+            BuildKind::Bench => Some("nightly".into()),
+            _ => None,
+        });
 
     let mut action = InputAction {
         cargo_output: args.cargo_output,
