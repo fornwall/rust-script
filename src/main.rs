@@ -705,7 +705,7 @@ impl InputAction {
         cargo(
             cmd,
             &*self.manifest_path().to_string_lossy(),
-            self.toolchain_version.as_ref().map(|s| s.as_str()),
+            self.toolchain_version.as_deref(),
             &self.metadata,
             script_args,
             run_quietly,
