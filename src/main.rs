@@ -1167,3 +1167,11 @@ fn cargo(
 
     Ok(cmd)
 }
+
+#[test]
+fn test_package_name() {
+    let input = Input::File("Script", Path::new("path"), "script", 0);
+    assert_eq!("script", input.package_name());
+    let input = Input::File("1Script", Path::new("path"), "script", 0);
+    assert_eq!("_1script", input.package_name());
+}
