@@ -13,11 +13,11 @@ jobs:
     steps:
     - name: Checkout source
       uses: actions/checkout@v2
-    - name: Setup rust
+    - name: Setup rust (${{ matrix.rust }})
       uses: hecrj/setup-rust-action@v1
       with:
         rust-version: ${{ matrix.rust }}
-    - name: Setup rust
+    - name: Setup rust (nightly)
       uses: hecrj/setup-rust-action@v1
       with:
         rust-version: nightly
