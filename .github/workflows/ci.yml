@@ -17,6 +17,10 @@ jobs:
       uses: hecrj/setup-rust-action@v1
       with:
         rust-version: ${{ matrix.rust }}
+    - name: Setup rust (stable)
+      uses: hecrj/setup-rust-action@v1
+      with:
+        rust-version: stable
     - name: Setup rust (nightly)
       uses: hecrj/setup-rust-action@v1
       with:
