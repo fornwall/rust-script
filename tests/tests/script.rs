@@ -172,6 +172,15 @@ fn test_pub_fn_main() {
 }
 
 #[test]
+fn test_outer_line_doc() {
+    let out = rust_script!("tests/data/outer-line-doc.rs").unwrap();
+    scan!(out.stdout_output();
+        ("Some(1)") => ()
+    )
+        .unwrap()
+}
+
+#[test]
 fn test_whitespace_before_main() {
     let out = rust_script!("tests/data/whitespace-before-main.rs").unwrap();
     scan!(out.stdout_output();

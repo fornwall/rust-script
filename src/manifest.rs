@@ -20,14 +20,14 @@ lazy_static! {
     static ref RE_MARGIN: Regex = Regex::new(r"^\s*\*( |$)").unwrap();
     static ref RE_SPACE: Regex = Regex::new(r"^(\s+)").unwrap();
     static ref RE_NESTING: Regex = Regex::new(r"/\*|\*/").unwrap();
-    static ref RE_COMMENT: Regex = Regex::new(r"^\s*//!").unwrap();
+    static ref RE_COMMENT: Regex = Regex::new(r"^\s*//(!|/)").unwrap();
     static ref RE_SHEBANG: Regex = Regex::new(r"^#![^\[].*?(\r\n|\n)").unwrap();
     static ref RE_CRATE_COMMENT: Regex = {
         Regex::new(
             r"(?x)
                 # We need to find the first `/*!` or `//!` that *isn't* preceeded by something that would make it apply to anything other than the crate itself.  Because we can't do this accurately, we'll just require that the doc comment is the *first* thing in the file (after the optional shebang, which should already have been stripped).
                 ^\s*
-                (/\*!|//!)
+                (/\*!|//(!|/))
             "
         ).unwrap()
     };
@@ -938,7 +938,7 @@ fn extract_comment(s: &str) -> MainResult<String> {
 
     if let Some(stripped) = s.strip_prefix("/*!") {
         extract_block(stripped)
-    } else if s.starts_with("//!") {
+    } else if s.starts_with("//!") || s.starts_with("///") {
         extract_line(s)
     } else {
         Err("no doc comment found".into())
