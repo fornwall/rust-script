@@ -1177,7 +1177,8 @@ fn cargo(
     }
 
     let cargo_target_dir = format!("{}", platform::binary_cache_path()?.display(),);
-    cmd.env("CARGO_TARGET_DIR", cargo_target_dir);
+    cmd.arg("--target-dir");
+    cmd.arg(cargo_target_dir);
 
     // Block `--release` on `bench`.
     if !meta.debug && cmd_name != "bench" {

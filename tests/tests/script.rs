@@ -172,12 +172,21 @@ fn test_pub_fn_main() {
 }
 
 #[test]
+fn test_cargo_target_dir_env() {
+    let out = rust_script!("tests/data/cargo-target-dir-env.rs").unwrap();
+    scan!(out.stdout_output();
+        ("true") => ()
+    )
+    .unwrap()
+}
+
+#[test]
 fn test_outer_line_doc() {
     let out = rust_script!("tests/data/outer-line-doc.rs").unwrap();
     scan!(out.stdout_output();
         ("Some(1)") => ()
     )
-        .unwrap()
+    .unwrap()
 }
 
 #[test]
