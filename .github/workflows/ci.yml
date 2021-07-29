@@ -33,6 +33,7 @@ jobs:
         # Run twice to test problem with expression caching
         ./tests/scripts/test-runner.sh
         ./tests/scripts/test-runner.sh
+        (cd tests/scripts/ignores-rust-toolchain && ../../../target/debug/rust-script test.rs)
 
   check-format:
     runs-on: ubuntu-latest

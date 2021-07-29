@@ -56,10 +56,8 @@ struct Args {
     build_kind: BuildKind,
     template: Option<String>,
     list_templates: bool,
-    // This is a String instead of an
-    // enum since one can have custom
-    // toolchains (ex. a rustc developer
-    // will probably have `stage1`).
+    // This is a String instead of an enum since one can have custom
+    // toolchains (ex. a rustc developer will probably have `stage1`):
     toolchain_version: Option<String>,
 
     #[cfg(windows)]
@@ -1155,15 +1153,16 @@ Constructs a Cargo command that runs on the script package.
 fn cargo(
     cmd_name: &str,
     manifest: &str,
-    maybe_toolchain_version: Option<&str>,
+    toolchain_version: Option<&str>,
     meta: &PackageMetadata,
     script_args: &[String],
     run_quietly: bool,
 ) -> MainResult<Command> {
     let mut cmd = Command::new("cargo");
-    if let Some(toolchain_version) = maybe_toolchain_version {
-        cmd.arg(format!("+{}", toolchain_version));
-    }
+
+    // Always specify a toolchain to avoid being affected by rust-version(.toml) files:
+    cmd.arg(format!("+{}", toolchain_version.unwrap_or("stable")));
+
     cmd.arg(cmd_name);
 
     if cmd_name == "run" && run_quietly {
