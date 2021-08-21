@@ -8,7 +8,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        rust: ["1.47.0", "1.53.0"]
+        rust: ["1.47.0", "1.54.0"]
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout source
