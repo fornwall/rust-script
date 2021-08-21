@@ -124,6 +124,7 @@ fn parse_args() -> Args {
                 .about("Arguments for the script to execute.")
                 .multiple_values(true)
                 .min_values(0)
+                .last(true)
             )
             .arg(Arg::new("expr")
                 .about("Execute <script> as a literal expression and display the result.")
