@@ -135,7 +135,7 @@ fn test_split_input() {
 
     let dummy_path: ::std::path::PathBuf = "p".into();
     let dummy_path = &dummy_path;
-    let f = |c| Input::File("n", &dummy_path, c, 0);
+    let f = |c| Input::File("n", dummy_path, c, 0);
 
     macro_rules! r {
         ($m:expr, $r:expr) => {
