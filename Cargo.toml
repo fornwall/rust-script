@@ -20,7 +20,7 @@ exclude = [
 ]
 
 [dependencies]
-clap = "3.0.0-beta.2"
+clap = "3.0.0-beta.4"
 dirs-next = "2"
 env_logger = "0.8"
 lazy_static = "1"
