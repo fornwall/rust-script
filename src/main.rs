@@ -112,7 +112,6 @@ fn parse_args() -> Args {
                 } else {
                     vec!["clear-cache", "list-templates"]
                 })
-                .number_of_values(1)
                 .conflicts_with_all(if cfg!(windows) {
                     &["list-templates", "install-file-association", "uninstall-file-association"]
                 } else {
@@ -124,7 +123,6 @@ fn parse_args() -> Args {
                 .about("Arguments for the script to execute.")
                 .multiple_values(true)
                 .min_values(0)
-                .last(true)
             )
             .arg(Arg::new("expr")
                 .about("Execute <script> as a literal expression and display the result.")
@@ -166,7 +164,7 @@ fn parse_args() -> Args {
                 .long("dep")
                 .short('d')
                 .takes_value(true)
-                .multiple_values(true)
+                .multiple_occurrences(true)
                 .number_of_values(1)
             )
             .arg(Arg::new("dep_extern")
@@ -174,7 +172,7 @@ fn parse_args() -> Args {
                 .long("dep-extern")
                 .short('D')
                 .takes_value(true)
-                .multiple_values(true)
+                .multiple_occurrences(true)
                 .requires("expr_or_loop")
             )
             .arg(Arg::new("extern")
@@ -182,7 +180,7 @@ fn parse_args() -> Args {
                 .long("extern")
                 .short('x')
                 .takes_value(true)
-                .multiple_values(true)
+                .multiple_occurrences(true)
                 .requires("expr_or_loop")
             )
             .arg(Arg::new("features")
@@ -195,7 +193,7 @@ fn parse_args() -> Args {
                 .long("unstable-feature")
                 .short('u')
                 .takes_value(true)
-                .multiple_values(true)
+                .multiple_occurrences(true)
                 .requires("expr_or_loop")
             )
 
