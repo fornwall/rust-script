@@ -46,10 +46,10 @@ pub fn split_input(
 ) -> MainResult<(String, String)> {
     fn contains_main_method(line: &str) -> bool {
         let line = line.trim_start();
-        line.starts_with("fn main()")
-            || line.starts_with("pub fn main()")
-            || line.starts_with("async fn main()")
-            || line.starts_with("pub async fn main()")
+        line.starts_with("fn main(")
+            || line.starts_with("pub fn main(")
+            || line.starts_with("async fn main(")
+            || line.starts_with("pub async fn main(")
     }
 
     let template_buf;
