@@ -20,9 +20,9 @@ exclude = [
 ]
 
 [dependencies]
-clap = "3.0.0-beta.4"
+clap = "3.0.0-beta.5"
 dirs-next = "2"
-env_logger = "0.8"
+env_logger = "0.9"
 lazy_static = "1"
 log = "0.4"
 pulldown-cmark = "0.8"
@@ -33,7 +33,7 @@ sha-1 = "0.9"
 toml = "0.5"
 
 [target.'cfg(windows)'.dependencies]
-winreg = "0.7"
+winreg = "0.10"
 
 [target.'cfg(unix)'.dependencies]
 atty = "0.2"
