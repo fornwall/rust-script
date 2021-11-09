@@ -472,7 +472,7 @@ fn try_main() -> MainResult<i32> {
     let _defer_clear = {
         // To get around partially moved args problems.
         let cc = args.clear_cache;
-        Defer::<_, MainError>::defer(move || {
+        Defer::<_, MainError>::new(move || {
             if !cc {
                 clean_cache(consts::MAX_CACHE_AGE_MS)?;
             }
@@ -582,7 +582,7 @@ fn gen_pkg_and_compile(input: &Input, action: &InputAction) -> MainResult<()> {
 
     info!("creating pkg dir...");
     fs::create_dir_all(pkg_path)?;
-    let cleanup_dir: Defer<_, MainError> = Defer::defer(|| {
+    let cleanup_dir: Defer<_, MainError> = Defer::new(|| {
         // DO NOT try deleting ANYTHING if we're not cleaning up inside our own cache.  We *DO NOT* want to risk killing user files.
         if action.using_cache {
             info!("cleaning up cache directory {:?}", pkg_path);

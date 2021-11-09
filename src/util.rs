@@ -25,7 +25,7 @@ where
     /**
     Create a new `Defer` with the given closure.
     */
-    pub fn defer(f: F) -> Defer<'a, F, E> {
+    pub fn new(f: F) -> Defer<'a, F, E> {
         Defer(Some(f), PhantomData)
     }
 
