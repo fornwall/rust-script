@@ -96,13 +96,13 @@ impl BuildKind {
 
 fn parse_args() -> Args {
     use clap::{App, Arg, ArgGroup};
+    use std::iter::FromIterator;
     let version = option_env!("CARGO_PKG_VERSION").unwrap_or("unknown");
     let about = r#"Compiles and runs a Rust script."#;
 
     let app = App::new(consts::PROGRAM_NAME)
         .version(version)
         .setting(clap::AppSettings::TrailingVarArg)
-        .setting(clap::AppSettings::AllowLeadingHyphen)
         .about(about)
             .arg(Arg::new("script")
                 .index(1)
@@ -117,12 +117,7 @@ fn parse_args() -> Args {
                 } else {
                     &["list-templates"]
                 })
-            )
-            .arg(Arg::new("script-args")
-                .index(2)
-                .about("Arguments for the script to execute.")
                 .multiple_values(true)
-                .min_values(0)
             )
             .arg(Arg::new("expr")
                 .about("Execute <script> as a literal expression and display the result.")
@@ -213,7 +208,7 @@ fn parse_args() -> Args {
                 .about("Generate the Cargo package, but don't compile or run it.")
                 .long("gen-pkg-only")
                 .requires("script")
-                .conflicts_with_all(&["script-args", "debug", "force", "test", "bench"])
+                .conflicts_with_all(&["debug", "force", "test", "bench"])
             )
             .arg(Arg::new("pkg_path")
                 .about("Specify where to place the generated Cargo package.")
@@ -225,12 +220,12 @@ fn parse_args() -> Args {
             .arg(Arg::new("test")
                 .about("Compile and run tests.")
                 .long("test")
-                .conflicts_with_all(&["bench", "debug", "script-args", "force"])
+                .conflicts_with_all(&["bench", "debug", "force"])
             )
             .arg(Arg::new("bench")
                 .about("Compile and run benchmarks. Requires a nightly toolchain.")
                 .long("bench")
-                .conflicts_with_all(&["test", "debug", "script-args", "force"])
+                .conflicts_with_all(&["test", "debug", "force"])
             )
             .arg(Arg::new("template")
                 .about("Specify a template to use for expression scripts.")
@@ -281,9 +276,24 @@ fn parse_args() -> Args {
             .unwrap_or_default()
     }
 
+    let script_and_args: Option<Vec<&str>> = m.values_of("script").map(|o| o.collect());
+    let script;
+    let script_args: Vec<String>;
+    if let Some(script_and_args) = script_and_args {
+        script = script_and_args.get(0).map(|s| s.to_string());
+        script_args = if script_and_args.len() > 1 {
+            Vec::from_iter(script_and_args[1..].iter().map(|s| s.to_string()))
+        } else {
+            Vec::new()
+        };
+    } else {
+        script = None;
+        script_args = Vec::new();
+    }
+
     Args {
-        script: m.value_of("script").map(Into::into),
-        script_args: owned_vec_string(m.values_of("script-args")),
+        script,
+        script_args,
         features: m.value_of("features").map(Into::into),
 
         expr: m.is_present("expr"),

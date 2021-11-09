@@ -224,3 +224,12 @@ fn test_nightly_toolchain() {
     .unwrap();
     assert!(out.success());
 }
+
+#[test]
+fn test_same_flags() {
+    let out = rust_script!("tests/data/same-flags.rs", "--help").unwrap();
+    scan!(out.stdout_output();
+        ("Argument: --help") => ()
+    )
+    .unwrap()
+}
