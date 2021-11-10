@@ -1,9 +1,4 @@
 #![forbid(unsafe_code)]
-extern crate env_logger;
-#[macro_use]
-extern crate lazy_static;
-#[macro_use]
-extern crate log;
 
 /**
 If this is set to `false`, then code that automatically deletes stuff *won't*.
@@ -23,6 +18,7 @@ mod file_assoc;
 #[cfg(not(windows))]
 mod file_assoc {}
 
+use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use std::ffi::OsString;
 use std::fs;

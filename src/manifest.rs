@@ -1,8 +1,7 @@
 /*!
 This module is concerned with how `rust-script` extracts the manfiest from a script file.
 */
-extern crate pulldown_cmark;
-extern crate regex;
+use regex;
 
 use self::regex::Regex;
 use std::collections::HashMap;
@@ -12,6 +11,8 @@ use crate::consts;
 use crate::error::{MainError, MainResult};
 use crate::templates;
 use crate::Input;
+use lazy_static::lazy_static;
+use log::{error, info};
 use std::ffi::OsString;
 
 lazy_static! {
@@ -667,7 +668,7 @@ fn find_code_block_manifest(s: &str) -> Option<(Manifest, &str)> {
 Extracts the first `Cargo` fenced code block from a chunk of Markdown.
 */
 fn scrape_markdown_manifest(content: &str) -> Option<String> {
-    use self::pulldown_cmark::{CodeBlockKind, Event, Options, Parser, Tag};
+    use pulldown_cmark::{CodeBlockKind, Event, Options, Parser, Tag};
 
     // To match librustdoc/html/markdown.rs, opts.
     let exts = Options::ENABLE_TABLES | Options::ENABLE_FOOTNOTES;

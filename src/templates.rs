@@ -4,6 +4,7 @@ This module contains code related to template support.
 use crate::consts;
 use crate::error::{MainError, MainResult};
 use crate::platform;
+use lazy_static::lazy_static;
 use regex::Regex;
 use std::borrow::Cow;
 use std::collections::HashMap;

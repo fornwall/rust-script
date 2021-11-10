@@ -38,6 +38,7 @@ pub fn cache_dir() -> Result<PathBuf, MainError> {
 
 #[cfg(test)]
 pub fn cache_dir() -> Result<PathBuf, MainError> {
+    use lazy_static::lazy_static;
     lazy_static! {
         static ref TEMP_DIR: tempfile::TempDir = tempfile::TempDir::new().unwrap();
     }
@@ -66,8 +67,6 @@ pub fn templates_dir() -> Result<PathBuf, MainError> {
 
 #[cfg(unix)]
 mod inner {
-    extern crate atty;
-
     pub use super::*;
 
     /**

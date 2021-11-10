@@ -1,6 +1,7 @@
 /*!
 This module just contains other random implementation stuff.
 */
+use log::error;
 use std::error::Error;
 use std::marker::PhantomData;
 
