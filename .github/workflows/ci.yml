@@ -8,7 +8,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        rust: ["1.47.0", "1.56.1"]
+        rust: ["1.47.0", "stable"]
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout source
@@ -20,7 +20,7 @@ jobs:
     - name: Setup rust (stable)
       uses: hecrj/setup-rust-action@v1
       with:
-        rust-version: stable
+        rust-version: ${{ matrix.rust }}
     - name: Setup rust (nightly)
       uses: hecrj/setup-rust-action@v1
       with:
