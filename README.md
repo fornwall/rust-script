@@ -3,7 +3,7 @@
 [![Crates.io](https://img.shields.io/crates/v/rust-script.svg)](https://crates.io/crates/rust-script)
 
 # rust-script
-Run Rust files and expressions without any setup or explicit compilation step, with seamless use of crates specified in the script file.
+Run Rust script files without any setup or explicit compilation step, with seamless use of crates specified as dependencies inside the scripts.
 
 ```sh
 $ cargo install script-script
