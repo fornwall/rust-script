@@ -8,25 +8,24 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        rust: ["1.54.0", "stable"]
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout source
       uses: actions/checkout@v2
-    - name: Setup rust (${{ matrix.rust }})
+    - name: Setup stable rust
       uses: hecrj/setup-rust-action@v1
       with:
-        rust-version: ${{ matrix.rust }}
-    - name: Setup rust (stable)
-      uses: hecrj/setup-rust-action@v1
-      with:
-        rust-version: ${{ matrix.rust }}
-    - name: Setup rust (nightly)
+        rust-version: "stable"
+    - name: Setup nightly rust
       uses: hecrj/setup-rust-action@v1
       with:
         rust-version: nightly
+    - name: Setup MSRV rust
+      uses: hecrj/setup-rust-action@v1
+      with:
+        rust-version: "1.54.0"
     - name: Run unit tests
-      run: cargo test
+      run: rustc --version && cargo --version && cargo test
     - name: Run script tests
       if: runner.os != 'Windows'
       run: |
