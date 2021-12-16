@@ -3,7 +3,33 @@
 [![Crates.io](https://img.shields.io/crates/v/rust-script.svg)](https://crates.io/crates/rust-script)
 
 # rust-script
-Run Rust files and expressions without any setup or compilation necessary.
+Run Rust files and expressions without any setup or explicit compilation step, with seamless use of crates specified in the script file.
+
+```sh
+$ cargo install script-script
+[...]
+
+$ cat script.rs
+#!/usr/bin/env rust-script
+//! Dependencies can be specified in the script file itself as follows:
+//!
+//! ```cargo
+//! [dependencies]
+//! rand = "0.8.0"
+//! ```
+
+use rand::prelude::*;
+
+fn main() {
+    let x: u64 = random();
+    println!("A random number: {}", x);
+}
+
+$ ./script.rs
+A random number: 9240261453149857564
+```
+
+Rust version 1.54 or newer required.
 
 See the [documentation at rust-script.org](https://rust-script.org).
 
