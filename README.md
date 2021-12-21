@@ -6,7 +6,7 @@
 Run Rust script files without any setup or explicit compilation step, with seamless use of crates specified as dependencies inside the scripts.
 
 ```sh
-$ cargo install script-script
+$ cargo install rust-script
 [...]
 
 $ cat script.rs
