@@ -56,6 +56,8 @@ Regarding the loop templates: what I *want* is for the result of the closure to 
 
 /// The template used for `--loop` input, assuming no `--count` flag is also given.
 pub const LOOP_TEMPLATE: &str = r#"
+#![allow(unused_imports)]
+#![allow(unused_braces)]
 #{prelude}
 use std::any::Any;
 use std::io::prelude::*;
@@ -65,7 +67,7 @@ fn main() {
 {#{script}}
     );
     let mut line_buffer = String::new();
-    let mut stdin = std::io::stdin();
+    let stdin = std::io::stdin();
     loop {
         line_buffer.clear();
         let read_res = stdin.read_line(&mut line_buffer).unwrap_or(0);
@@ -73,7 +75,7 @@ fn main() {
         let output = closure(&line_buffer);
 
         let display = {
-            let output_any: &Any = &output;
+            let output_any: &dyn Any = &output;
             !output_any.is::<()>()
         };
 
@@ -91,6 +93,8 @@ where F: FnMut(&str) -> T, T: 'static {
 
 /// The template used for `--count --loop` input.
 pub const LOOP_COUNT_TEMPLATE: &str = r#"
+#![allow(unused_imports)]
+#![allow(unused_braces)]
 use std::any::Any;
 use std::io::prelude::*;
 
@@ -99,7 +103,7 @@ fn main() {
 {#{script}}
     );
     let mut line_buffer = String::new();
-    let mut stdin = std::io::stdin();
+    let stdin = std::io::stdin();
     let mut count = 0;
     loop {
         line_buffer.clear();
@@ -109,7 +113,7 @@ fn main() {
         let output = closure(&line_buffer, count);
 
         let display = {
-            let output_any: &Any = &output;
+            let output_any: &dyn Any = &output;
             !output_any.is::<()>()
         };
 
