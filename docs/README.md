@@ -4,6 +4,8 @@
 
 - [Overview](#overview)
 - [Installation](#installation)
+  - [Distro Packages](#distro-packages)
+    - [Arch Linux](#arch-linux)
 - [Scripts](#scripts)
 - [Executable Scripts](#executable-scripts)
 - [Expressions](#expressions)
@@ -34,6 +36,16 @@ cargo install rust-script
 ```
 
 Rust 1.47 or later is required.
+
+### Distro Packages
+
+#### Arch Linux
+
+`rust-script` can be installed from the [community repository](https://archlinux.org/packages/community/x86_64/rust-script/):
+
+```sh
+pacman -S rust-script
+```
 
 ## Scripts
 
