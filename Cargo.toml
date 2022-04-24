@@ -20,17 +20,17 @@ exclude = [
 ]
 
 [dependencies]
-clap = "3.0.0-rc.7"
+clap = "3.1.2"
 dirs-next = "2"
 env_logger = "0.9"
 lazy_static = "1"
 log = "0.4"
-pulldown-cmark = "0.8"
+pulldown-cmark = "0.9"
 regex = "1"
 rustversion = "1.0"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-sha-1 = "0.9"
+sha-1 = "0.10"
 tempfile = "3"
 toml = "0.5"
 
