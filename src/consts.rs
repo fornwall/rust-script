@@ -151,6 +151,9 @@ edition = "2018"
 [[bin]]
 name = "#{bin_name}"
 path = "#{file}.rs"
+
+[profile.release]
+strip = true
 "##;
 
 /**

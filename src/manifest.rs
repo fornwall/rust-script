@@ -158,6 +158,8 @@ authors = ["Anonymous"]
 edition = "2018"
 name = "n"
 version = "0.1.0"
+[profile.release]
+strip = true
 "#,
             r#"fn main() {}"#
         )
@@ -181,6 +183,8 @@ authors = ["Anonymous"]
 edition = "2018"
 name = "n"
 version = "0.1.0"
+[profile.release]
+strip = true
 "#,
             r#"
 ---
@@ -207,6 +211,8 @@ authors = ["Anonymous"]
 edition = "2018"
 name = "n"
 version = "0.1.0"
+[profile.release]
+strip = true
 "#,
             r#"[dependencies]
 time="0.1.25"
@@ -234,6 +240,8 @@ authors = ["Anonymous"]
 edition = "2018"
 name = "n"
 version = "0.1.0"
+[profile.release]
+strip = true
 "#,
             r#"
 // Cargo-Deps: time="0.1.25"
@@ -261,6 +269,8 @@ authors = ["Anonymous"]
 edition = "2018"
 name = "n"
 version = "0.1.0"
+[profile.release]
+strip = true
 "#,
             r#"
 // Cargo-Deps: time="0.1.25", libc="0.2.5"
@@ -294,6 +304,8 @@ authors = ["Anonymous"]
 edition = "2018"
 name = "n"
 version = "0.1.0"
+[profile.release]
+strip = true
 "#,
             r#"
 /*!
