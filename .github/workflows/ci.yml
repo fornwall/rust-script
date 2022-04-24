@@ -8,6 +8,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+        rust: ["1.54.0", "1.60.0"]
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout source
@@ -23,7 +24,7 @@ jobs:
     - name: Setup MSRV rust
       uses: hecrj/setup-rust-action@v1
       with:
-        rust-version: "1.54.0"
+        rust-version: ${{ matrix.rust }}
     - name: Run unit tests
       run: rustc --version && cargo --version && cargo test
     - name: Run script tests
