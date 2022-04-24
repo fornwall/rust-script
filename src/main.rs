@@ -91,16 +91,15 @@ impl BuildKind {
 }
 
 fn parse_args() -> Args {
-    use clap::{App, Arg, ArgGroup};
+    use clap::{Arg, ArgGroup, Command};
     use std::iter::FromIterator;
     let version = option_env!("CARGO_PKG_VERSION").unwrap_or("unknown");
     let about = r#"Compiles and runs a Rust script."#;
 
-    let app = App::new(consts::PROGRAM_NAME)
+    let app = Command::new(consts::PROGRAM_NAME)
         .version(version)
         .about(about)
-        .setting(clap::AppSettings::TrailingVarArg)
-        //.override_help(about)
+        .trailing_var_arg(true)
             .arg(Arg::new("script")
                 .index(1)
                 .help("Script file or expression to execute.")
