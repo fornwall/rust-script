@@ -22,7 +22,7 @@ use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use std::ffi::OsString;
 use std::fs;
-use std::io::{Read, Write};
+use std::io::{BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -904,12 +904,14 @@ fn write_pkg_metadata<P>(pkg_path: P, meta: &PackageMetadata) -> MainResult<()>
 where
     P: AsRef<Path>,
 {
-    let meta_path = get_pkg_metadata_path(pkg_path);
+    let meta_path = get_pkg_metadata_path(&pkg_path);
     debug!("meta_path: {:?}", meta_path);
-    let mut meta_file = fs::File::create(&meta_path)?;
-    let meta_str = serde_json::to_string(meta).map_err(|err| err.to_string())?;
-    write!(&mut meta_file, "{}", meta_str)?;
-    meta_file.flush()?;
+    let mut temp_file = tempfile::NamedTempFile::new_in(&pkg_path)?;
+    serde_json::to_writer(BufWriter::new(&temp_file), meta).map_err(|err| err.to_string())?;
+    temp_file.flush()?;
+    temp_file
+        .persist(&meta_path)
+        .map_err(|err| err.to_string())?;
     Ok(())
 }
 
@@ -1141,9 +1143,14 @@ where
     }
 
     debug!(".. hashes differ; new_hash: {:?}", new_hash);
-    let mut file = fs::File::create(path)?;
-    write!(&mut file, "{}", content)?;
-    file.flush()?;
+    let dir = path
+        .as_ref()
+        .parent()
+        .ok_or("The given path should be a file")?;
+    let mut temp_file = tempfile::NamedTempFile::new_in(dir)?;
+    temp_file.write_all(content.as_bytes())?;
+    temp_file.flush()?;
+    temp_file.persist(path).map_err(|e| e.to_string())?;
     Ok(FileOverwrite::Changed { new_hash })
 }
 
