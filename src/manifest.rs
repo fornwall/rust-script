@@ -125,6 +125,16 @@ pub fn split_input(
     Ok((mani_str, source))
 }
 
+#[rustversion::before(1.59)]
+#[cfg(test)]
+pub const STRIP_SECTION: &str = "";
+#[rustversion::since(1.59)]
+#[cfg(test)]
+pub const STRIP_SECTION: &str = r##"
+[profile.release]
+strip = true
+"##;
+
 #[test]
 fn test_split_input() {
     let input_id = OsString::from("input_id");
@@ -147,7 +157,9 @@ fn test_split_input() {
     assert_eq!(
         si!(f(r#"fn main() {}"#)),
         r!(
-            r#"[[bin]]
+            format!(
+                "{}{}",
+                r#"[[bin]]
 name = "n_input_id"
 path = "n.rs"
 
@@ -157,10 +169,9 @@ path = "n.rs"
 authors = ["Anonymous"]
 edition = "2018"
 name = "n"
-version = "0.1.0"
-[profile.release]
-strip = true
-"#,
+version = "0.1.0""#,
+                STRIP_SECTION
+            ),
             r#"fn main() {}"#
         )
     );
@@ -172,7 +183,9 @@ strip = true
 fn main() {}
 "#)),
         r!(
-            r#"[[bin]]
+            format!(
+                "{}{}",
+                r#"[[bin]]
 name = "n_input_id"
 path = "n.rs"
 
@@ -182,10 +195,9 @@ path = "n.rs"
 authors = ["Anonymous"]
 edition = "2018"
 name = "n"
-version = "0.1.0"
-[profile.release]
-strip = true
-"#,
+version = "0.1.0""#,
+                STRIP_SECTION
+            ),
             r#"
 ---
 fn main() {}
@@ -200,7 +212,9 @@ time="0.1.25"
 fn main() {}
 "#)),
         r!(
-            r#"[[bin]]
+            format!(
+                "{}{}",
+                r#"[[bin]]
 name = "n_input_id"
 path = "n.rs"
 
@@ -210,10 +224,9 @@ path = "n.rs"
 authors = ["Anonymous"]
 edition = "2018"
 name = "n"
-version = "0.1.0"
-[profile.release]
-strip = true
-"#,
+version = "0.1.0""#,
+                STRIP_SECTION
+            ),
             r#"[dependencies]
 time="0.1.25"
 ---
@@ -228,7 +241,9 @@ fn main() {}
 fn main() {}
 "#)),
         r!(
-            r#"[[bin]]
+            format!(
+                "{}{}",
+                r#"[[bin]]
 name = "n_input_id"
 path = "n.rs"
 
@@ -239,10 +254,9 @@ time = "0.1.25"
 authors = ["Anonymous"]
 edition = "2018"
 name = "n"
-version = "0.1.0"
-[profile.release]
-strip = true
-"#,
+version = "0.1.0""#,
+                STRIP_SECTION
+            ),
             r#"
 // Cargo-Deps: time="0.1.25"
 fn main() {}
@@ -256,7 +270,9 @@ fn main() {}
 fn main() {}
 "#)),
         r!(
-            r#"[[bin]]
+            format!(
+                "{}{}",
+                r#"[[bin]]
 name = "n_input_id"
 path = "n.rs"
 
@@ -268,10 +284,9 @@ time = "0.1.25"
 authors = ["Anonymous"]
 edition = "2018"
 name = "n"
-version = "0.1.0"
-[profile.release]
-strip = true
-"#,
+version = "0.1.0""#,
+                STRIP_SECTION
+            ),
             r#"
 // Cargo-Deps: time="0.1.25", libc="0.2.5"
 fn main() {}
@@ -292,7 +307,9 @@ time = "0.1.25"
 fn main() {}
 "#)),
         r!(
-            r#"[[bin]]
+            format!(
+                "{}{}",
+                r#"[[bin]]
 name = "n_input_id"
 path = "n.rs"
 
@@ -303,10 +320,9 @@ time = "0.1.25"
 authors = ["Anonymous"]
 edition = "2018"
 name = "n"
-version = "0.1.0"
-[profile.release]
-strip = true
-"#,
+version = "0.1.0""#,
+                STRIP_SECTION
+            ),
             r#"
 /*!
 Here is a manifest:
