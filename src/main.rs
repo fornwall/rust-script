@@ -18,6 +18,9 @@ mod file_assoc;
 #[cfg(not(windows))]
 mod file_assoc {}
 
+#[cfg(unix)]
+use std::os::unix::process::CommandExt;
+
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use std::ffi::OsString;
@@ -478,18 +481,34 @@ fn try_main() -> MainResult<i32> {
         })
     };
 
-    let exit_code = if action.execute {
-        let cmd_name = action.build_kind.exec_command();
-        info!("running `cargo {}`", cmd_name);
-        let run_quietly = !action.cargo_output;
-        let mut cmd = action.cargo(cmd_name, &args.script_args, run_quietly)?;
+    #[cfg(unix)]
+    {
+        if action.execute {
+            let cmd_name = action.build_kind.exec_command();
+            info!("running `cargo {}`", cmd_name);
+            let run_quietly = !action.cargo_output;
+            let mut cmd = action.cargo(cmd_name, &args.script_args, run_quietly)?;
 
-        cmd.status().map(|st| st.code().unwrap_or(1))?
-    } else {
-        0
-    };
+            let err = cmd.exec();
+            Err(MainError::from(err))
+        } else {
+            Ok(0)
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        let exit_code = if action.execute {
+            let cmd_name = action.build_kind.exec_command();
+            info!("running `cargo {}`", cmd_name);
+            let run_quietly = !action.cargo_output;
+            let mut cmd = action.cargo(cmd_name, &args.script_args, run_quietly)?;
 
-    Ok(exit_code)
+            cmd.status().map(|st| st.code().unwrap_or(1))?
+        } else {
+            0
+        };
+        Ok(exit_code)
+    }
 }
 
 /**
