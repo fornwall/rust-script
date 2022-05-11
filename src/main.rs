@@ -931,34 +931,26 @@ where
     Ok(())
 }
 
-/**
-Attempts to locate the script specified by the given path.  If the path as-given doesn't yield anything, it will try adding file extensions.
-*/
+/// Attempts to locate the script specified by the given path.
 fn find_script<P>(path: P) -> Option<(PathBuf, fs::File)>
 where
     P: AsRef<Path>,
 {
     let path = path.as_ref();
 
-    // Try the path directly.
     if let Ok(file) = fs::File::open(path) {
         return Some((path.into(), file));
     }
 
-    // If it had an extension, don't bother trying any others.
-    if path.extension().is_some() {
-        return None;
-    }
-
-    // Ok, now try other extensions.
-    for &ext in &["ers", "rs"] {
-        let path = path.with_extension(ext);
-        if let Ok(file) = fs::File::open(&path) {
-            return Some((path, file));
+    if path.extension().is_none() {
+        for &ext in &["ers", "rs"] {
+            let path = path.with_extension(ext);
+            if let Ok(file) = fs::File::open(&path) {
+                return Some((path, file));
+            }
         }
     }
 
-    // Welp. ¯\_(ツ)_/¯
     None
 }
 
