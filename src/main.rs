@@ -951,7 +951,7 @@ where
     }
 
     // Ok, now try other extensions.
-    for &ext in consts::SEARCH_EXTS {
+    for &ext in &["ers", "rs"] {
         let path = path.with_extension(ext);
         if let Ok(file) = fs::File::open(&path) {
             return Some((path, file));
