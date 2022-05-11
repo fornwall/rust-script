@@ -1178,6 +1178,8 @@ fn cargo(
     }
     cmd.arg(build_kind.exec_command());
 
+    cmd.arg("--offline");
+
     if matches!(build_kind, BuildKind::Normal) && run_quietly {
         cmd.arg("-q");
     }
