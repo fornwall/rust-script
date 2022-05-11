@@ -173,7 +173,7 @@ The following environment variables are provided to scripts by `rust-script`:
 
 ## Templates
 
-You can use templates to avoid having to re-specify common code and dependencies.  You can find out the directory where templates are store and view a list of your templates by running `rust-script --list-templates`.
+You can use templates to avoid having to re-specify common code and dependencies.  You can find out the directory where templates are stored and view a list of your templates by running `rust-script --list-templates`.
 
 Templates are Rust source files with two placeholders: `#{prelude}` for the auto-generated prelude (which should be placed at the top of the template), and `#{script}` for the contents of the script itself.
 
