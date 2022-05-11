@@ -483,10 +483,8 @@ fn try_main() -> MainResult<i32> {
     #[cfg(unix)]
     {
         if action.execute {
-            let cmd_name = action.build_kind.exec_command();
-            info!("running `cargo {}`", cmd_name);
             let run_quietly = !action.cargo_output;
-            let mut cmd = action.cargo(cmd_name, &args.script_args, run_quietly)?;
+            let mut cmd = action.cargo(action.build_kind, &args.script_args, run_quietly)?;
 
             let err = cmd.exec();
             Err(MainError::from(err))
@@ -716,9 +714,14 @@ impl InputAction {
         self.pkg_path.join("Cargo.toml")
     }
 
-    fn cargo(&self, cmd: &str, script_args: &[String], run_quietly: bool) -> MainResult<Command> {
+    fn cargo(
+        &self,
+        build_kind: BuildKind,
+        script_args: &[String],
+        run_quietly: bool,
+    ) -> MainResult<Command> {
         cargo(
-            cmd,
+            build_kind,
             &*self.manifest_path().to_string_lossy(),
             self.toolchain_version.as_deref(),
             &self.metadata,
@@ -803,7 +806,7 @@ fn decide_action_for(
             Input::File(_, path, _, mtime) => {
                 (Some(path.to_string_lossy().into_owned()), Some(mtime))
             }
-            _ => (None, None)
+            _ => (None, None),
         };
         PackageMetadata {
             path,
@@ -1162,7 +1165,7 @@ where
 Constructs a Cargo command that runs on the script package.
 */
 fn cargo(
-    cmd_name: &str,
+    build_kind: BuildKind,
     manifest: &str,
     maybe_toolchain_version: Option<&str>,
     meta: &PackageMetadata,
@@ -1173,9 +1176,9 @@ fn cargo(
     if let Some(toolchain_version) = maybe_toolchain_version {
         cmd.arg(format!("+{}", toolchain_version));
     }
-    cmd.arg(cmd_name);
+    cmd.arg(build_kind.exec_command());
 
-    if cmd_name == "run" && run_quietly {
+    if matches!(build_kind, BuildKind::Normal) && run_quietly {
         cmd.arg("-q");
     }
 
@@ -1190,7 +1193,7 @@ fn cargo(
     cmd.arg(cargo_target_dir);
 
     // Block `--release` on `bench`.
-    if !meta.debug && cmd_name != "bench" {
+    if !meta.debug && !matches!(build_kind, BuildKind::Bench) {
         cmd.arg("--release");
     }
 
@@ -1198,7 +1201,7 @@ fn cargo(
         cmd.arg("--features").arg(features);
     }
 
-    if cmd_name == "run" && !script_args.is_empty() {
+    if matches!(build_kind, BuildKind::Normal) && !script_args.is_empty() {
         cmd.arg("--");
         cmd.args(script_args.iter());
     }
