@@ -314,14 +314,12 @@ fn parse_args() -> Args {
 fn main() {
     env_logger::init();
 
-    let stderr = &mut std::io::stderr();
     match try_main() {
-        Ok(0) => (),
         Ok(code) => {
             std::process::exit(code);
         }
-        Err(ref err) => {
-            writeln!(stderr, "error: {}", err).unwrap();
+        Err(err) => {
+            eprintln!("error: {}", err);
             std::process::exit(1);
         }
     }
