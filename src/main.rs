@@ -353,7 +353,8 @@ fn try_main() -> MainResult<i32> {
         return Ok(0);
     }
 
-    // Take the arguments and work out what our input is going to be.  Primarily, this gives us the content, a user-friendly name, and a cache-friendly ID.
+    // Take the arguments and work out what our input is going to be.
+    // Primarily, this gives us the content, a user-friendly name, and a cache-friendly ID.
     // These three are just storage for the borrows we'll actually use.
     let script_name: String;
     let script_path: PathBuf;
@@ -371,11 +372,11 @@ fn try_main() -> MainResult<i32> {
 
             let mut body = String::new();
             file.read_to_string(&mut body)?;
+            content = body;
 
             let mtime = platform::file_last_modified(&file);
 
             script_path = std::env::current_dir()?.join(path);
-            content = body;
 
             Input::File(&script_name, &script_path, &content, mtime)
         }
@@ -741,9 +742,6 @@ struct PackageMetadata {
     /// Last-modified timestamp for script file.
     modified: Option<u128>,
 
-    /// Template used.
-    template: Option<String>,
-
     /// Was the script compiled in debug mode?
     debug: bool,
 
@@ -801,17 +799,15 @@ fn decide_action_for(
     };
 
     let input_meta = {
-        let (path, mtime, template) = match *input {
+        let (path, mtime) = match *input {
             Input::File(_, path, _, mtime) => {
-                (Some(path.to_string_lossy().into_owned()), Some(mtime), None)
+                (Some(path.to_string_lossy().into_owned()), Some(mtime))
             }
-            Input::Expr(_, template) => (None, None, template),
-            Input::Loop(..) => (None, None, None),
+            _ => (None, None)
         };
         PackageMetadata {
             path,
             modified: mtime,
-            template: template.map(Into::into),
             debug,
             deps,
             prelude,
@@ -910,7 +906,7 @@ fn get_pkg_metadata_path<P>(pkg_path: P) -> PathBuf
 where
     P: AsRef<Path>,
 {
-    pkg_path.as_ref().join(consts::METADATA_FILE)
+    pkg_path.as_ref().join("metadata.json")
 }
 
 /**

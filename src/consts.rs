@@ -170,11 +170,6 @@ strip = true
 "##;
 
 /**
-The name of the package metadata file.
-*/
-pub const METADATA_FILE: &str = "metadata.json";
-
-/**
 When generating a package's unique ID, how many hex nibbles of the digest should be used *at most*?
 
 The largest meaningful value is `40`.
