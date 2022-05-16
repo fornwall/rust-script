@@ -495,10 +495,8 @@ fn try_main() -> MainResult<i32> {
     #[cfg(not(unix))]
     {
         let exit_code = if action.execute {
-            let cmd_name = action.build_kind.exec_command();
-            info!("running `cargo {}`", cmd_name);
             let run_quietly = !action.cargo_output;
-            let mut cmd = action.cargo(cmd_name, &args.script_args, run_quietly)?;
+            let mut cmd = action.cargo(action.build_kind, &args.script_args, run_quietly)?;
 
             cmd.status().map(|st| st.code().unwrap_or(1))?
         } else {
