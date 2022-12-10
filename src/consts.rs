@@ -147,7 +147,7 @@ pub const DEFAULT_MANIFEST: &str = r##"
 name = "#{name}"
 version = "0.1.0"
 authors = ["Anonymous"]
-edition = "2018"
+edition = "2021"
 
 [[bin]]
 name = "#{bin_name}"
@@ -159,7 +159,7 @@ pub const DEFAULT_MANIFEST: &str = r##"
 name = "#{name}"
 version = "0.1.0"
 authors = ["Anonymous"]
-edition = "2018"
+edition = "2021"
 
 [[bin]]
 name = "#{bin_name}"
