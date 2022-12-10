@@ -167,7 +167,7 @@ path = "n.rs"
 
 [package]
 authors = ["Anonymous"]
-edition = "2018"
+edition = "2021"
 name = "n"
 version = "0.1.0""#,
                 STRIP_SECTION
@@ -193,7 +193,7 @@ path = "n.rs"
 
 [package]
 authors = ["Anonymous"]
-edition = "2018"
+edition = "2021"
 name = "n"
 version = "0.1.0""#,
                 STRIP_SECTION
@@ -222,7 +222,7 @@ path = "n.rs"
 
 [package]
 authors = ["Anonymous"]
-edition = "2018"
+edition = "2021"
 name = "n"
 version = "0.1.0""#,
                 STRIP_SECTION
@@ -252,7 +252,7 @@ time = "0.1.25"
 
 [package]
 authors = ["Anonymous"]
-edition = "2018"
+edition = "2021"
 name = "n"
 version = "0.1.0""#,
                 STRIP_SECTION
@@ -282,7 +282,7 @@ time = "0.1.25"
 
 [package]
 authors = ["Anonymous"]
-edition = "2018"
+edition = "2021"
 name = "n"
 version = "0.1.0""#,
                 STRIP_SECTION
@@ -318,7 +318,7 @@ time = "0.1.25"
 
 [package]
 authors = ["Anonymous"]
-edition = "2018"
+edition = "2021"
 name = "n"
 version = "0.1.0""#,
                 STRIP_SECTION
