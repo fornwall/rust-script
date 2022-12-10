@@ -95,7 +95,6 @@ impl BuildKind {
 
 fn parse_args() -> Args {
     use clap::{Arg, ArgGroup, Command};
-    use std::iter::FromIterator;
     let version = option_env!("CARGO_PKG_VERSION").unwrap_or("unknown");
     let about = r#"Compiles and runs a Rust script."#;
 
