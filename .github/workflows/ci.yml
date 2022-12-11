@@ -18,7 +18,11 @@ jobs:
     - name: Setup nightly rust
       run: rustup toolchain install nightly
     - name: Run unit tests
-      run: rustc --version && cargo --version && cargo test
+      run: |
+        echo $PATH
+        export PATH=$HOME/.cargo/bin:$PATH
+        echo `which cargo`
+        rustc --version && cargo --version && cargo test
     - name: Run script tests
       if: runner.os != 'Windows'
       run: |
