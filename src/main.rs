@@ -270,7 +270,7 @@ fn parse_args() -> Args {
     let script;
     let script_args: Vec<String>;
     if let Some(script_and_args) = script_and_args {
-        script = script_and_args.get(0).map(|s| s.to_string());
+        script = script_and_args.first().map(|s| s.to_string());
         script_args = if script_and_args.len() > 1 {
             Vec::from_iter(script_and_args[1..].iter().map(|s| s.to_string()))
         } else {
@@ -719,7 +719,7 @@ impl InputAction {
     ) -> MainResult<Command> {
         cargo(
             build_kind,
-            &*self.manifest_path().to_string_lossy(),
+            &self.manifest_path().to_string_lossy(),
             self.toolchain_version.as_deref(),
             &self.metadata,
             script_args,

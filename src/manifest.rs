@@ -715,7 +715,7 @@ fn scrape_markdown_manifest(content: &str) -> Option<String> {
             }
             Event::Text(ref text) if found => {
                 let s = output.get_or_insert(String::new());
-                s.push_str(&*text);
+                s.push_str(text);
             }
             Event::End(Tag::CodeBlock(_)) if found => {
                 found = false;
