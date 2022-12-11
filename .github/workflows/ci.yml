@@ -13,14 +13,12 @@ jobs:
     steps:
     - name: Checkout source
       uses: actions/checkout@v3
+    - name: Install rustup
+      run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
     - name: Setup nightly rust
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: nightly
+      run: rustup toolchain install nightly
     - name: Setup stable rust
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        rust-version: ${{ matrix.rust }}
+      run: rustup toolchain install ${{ matrix.rust }}
     - name: Run unit tests
       run: rustc --version && cargo --version && cargo test
     - name: Run script tests
