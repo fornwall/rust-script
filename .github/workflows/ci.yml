@@ -12,17 +12,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout source
-      uses: actions/checkout@v2
-    - name: Setup stable rust
-      uses: hecrj/setup-rust-action@v1
-      with:
-        rust-version: "stable"
+      uses: actions/checkout@v3
     - name: Setup nightly rust
-      uses: hecrj/setup-rust-action@v1
+      uses: dtolnay/rust-toolchain@stable
       with:
-        rust-version: nightly
-    - name: Setup MSRV rust
-      uses: hecrj/setup-rust-action@v1
+        toolchain: nightly
+    - name: Setup stable rust
+      uses: dtolnay/rust-toolchain@stable
       with:
         rust-version: ${{ matrix.rust }}
     - name: Run unit tests
@@ -38,9 +34,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout source
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: Setup rust
-      uses: hecrj/setup-rust-action@v1
+      uses: dtolnay/rust-toolchain@stable
     - name: Install rustfmt
       run: rustup component add rustfmt
     - name: Check formatting with rustfmt
@@ -53,9 +49,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout source
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: Setup rust
-      uses: hecrj/setup-rust-action@v1
+      uses: dtolnay/rust-toolchain@stable
     - name: Install rustfmt
       run: rustup component add clippy
     - name: Check for clippy warnings
@@ -68,26 +64,26 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout source
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: Setup rust
-      uses: hecrj/setup-rust-action@v1
+      uses: dtolnay/rust-toolchain@stable
     - name: Build debug
       run: cargo build
     - name: Upload Windows debug build
       if: runner.os == 'Windows'
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         path: ./target/debug/rust-script.exe
         name: windows-binary
     - name: Upload macOS debug build
       if: runner.os == 'macOS'
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         path: ./target/debug/rust-script
         name: mac-binary
     - name: Upload Linux debug build
       if: runner.os == 'Linux'
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         path: ./target/debug/rust-script
         name: linux-binary
@@ -96,9 +92,9 @@ jobs:
     runs-on: windows-latest
     steps:
     - name: Checkout source
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: Setup rust
-      uses: hecrj/setup-rust-action@v1
+      uses: dtolnay/rust-toolchain@stable
     - name: Build debug
       run: cargo build
     - name: Install file association
@@ -114,7 +110,7 @@ jobs:
   security-audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v3
       - uses: actions-rs/audit-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
