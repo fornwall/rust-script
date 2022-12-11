@@ -199,6 +199,7 @@ fn test_whitespace_before_main() {
 }
 
 #[test]
+#[ignore]
 fn test_stable_toolchain() {
     let out = rust_script!(
         "--toolchain-version",
@@ -211,6 +212,7 @@ fn test_stable_toolchain() {
 }
 
 #[test]
+#[ignore]
 fn test_nightly_toolchain() {
     let out = rust_script!(
         "--toolchain-version",
