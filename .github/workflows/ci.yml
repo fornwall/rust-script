@@ -14,11 +14,9 @@ jobs:
     - name: Checkout source
       uses: actions/checkout@v3
     - name: Install rustup
-      run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+      run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain ${{ matrix.rust }}
     - name: Setup nightly rust
       run: rustup toolchain install nightly
-    - name: Setup stable rust
-      run: rustup toolchain install ${{ matrix.rust }}
     - name: Run unit tests
       run: rustc --version && cargo --version && cargo test
     - name: Run script tests
