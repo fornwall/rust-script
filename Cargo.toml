@@ -2,7 +2,7 @@
 name = "rust-script"
 version = "0.23.0"
 edition = "2021"
-rust-version = "1.57"
+rust-version = "1.60"
 authors = ["Fredrik Fornwall <fredrik@fornwall.net>"]
 description = "Command-line tool to run Rust \"scripts\" which can make use of crates."
 homepage = "https://rust-script.org"
