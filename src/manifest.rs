@@ -125,10 +125,6 @@ pub fn split_input(
     Ok((mani_str, source))
 }
 
-#[rustversion::before(1.59)]
-#[cfg(test)]
-pub const STRIP_SECTION: &str = "\n";
-#[rustversion::since(1.59)]
 #[cfg(test)]
 pub const STRIP_SECTION: &str = r##"
 

@@ -141,19 +141,6 @@ pub const MANI_FILE_SUB: &str = "file";
 /**
 The default manifest used for packages.
 */
-#[rustversion::before(1.59)]
-pub const DEFAULT_MANIFEST: &str = r##"
-[package]
-name = "#{name}"
-version = "0.1.0"
-authors = ["Anonymous"]
-edition = "2021"
-
-[[bin]]
-name = "#{bin_name}"
-path = "#{file}.rs"
-"##;
-#[rustversion::since(1.59)]
 pub const DEFAULT_MANIFEST: &str = r##"
 [package]
 name = "#{name}"
