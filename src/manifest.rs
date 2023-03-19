@@ -119,7 +119,7 @@ pub fn split_input(
     let mani = fix_manifest_paths(mani, &input.base_path())?;
     info!("mani: {:?}", mani);
 
-    let mani_str = format!("{}", toml::Value::Table(mani));
+    let mani_str = format!("{}", mani);
     info!("mani_str: {}", mani_str);
 
     Ok((mani_str, source))
@@ -131,6 +131,7 @@ pub const STRIP_SECTION: &str = "\n";
 #[rustversion::since(1.59)]
 #[cfg(test)]
 pub const STRIP_SECTION: &str = r##"
+
 [profile.release]
 strip = true
 "##;
@@ -1078,7 +1079,7 @@ fn deps_manifest(deps: &[(String, String)]) -> MainResult<toml::value::Table> {
     let mut mani_str = String::new();
     mani_str.push_str("[dependencies]\n");
 
-    for &(ref name, ref ver) in deps {
+    for (name, ver) in deps {
         mani_str.push_str(name);
         mani_str.push('=');
 
@@ -1137,8 +1138,8 @@ fn merge_manifest(
     return Ok(into_t);
 
     fn as_table_mut(t: &mut toml::Value) -> Option<&mut toml::value::Table> {
-        match *t {
-            toml::Value::Table(ref mut t) => Some(t),
+        match t {
+            toml::Value::Table(t) => Some(t),
             _ => None,
         }
     }
@@ -1161,7 +1162,7 @@ fn fix_manifest_paths(mani: toml::value::Table, base: &Path) -> MainResult<toml:
 
     for path in paths {
         iterate_toml_mut_path(&mut mani, path, &mut |v| {
-            if let toml::Value::String(ref mut s) = *v {
+            if let toml::Value::String(s) = v {
                 if Path::new(s).is_relative() {
                     let p = base.join(&*s);
                     if let Some(p) = p.to_str() {
@@ -1198,12 +1199,12 @@ where
     let tail = &path[1..];
 
     if cur == "*" {
-        if let toml::Value::Table(ref mut tab) = *base {
+        if let toml::Value::Table(tab) = base {
             for (_, v) in tab {
                 iterate_toml_mut_path(v, tail, on_each)?;
             }
         }
-    } else if let toml::Value::Table(ref mut tab) = *base {
+    } else if let toml::Value::Table(tab) = base {
         if let Some(v) = tab.get_mut(cur) {
             iterate_toml_mut_path(v, tail, on_each)?;
         }

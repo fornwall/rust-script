@@ -549,7 +549,7 @@ fn clean_cache(max_age: u128) -> MainResult<()> {
             // metadata file *itself*.
             let meta_mtime = {
                 let meta_path = get_pkg_metadata_path(&path);
-                let meta_file = match fs::File::open(&meta_path) {
+                let meta_file = match fs::File::open(meta_path) {
                     Ok(file) => file,
                     Err(..) => {
                         info!("couldn't open metadata for {:?}", path);
@@ -611,7 +611,7 @@ fn gen_pkg_and_compile(input: &Input, action: &InputAction) -> MainResult<()> {
     info!("generating Cargo package...");
     let mani_path = action.manifest_path();
     let mani_hash = old_meta.map(|m| &*m.manifest_hash);
-    match overwrite_file(&mani_path, mani_str, mani_hash)? {
+    match overwrite_file(mani_path, mani_str, mani_hash)? {
         FileOverwrite::Same => (),
         FileOverwrite::Changed { new_hash } => {
             meta.manifest_hash = new_hash;
@@ -630,7 +630,7 @@ fn gen_pkg_and_compile(input: &Input, action: &InputAction) -> MainResult<()> {
         } else {
             old_meta.map(|m| &*m.script_hash)
         };
-        match overwrite_file(&script_path, script_str, script_hash)? {
+        match overwrite_file(script_path, script_str, script_hash)? {
             FileOverwrite::Same => (),
             FileOverwrite::Changed { new_hash } => {
                 meta.script_hash = new_hash;
@@ -771,7 +771,7 @@ fn decide_action_for(
     args: &Args,
 ) -> MainResult<InputAction> {
     let input_id = {
-        let deps_iter = deps.iter().map(|&(ref n, ref v)| (n as &str, v as &str));
+        let deps_iter = deps.iter().map(|(n, v)| (n as &str, v as &str));
         // Again, also fucked if we can't work this out.
         input.compute_id(deps_iter).unwrap()
     };
