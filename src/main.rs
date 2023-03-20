@@ -331,41 +331,27 @@ fn try_main() -> MainResult<i32> {
         }
     }
 
-    // Take the arguments and work out what our input is going to be.
-    // Primarily, this gives us the content, a user-friendly name, and a cache-friendly ID.
-    // These three are just storage for the borrows we'll actually use.
-    let script_name: String;
-    let script_path: PathBuf;
-    let content: String;
-
     let input = match (args.script.clone().unwrap(), args.expr, args.loop_) {
         (script, false, false) => {
             let (path, mut file) =
                 find_script(&script).ok_or(format!("could not find script: {}", script))?;
 
-            script_name = path
+            let script_name = path
                 .file_stem()
                 .map(|os| os.to_string_lossy().into_owned())
                 .unwrap_or_else(|| "unknown".into());
 
             let mut body = String::new();
             file.read_to_string(&mut body)?;
-            content = body;
 
             let mtime = platform::file_last_modified(&file);
 
-            script_path = std::env::current_dir()?.join(path);
+            let script_path = std::env::current_dir()?.join(path);
 
-            Input::File(&script_name, &script_path, &content, mtime)
+            Input::File(script_name, script_path, body, mtime)
         }
-        (expr, true, false) => {
-            content = expr;
-            Input::Expr(&content)
-        }
-        (loop_, false, true) => {
-            content = loop_;
-            Input::Loop(&content, args.count)
-        }
+        (expr, true, false) => Input::Expr(expr),
+        (loop_, false, true) => Input::Loop(loop_, args.count),
         (_, _, _) => {
             panic!("Internal error: Invalid args");
         }
@@ -778,7 +764,7 @@ fn decide_action_for(
     };
 
     let input_meta = {
-        let (path, mtime) = match *input {
+        let (path, mtime) = match input {
             Input::File(_, path, _, mtime) => {
                 (Some(path.to_string_lossy().into_owned()), Some(mtime))
             }
@@ -786,7 +772,7 @@ fn decide_action_for(
         };
         PackageMetadata {
             path,
-            modified: mtime,
+            modified: mtime.copied(),
             debug,
             deps,
             prelude,
@@ -933,37 +919,37 @@ where
 Represents an input source for a script.
 */
 #[derive(Clone, Debug)]
-pub enum Input<'a> {
+pub enum Input {
     /**
     The input is a script file.
 
     The tuple members are: the name, absolute path, script contents, last modified time.
     */
-    File(&'a str, &'a Path, &'a str, u128),
+    File(String, PathBuf, String, u128),
 
     /**
     The input is an expression.
 
     The tuple member is: the script contents.
     */
-    Expr(&'a str),
+    Expr(String),
 
     /**
     The input is a loop expression.
 
     The tuple member is: the script contents, whether the `--count` flag was given.
     */
-    Loop(&'a str, bool),
+    Loop(String, bool),
 }
 
-impl<'a> Input<'a> {
+impl Input {
     /**
     Return the path to the script, if it has one.
     */
-    pub const fn path(&self) -> Option<&Path> {
+    pub fn path(&self) -> Option<&Path> {
         use crate::Input::*;
 
-        match *self {
+        match self {
             File(_, path, _, _) => Some(path),
             Expr(..) => None,
             Loop(..) => None,
@@ -975,10 +961,10 @@ impl<'a> Input<'a> {
 
     Currently, nothing is done to ensure this, other than hoping *really hard* that we don't get fed some excessively bizzare input filename.
     */
-    pub const fn safe_name(&self) -> &str {
+    pub fn safe_name(&self) -> &str {
         use crate::Input::*;
 
-        match *self {
+        match self {
             File(name, _, _, _) => name,
             Expr(..) => "expr",
             Loop(..) => "loop",
@@ -1018,7 +1004,7 @@ impl<'a> Input<'a> {
     Base directory for resolving relative paths.
     */
     pub fn base_path(&self) -> PathBuf {
-        match *self {
+        match self {
             Input::File(_, path, _, _) => path
                 .parent()
                 .expect("couldn't get parent directory for file input base path")
@@ -1050,7 +1036,7 @@ impl<'a> Input<'a> {
             hasher
         };
 
-        match *self {
+        match self {
             File(_, path, _, _) => {
                 let mut hasher = Sha1::new();
 
@@ -1079,7 +1065,7 @@ impl<'a> Input<'a> {
 
                 // Make sure to include the [non-]presence of the `--count` flag in the flag, since it changes the actual generated script output.
                 hasher.update("count:");
-                hasher.update(if count { "true;" } else { "false;" });
+                hasher.update(if *count { "true;" } else { "false;" });
 
                 hasher.update(content);
                 let mut digest = format!("{:x}", hasher.finalize());
@@ -1183,8 +1169,18 @@ fn cargo(
 
 #[test]
 fn test_package_name() {
-    let input = Input::File("Script", Path::new("path"), "script", 0);
+    let input = Input::File(
+        "Script".to_string(),
+        Path::new("path").into(),
+        "script".to_string(),
+        0,
+    );
     assert_eq!("script", input.package_name());
-    let input = Input::File("1Script", Path::new("path"), "script", 0);
+    let input = Input::File(
+        "1Script".to_string(),
+        Path::new("path").into(),
+        "script".to_string(),
+        0,
+    );
     assert_eq!("_1script", input.package_name());
 }
