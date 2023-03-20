@@ -54,7 +54,7 @@ pub fn split_input(
     }
 
     let template_buf;
-    let (part_mani, source, template, sub_prelude) = match *input {
+    let (part_mani, source, template, sub_prelude) = match input {
         Input::File(_, _, content, _) => {
             assert_eq!(prelude_items.len(), 0);
             let content = strip_shebang(content);
@@ -75,7 +75,7 @@ pub fn split_input(
             (manifest, content.to_string(), template_src.into(), true)
         }
         Input::Loop(content, count) => {
-            let templ = if count { "loop-count" } else { "loop" };
+            let templ = if *count { "loop-count" } else { "loop" };
             (
                 Manifest::Toml(""),
                 content.to_string(),
@@ -141,9 +141,10 @@ fn test_split_input() {
         };
     }
 
-    let dummy_path: ::std::path::PathBuf = "p".into();
-    let dummy_path = &dummy_path;
-    let f = |c| Input::File("n", dummy_path, c, 0);
+    let f = |c: &str| {
+        let dummy_path: ::std::path::PathBuf = "p".into();
+        Input::File("n".to_string(), dummy_path, c.to_string(), 0)
+    };
 
     macro_rules! r {
         ($m:expr, $r:expr) => {
