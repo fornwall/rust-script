@@ -55,7 +55,7 @@ pub fn split_input(
 
     let template_buf;
     let (part_mani, source, template, sub_prelude) = match input {
-        Input::File(_, _, content, _) => {
+        Input::File(_, _, content) => {
             assert_eq!(prelude_items.len(), 0);
             let content = strip_shebang(content);
             let (manifest, source) =
@@ -143,7 +143,7 @@ fn test_split_input() {
 
     let f = |c: &str| {
         let dummy_path: ::std::path::PathBuf = "p".into();
-        Input::File("n".to_string(), dummy_path, c.to_string(), 0)
+        Input::File("n".to_string(), dummy_path, c.to_string())
     };
 
     macro_rules! r {

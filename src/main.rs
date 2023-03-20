@@ -87,11 +87,9 @@ fn try_main() -> MainResult<i32> {
             let mut body = String::new();
             file.read_to_string(&mut body)?;
 
-            let mtime = platform::file_last_modified(&file);
-
             let script_path = std::env::current_dir()?.join(path);
 
-            Input::File(script_name, script_path, body, mtime)
+            Input::File(script_name, script_path, body)
         }
         (expr, true, false) => Input::Expr(expr),
         (loop_, false, true) => Input::Loop(loop_, args.count),
@@ -447,9 +445,6 @@ struct PackageMetadata {
     /// Path to the script file.
     path: Option<String>,
 
-    /// Last-modified timestamp for script file.
-    modified: Option<u128>,
-
     /// Was the script compiled in debug mode?
     debug: bool,
 
@@ -507,15 +502,12 @@ fn decide_action_for(
     };
 
     let input_meta = {
-        let (path, mtime) = match input {
-            Input::File(_, path, _, mtime) => {
-                (Some(path.to_string_lossy().into_owned()), Some(mtime))
-            }
-            _ => (None, None),
+        let path = match input {
+            Input::File(_, path, _) => Some(path.to_string_lossy().into_owned()),
+            _ => None,
         };
         PackageMetadata {
             path,
-            modified: mtime.copied(),
             debug,
             deps,
             prelude,
@@ -666,9 +658,9 @@ pub enum Input {
     /**
     The input is a script file.
 
-    The tuple members are: the name, absolute path, script contents, last modified time.
+    The tuple members are: the name, absolute path, script contents.
     */
-    File(String, PathBuf, String, u128),
+    File(String, PathBuf, String),
 
     /**
     The input is an expression.
@@ -693,7 +685,7 @@ impl Input {
         use crate::Input::*;
 
         match self {
-            File(_, path, _, _) => Some(path),
+            File(_, path, _) => Some(path),
             Expr(..) => None,
             Loop(..) => None,
         }
@@ -708,7 +700,7 @@ impl Input {
         use crate::Input::*;
 
         match self {
-            File(name, _, _, _) => name,
+            File(name, _, _) => name,
             Expr(..) => "expr",
             Loop(..) => "loop",
         }
@@ -748,7 +740,7 @@ impl Input {
     */
     pub fn base_path(&self) -> PathBuf {
         match self {
-            Input::File(_, path, _, _) => path
+            Input::File(_, path, _) => path
                 .parent()
                 .expect("couldn't get parent directory for file input base path")
                 .into(),
@@ -780,7 +772,7 @@ impl Input {
         };
 
         match self {
-            File(_, path, _, _) => {
+            File(_, path, _) => {
                 let mut hasher = Sha1::new();
 
                 // Hash the path to the script.
@@ -916,14 +908,12 @@ fn test_package_name() {
         "Script".to_string(),
         Path::new("path").into(),
         "script".to_string(),
-        0,
     );
     assert_eq!("script", input.package_name());
     let input = Input::File(
         "1Script".to_string(),
         Path::new("path").into(),
         "script".to_string(),
-        0,
     );
     assert_eq!("_1script", input.package_name());
 }
