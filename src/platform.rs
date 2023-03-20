@@ -4,7 +4,6 @@ This module is for platform-specific stuff.
 
 pub use self::inner::force_cargo_color;
 
-use crate::consts;
 use crate::error::MainError;
 use std::fs;
 
@@ -32,7 +31,7 @@ pub fn current_time() -> u128 {
 #[cfg(not(test))]
 pub fn cache_dir() -> Result<PathBuf, MainError> {
     dirs_next::cache_dir()
-        .map(|dir| dir.join(consts::PROGRAM_NAME))
+        .map(|dir| dir.join(crate::consts::PROGRAM_NAME))
         .ok_or_else(|| ("Cannot get cache directory").into())
 }
 
@@ -51,18 +50,6 @@ pub fn generated_projects_cache_path() -> Result<PathBuf, MainError> {
 
 pub fn binary_cache_path() -> Result<PathBuf, MainError> {
     cache_dir().map(|dir| dir.join("binaries"))
-}
-
-pub fn templates_dir() -> Result<PathBuf, MainError> {
-    if cfg!(debug_assertions) {
-        if let Ok(path) = std::env::var("RUST_SCRIPT_DEBUG_TEMPLATE_PATH") {
-            return Ok(path.into());
-        }
-    }
-
-    dirs_next::data_local_dir()
-        .map(|dir| dir.join(consts::PROGRAM_NAME).join("templates"))
-        .ok_or_else(|| ("Cannot get cache directory").into())
 }
 
 #[cfg(unix)]

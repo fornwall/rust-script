@@ -53,8 +53,6 @@ struct Args {
     force: bool,
     unstable_features: Vec<String>,
     build_kind: BuildKind,
-    template: Option<String>,
-    list_templates: bool,
     // This is a String instead of an
     // enum since one can have custom
     // toolchains (ex. a rustc developer
@@ -106,14 +104,14 @@ fn parse_args() -> Args {
                 .index(1)
                 .help("Script file or expression to execute.")
                 .required_unless_present_any(if cfg!(windows) {
-                    vec!["clear-cache", "list-templates", "install-file-association", "uninstall-file-association"]
+                    vec!["clear-cache", "install-file-association", "uninstall-file-association"]
                 } else {
-                    vec!["clear-cache", "list-templates"]
+                    vec!["clear-cache"]
                 })
                 .conflicts_with_all(if cfg!(windows) {
-                    &["list-templates", "install-file-association", "uninstall-file-association"]
+                    &["install-file-association", "uninstall-file-association"]
                 } else {
-                    &["list-templates"]
+                    &[]
                 })
                 .multiple_values(true)
             )
@@ -217,13 +215,6 @@ fn parse_args() -> Args {
                 .long("bench")
                 .conflicts_with_all(&["test", "debug", "force"])
             )
-            .arg(Arg::new("template")
-                .help("Specify a template to use for expression scripts.")
-                .long("template")
-                .short('t')
-                .takes_value(true)
-                .requires("expr")
-            )
             .arg(Arg::new("toolchain-version")
                 .help("Build the script using the given toolchain version.")
                 .long("toolchain-version")
@@ -232,12 +223,7 @@ fn parse_args() -> Args {
                 .takes_value(true)
                 // FIXME: remove if benchmarking is stabilized
                 .conflicts_with("bench")
-            )
-        .arg(Arg::new("list-templates")
-            .help("List the available templates.")
-            .long("list-templates")
-            .takes_value(false)
-        );
+            );
 
     #[cfg(windows)]
     let app = app
@@ -300,8 +286,6 @@ fn parse_args() -> Args {
         force: m.is_present("force"),
         unstable_features: owned_vec_string(m.values_of("unstable_features")),
         build_kind: BuildKind::from_flags(m.is_present("test"), m.is_present("bench")),
-        template: m.value_of("template").map(Into::into),
-        list_templates: m.is_present("list-templates"),
         toolchain_version: m.value_of("toolchain-version").map(Into::into),
         #[cfg(windows)]
         install_file_association: m.is_present("install-file-association"),
@@ -347,11 +331,6 @@ fn try_main() -> MainResult<i32> {
         }
     }
 
-    if args.list_templates {
-        templates::list()?;
-        return Ok(0);
-    }
-
     // Take the arguments and work out what our input is going to be.
     // Primarily, this gives us the content, a user-friendly name, and a cache-friendly ID.
     // These three are just storage for the borrows we'll actually use.
@@ -381,7 +360,7 @@ fn try_main() -> MainResult<i32> {
         }
         (expr, true, false) => {
             content = expr;
-            Input::Expr(&content, args.template.as_deref())
+            Input::Expr(&content)
         }
         (loop_, false, true) => {
             content = loop_;
@@ -965,9 +944,9 @@ pub enum Input<'a> {
     /**
     The input is an expression.
 
-    The tuple member is: the script contents, and the template (if any).
+    The tuple member is: the script contents.
     */
-    Expr(&'a str, Option<&'a str>),
+    Expr(&'a str),
 
     /**
     The input is a loop expression.
@@ -1084,12 +1063,8 @@ impl<'a> Input<'a> {
                 id.push(&*digest);
                 Ok(id)
             }
-            Expr(content, template) => {
+            Expr(content) => {
                 let mut hasher = hash_deps();
-
-                hasher.update("template:");
-                hasher.update(template.unwrap_or(""));
-                hasher.update(";");
 
                 hasher.update(content);
                 let mut digest = format!("{:x}", hasher.finalize());
