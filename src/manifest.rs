@@ -68,8 +68,8 @@ pub fn split_input(
             };
             (manifest, source, templates::get_template("file")?, false)
         }
-        Input::Expr(content, template) => {
-            template_buf = templates::get_template(template.unwrap_or("expr"))?;
+        Input::Expr(content) => {
+            template_buf = templates::get_template("expr")?;
             let (manifest, template_src) = find_embedded_manifest(&template_buf)
                 .unwrap_or((Manifest::Toml(""), &template_buf));
             (manifest, content.to_string(), template_src.into(), true)

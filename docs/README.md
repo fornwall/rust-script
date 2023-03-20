@@ -11,7 +11,6 @@
 - [Expressions](#expressions)
 - [Filters](#filters)
 - [Environment Variables](#environment-variables)
-- [Templates](#templates)
 - [Troubleshooting](#troubleshooting)
 
 ## Overview
@@ -23,7 +22,6 @@ With `rust-script` Rust files and expressions can be executed just like a shell 
 - Supporting executable Rust scripts via Unix shebangs and Windows file associations.
 - Using expressions as stream filters (*i.e.* for use in command pipelines).
 - Running unit tests and benchmarks from scripts.
-- Custom templates for command-line expressions and filters.
 
 You can get an overview of the available options using the `--help` flag.
 
@@ -157,8 +155,6 @@ $ cat now.ers | rust-script --count --loop \
      4: }
 ```
 
-Note that, like with expressions, you can specify a custom template for stream filters.
-
 ## Environment Variables
 
 The following environment variables are provided to scripts by `rust-script`:
@@ -170,39 +166,6 @@ The following environment variables are provided to scripts by `rust-script`:
 - `RUST_SCRIPT_SAFE_NAME`: the file name of the script (sans file extension) being run.  For scripts, this is derived from the script's filename.  May also be `"expr"` or `"loop"` for those invocations.
 
 - `RUST_SCRIPT_PATH`: absolute path to the script being run, assuming one exists.  Set to the empty string for expressions.
-
-## Templates
-
-You can use templates to avoid having to re-specify common code and dependencies.  You can find out the directory where templates are stored and view a list of your templates by running `rust-script --list-templates`.
-
-Templates are Rust source files with two placeholders: `#{prelude}` for the auto-generated prelude (which should be placed at the top of the template), and `#{script}` for the contents of the script itself.
-
-For example, a minimal expression template that adds a dependency and imports some additional symbols might be:
-
-```rust
-// cargo-deps: itertools="0.6.2"
-#![allow(unused_imports)]
-#{prelude}
-use std::io::prelude::*;
-use std::mem;
-use itertools::Itertools;
-
-fn main() {
-    let result = {
-        #{script}
-    };
-    println!("{:?}", result);
-}
-```
-
-If stored in the templates folder as `grabbag.rs`, you can use it by passing the name `grabbag` via the `--template` option, like so:
-
-```sh
-$ rust-script -t grabbag -e "mem::size_of::<Box<Read>>()"
-16
-```
-
-In addition, there are three built-in templates: `expr`, `loop`, and `loop-count`.  These are used for the `--expr`, `--loop`, and `--loop --count` invocation forms.  They can be overridden by placing templates with the same name in the template folder.
 
 ## Troubleshooting
 
