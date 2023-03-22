@@ -7,8 +7,6 @@ pub struct Args {
     pub features: Option<String>,
 
     pub expr: bool,
-    pub loop_: bool,
-    pub count: bool,
 
     pub pkg_path: Option<String>,
     pub gen_pkg_only: bool,
@@ -34,7 +32,9 @@ pub struct Args {
 
 impl Args {
     pub fn parse() -> Args {
-        use clap::{Arg, ArgGroup, Command};
+        #[cfg(windows)]
+        use clap::ArgGroup;
+        use clap::{Arg, Command};
         let version = option_env!("CARGO_PKG_VERSION").unwrap_or("unknown");
         let about = r#"Compiles and runs a Rust script."#;
 
@@ -64,16 +64,6 @@ impl Args {
                 .takes_value(false)
                 .requires("script")
             )
-            .arg(Arg::new("loop")
-                .help("Execute <script> as a literal closure once for each line from stdin.")
-                .long("loop")
-                .short('l')
-                .takes_value(false)
-                .requires("script")
-            )
-            .group(ArgGroup::new("expr_or_loop")
-                .args(&["expr", "loop"])
-            )
             /*
             Options that impact the script being executed.
             */
@@ -82,11 +72,6 @@ impl Args {
                 .short('o')
                 .long("cargo-output")
                 .requires("script")
-            )
-            .arg(Arg::new("count")
-                .help("Invoke the loop closure with two arguments: line, and line number.")
-                .long("count")
-                .requires("loop")
             )
             .arg(Arg::new("debug")
                 .help("Build a debug executable, not an optimised one.")
@@ -101,12 +86,12 @@ impl Args {
                 .number_of_values(1)
             )
             .arg(Arg::new("extern")
-                .help("Adds an `#[macro_use] extern crate name;` item for expressions and loop scripts.")
+                .help("Adds an `#[macro_use] extern crate name;` item for expressions.")
                 .long("extern")
                 .short('x')
                 .takes_value(true)
                 .multiple_occurrences(true)
-                .requires("expr_or_loop")
+                .requires("expr")
             )
             .arg(Arg::new("features")
                  .help("Cargo features to pass when building and running.")
@@ -119,7 +104,7 @@ impl Args {
                 .short('u')
                 .takes_value(true)
                 .multiple_occurrences(true)
-                .requires("expr_or_loop")
+                .requires("expr")
             )
 
             /*
@@ -217,8 +202,6 @@ impl Args {
             features: m.value_of("features").map(Into::into),
 
             expr: m.is_present("expr"),
-            loop_: m.is_present("loop"),
-            count: m.is_present("count"),
 
             pkg_path: m.value_of("pkg_path").map(Into::into),
             gen_pkg_only: m.is_present("gen_pkg_only"),

@@ -69,8 +69,8 @@ fn try_main() -> MainResult<i32> {
         }
     }
 
-    let input = match (args.script.clone().unwrap(), args.expr, args.loop_) {
-        (script, false, false) => {
+    let input = match (args.script.clone().unwrap(), args.expr) {
+        (script, false) => {
             let (path, mut file) =
                 find_script(&script).ok_or(format!("could not find script: {}", script))?;
 
@@ -86,11 +86,7 @@ fn try_main() -> MainResult<i32> {
 
             Input::File(script_name, script_path, body)
         }
-        (expr, true, false) => Input::Expr(expr),
-        (loop_, false, true) => Input::Loop(loop_, args.count),
-        (_, _, _) => {
-            panic!("Internal error: Invalid args");
-        }
+        (expr, true) => Input::Expr(expr),
     };
     info!("input: {:?}", input);
 
@@ -238,8 +234,8 @@ fn clean_cache(max_age: u128) -> MainResult<()> {
         let remove_dir = || {
             // Ok, so *why* aren't we using `modified in the package metadata?
             // The point of *that* is to track what we know about the input.
-            // The problem here is that `--expr` and `--loop` don't *have*
-            // modification times; they just *are*.
+            // The problem here is that `--expr` does not have
+            // modification times.
             // Now, `PackageMetadata` *could* be modified to store, say, the
             // moment in time the input was compiled, but then we couldn't use
             // that field for metadata matching when decided whether or not a
@@ -470,11 +466,12 @@ fn decide_action_for(
         .as_ref()
         .map(|p| (p.into(), false))
         .unwrap_or_else(|| {
-            let cache_path = platform::generated_projects_cache_path();
-            (cache_path.join(&input_id), true)
+            (
+                platform::generated_projects_cache_path().join(&input_id),
+                true,
+            )
         });
-    info!("pkg_path: {:?}", pkg_path);
-    info!("using_cache: {:?}", using_cache);
+    info!("using_cache: {}, pkg_path: {:?}", using_cache, pkg_path);
 
     let (mani_str, script_str) = manifest::split_input(input, &deps, &prelude, &input_id)?;
 
@@ -652,13 +649,6 @@ pub enum Input {
     The tuple member is: the script contents.
     */
     Expr(String),
-
-    /**
-    The input is a loop expression.
-
-    The tuple member is: the script contents, whether the `--count` flag was given.
-    */
-    Loop(String, bool),
 }
 
 impl Input {
@@ -671,7 +661,6 @@ impl Input {
         match self {
             File(_, path, _) => Some(path),
             Expr(..) => None,
-            Loop(..) => None,
         }
     }
 
@@ -686,7 +675,6 @@ impl Input {
         match self {
             File(name, _, _) => name,
             Expr(..) => "expr",
-            Loop(..) => "loop",
         }
     }
 
@@ -728,7 +716,7 @@ impl Input {
                 .parent()
                 .expect("couldn't get parent directory for file input base path")
                 .into(),
-            Input::Expr(..) | Input::Loop(..) => {
+            Input::Expr(..) => {
                 std::env::current_dir().expect("couldn't get current directory for input base path")
             }
         }
@@ -770,21 +758,6 @@ impl Input {
             }
             Expr(content) => {
                 let mut hasher = hash_deps();
-
-                hasher.update(content);
-                let mut digest = format!("{:x}", hasher.finalize());
-                digest.truncate(consts::ID_DIGEST_LEN_MAX);
-
-                let mut id = OsString::new();
-                id.push(&*digest);
-                Ok(id)
-            }
-            Loop(content, count) => {
-                let mut hasher = hash_deps();
-
-                // Make sure to include the [non-]presence of the `--count` flag in the flag, since it changes the actual generated script output.
-                hasher.update("count:");
-                hasher.update(if *count { "true;" } else { "false;" });
 
                 hasher.update(content);
                 let mut digest = format!("{:x}", hasher.finalize());

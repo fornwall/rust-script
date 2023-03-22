@@ -74,15 +74,6 @@ pub fn split_input(
                 .unwrap_or((Manifest::Toml(""), &template_buf));
             (manifest, content.to_string(), template_src.into(), true)
         }
-        Input::Loop(content, count) => {
-            let templ = if *count { "loop-count" } else { "loop" };
-            (
-                Manifest::Toml(""),
-                content.to_string(),
-                templates::get_template(templ)?,
-                true,
-            )
-        }
     };
 
     let mut prelude_str;

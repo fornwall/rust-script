@@ -131,30 +131,6 @@ $ rust-script --dep time=0.1.38 -e "time::now().rfc822z().to_string()"
 
 The code given is embedded into a block expression, evaluated, and printed out using the `Debug` formatter (*i.e.* `{:?}`).
 
-## Filters
-
-You can use `rust-script` to write a quick filter, by specifying a closure to be called for each line read from stdin, like so:
-
-```sh
-$ cat now.ers | rust-script --loop \
-    "let mut n=0; move |l| {n+=1; println!(\"{:>6}: {}\",n,l.trim_right())}"
-     1: // cargo-deps: time="0.1.25"
-     3: fn main() {
-     4:     println!("{}", time::now().rfc822z());
-     5: }
-```
-
-You can achieve a similar effect to the above by using the `--count` flag, which causes the line number to be passed as a second argument to your closure:
-
-```sh
-$ cat now.ers | rust-script --count --loop \
-    "|l,n| println!(\"{:>6}: {}\", n, l.trim_right())"
-     1: // cargo-deps: time="0.1.25"
-     2: fn main() {
-     3:     println!("{}", time::now().rfc822z());
-     4: }
-```
-
 ## Environment Variables
 
 The following environment variables are provided to scripts by `rust-script`:
@@ -163,7 +139,7 @@ The following environment variables are provided to scripts by `rust-script`:
 
 - `RUST_SCRIPT_PKG_NAME`: the generated package name of the script.
 
-- `RUST_SCRIPT_SAFE_NAME`: the file name of the script (sans file extension) being run.  For scripts, this is derived from the script's filename.  May also be `"expr"` or `"loop"` for those invocations.
+- `RUST_SCRIPT_SAFE_NAME`: the file name of the script (sans file extension) being run.  For scripts, this is derived from the script's filename.  May also be `"expr"` when an expression is used.
 
 - `RUST_SCRIPT_PATH`: absolute path to the script being run, assuming one exists.  Set to the empty string for expressions.
 

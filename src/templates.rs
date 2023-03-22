@@ -60,8 +60,6 @@ fn builtin_template(name: &str) -> Option<&'static str> {
     Some(match name {
         "expr" => consts::EXPR_TEMPLATE,
         "file" => consts::FILE_TEMPLATE,
-        "loop" => consts::LOOP_TEMPLATE,
-        "loop-count" => consts::LOOP_COUNT_TEMPLATE,
         _ => return None,
     })
 }
