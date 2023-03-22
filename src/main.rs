@@ -460,8 +460,7 @@ fn decide_action_for(
 ) -> MainResult<InputAction> {
     let input_id = {
         let deps_iter = deps.iter().map(|(n, v)| (n as &str, v as &str));
-        // Again, also fucked if we can't work this out.
-        input.compute_id(deps_iter).unwrap()
+        input.compute_id(deps_iter)
     };
     info!("id: {:?}", input_id);
 
@@ -737,7 +736,7 @@ impl Input {
     // Compute the package ID for the input.
     // This is used as the name of the cache folder into which the Cargo package
     // will be generated.
-    pub fn compute_id<'dep, DepIt>(&self, deps: DepIt) -> MainResult<OsString>
+    pub fn compute_id<'dep, DepIt>(&self, deps: DepIt) -> OsString
     where
         DepIt: IntoIterator<Item = (&'dep str, &'dep str)>,
     {
@@ -766,7 +765,7 @@ impl Input {
 
                 let mut id = OsString::new();
                 id.push(&*digest);
-                Ok(id)
+                id
             }
             Expr(content) => {
                 let mut hasher = hash_deps();
@@ -777,7 +776,7 @@ impl Input {
 
                 let mut id = OsString::new();
                 id.push(&*digest);
-                Ok(id)
+                id
             }
             Loop(content, count) => {
                 let mut hasher = hash_deps();
@@ -792,7 +791,7 @@ impl Input {
 
                 let mut id = OsString::new();
                 id.push(&*digest);
-                Ok(id)
+                id
             }
         }
     }
