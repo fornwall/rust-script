@@ -4,7 +4,6 @@ This module is for platform-specific stuff.
 
 pub use self::inner::force_cargo_color;
 
-use crate::error::MainError;
 use std::fs;
 
 use std::path::PathBuf;
@@ -28,28 +27,29 @@ pub fn current_time() -> u128 {
         .as_millis()
 }
 
-#[cfg(not(test))]
-pub fn cache_dir() -> Result<PathBuf, MainError> {
-    dirs_next::cache_dir()
-        .map(|dir| dir.join(crate::consts::PROGRAM_NAME))
-        .ok_or_else(|| ("Cannot get cache directory").into())
-}
-
-#[cfg(test)]
-pub fn cache_dir() -> Result<PathBuf, MainError> {
-    use lazy_static::lazy_static;
-    lazy_static! {
-        static ref TEMP_DIR: tempfile::TempDir = tempfile::TempDir::new().unwrap();
+pub fn cache_dir() -> PathBuf {
+    #[cfg(not(test))]
+    {
+        dirs_next::cache_dir()
+            .map(|dir| dir.join(crate::consts::PROGRAM_NAME))
+            .expect("Cannot get cache directory")
     }
-    Ok(TEMP_DIR.path().to_path_buf())
+    #[cfg(test)]
+    {
+        use lazy_static::lazy_static;
+        lazy_static! {
+            static ref TEMP_DIR: tempfile::TempDir = tempfile::TempDir::new().unwrap();
+        }
+        TEMP_DIR.path().to_path_buf()
+    }
 }
 
-pub fn generated_projects_cache_path() -> Result<PathBuf, MainError> {
-    cache_dir().map(|dir| dir.join("projects"))
+pub fn generated_projects_cache_path() -> PathBuf {
+    cache_dir().join("projects")
 }
 
-pub fn binary_cache_path() -> Result<PathBuf, MainError> {
-    cache_dir().map(|dir| dir.join("binaries"))
+pub fn binary_cache_path() -> PathBuf {
+    cache_dir().join("binaries")
 }
 
 #[cfg(unix)]

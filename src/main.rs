@@ -216,7 +216,7 @@ fn clean_cache(max_age: u128) -> MainResult<()> {
 
     if max_age == 0 {
         info!("max_age is 0, clearing binary cache...");
-        let cache_dir = platform::binary_cache_path()?;
+        let cache_dir = platform::binary_cache_path();
         if let Err(err) = fs::remove_dir_all(&cache_dir) {
             error!("failed to remove binary cache {:?}: {}", cache_dir, err);
         }
@@ -225,7 +225,7 @@ fn clean_cache(max_age: u128) -> MainResult<()> {
     let cutoff = platform::current_time() - max_age;
     info!("cutoff:     {:>20?} ms", cutoff);
 
-    let cache_dir = platform::generated_projects_cache_path()?;
+    let cache_dir = platform::generated_projects_cache_path();
     for child in fs::read_dir(cache_dir)? {
         let child = child?;
         let path = child.path();
@@ -470,8 +470,7 @@ fn decide_action_for(
         .as_ref()
         .map(|p| (p.into(), false))
         .unwrap_or_else(|| {
-            // This can't fail.  Seriously, we're *fucked* if we can't work this out.
-            let cache_path = platform::generated_projects_cache_path().unwrap();
+            let cache_path = platform::generated_projects_cache_path();
             (cache_path.join(&input_id), true)
         });
     info!("pkg_path: {:?}", pkg_path);
@@ -866,7 +865,7 @@ fn cargo(
         cmd.arg("--color").arg("always");
     }
 
-    let cargo_target_dir = format!("{}", platform::binary_cache_path()?.display(),);
+    let cargo_target_dir = format!("{}", platform::binary_cache_path().display(),);
     cmd.arg("--target-dir");
     cmd.arg(cargo_target_dir);
 
