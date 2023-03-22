@@ -9,9 +9,9 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-// Last-modified time of a file, in milliseconds since the UNIX epoch.
-pub fn file_last_modified(file: &fs::File) -> u128 {
-    file.metadata()
+// Last-modified time of a directory, in milliseconds since the UNIX epoch.
+pub fn dir_last_modified(dir: &fs::DirEntry) -> u128 {
+    dir.metadata()
         .and_then(|md| {
             md.modified()
                 .map(|t| t.duration_since(UNIX_EPOCH).unwrap().as_millis())
