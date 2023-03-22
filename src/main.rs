@@ -524,18 +524,10 @@ fn decide_action_for(
         build_kind: args.build_kind,
     };
 
-    macro_rules! bail {
-        ($($name:ident: $value:expr),*) => {
-            return Ok(InputAction {
-                $($name: $value,)*
-                ..action
-            })
-        }
-    }
-
     // If we were told to only generate the package, we need to stop *now*
     if args.gen_pkg_only {
-        bail!(execute: false)
+        action.execute = false;
+        return Ok(action);
     }
 
     // If we're not doing a regular build, stop.
@@ -543,7 +535,8 @@ fn decide_action_for(
         BuildKind::Normal => (),
         BuildKind::Test | BuildKind::Bench => {
             info!("not recompiling because: user asked for test/bench");
-            bail!(force_compile: false)
+            action.force_compile = false;
+            return Ok(action);
         }
     }
 
