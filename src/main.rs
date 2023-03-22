@@ -1,10 +1,5 @@
 #![forbid(unsafe_code)]
 
-/**
-If this is set to `false`, then code that automatically deletes stuff *won't*.
-*/
-const ALLOW_AUTO_REMOVE: bool = true;
-
 mod arguments;
 mod build_kind;
 mod consts;
@@ -222,10 +217,8 @@ fn clean_cache(max_age: u128) -> MainResult<()> {
     if max_age == 0 {
         info!("max_age is 0, clearing binary cache...");
         let cache_dir = platform::binary_cache_path()?;
-        if ALLOW_AUTO_REMOVE {
-            if let Err(err) = fs::remove_dir_all(&cache_dir) {
-                error!("failed to remove binary cache {:?}: {}", cache_dir, err);
-            }
+        if let Err(err) = fs::remove_dir_all(&cache_dir) {
+            error!("failed to remove binary cache {:?}: {}", cache_dir, err);
         }
     }
 
@@ -271,12 +264,8 @@ fn clean_cache(max_age: u128) -> MainResult<()> {
 
         if remove_dir() {
             info!("removing {:?}", path);
-            if ALLOW_AUTO_REMOVE {
-                if let Err(err) = fs::remove_dir_all(&path) {
-                    error!("failed to remove {:?} from cache: {}", path, err);
-                }
-            } else {
-                info!("(suppressed remove)");
+            if let Err(err) = fs::remove_dir_all(&path) {
+                error!("failed to remove {:?} from cache: {}", path, err);
             }
         }
     }
@@ -303,11 +292,7 @@ fn gen_pkg_and_compile(input: &Input, action: &InputAction) -> MainResult<()> {
         // DO NOT try deleting ANYTHING if we're not cleaning up inside our own cache.  We *DO NOT* want to risk killing user files.
         if action.using_cache {
             info!("cleaning up cache directory {:?}", pkg_path);
-            if ALLOW_AUTO_REMOVE {
-                fs::remove_dir_all(pkg_path)?;
-            } else {
-                info!("(suppressed remove)");
-            }
+            fs::remove_dir_all(pkg_path)?;
         }
         Ok(())
     });
