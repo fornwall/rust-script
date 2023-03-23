@@ -1,0 +1,17 @@
+#!/bin/sh
+set -e -u
+
+# https://unix.stackexchange.com/questions/30091/fix-or-alternative-for-mktemp-in-os-x
+mytmpdir=$(mktemp -d 2>/dev/null || mktemp -d -t 'mytmpdir')
+
+cd "$mytmpdir"
+
+printf 'let msg = option_env!("_RUST_SCRIPT_TEST_MESSAGE").unwrap_or("undefined"); println!("msg = {}", msg);' > script.rs
+
+rust-script script.rs
+
+export _RUST_SCRIPT_TEST_MESSAGE=hello
+
+rust-script script.rs
+
+rust-script --force script.rs

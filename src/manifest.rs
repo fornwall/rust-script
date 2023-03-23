@@ -13,7 +13,6 @@ use crate::templates;
 use crate::Input;
 use lazy_static::lazy_static;
 use log::{error, info};
-use std::ffi::OsString;
 
 lazy_static! {
     static ref RE_SHORT_MANIFEST: Regex =
@@ -43,7 +42,7 @@ pub fn split_input(
     input: &Input,
     deps: &[(String, String)],
     prelude_items: &[String],
-    input_id: &OsString,
+    bin_name: &str,
 ) -> MainResult<(String, String)> {
     fn contains_main_method(line: &str) -> bool {
         let line = line.trim_start();
@@ -109,7 +108,7 @@ pub fn split_input(
     info!("part_mani: {:?}", part_mani);
 
     // It's-a mergin' time!
-    let def_mani = default_manifest(input, input_id)?;
+    let def_mani = default_manifest(input, bin_name)?;
     let dep_mani = deps_manifest(deps)?;
 
     let mani = merge_manifest(def_mani, part_mani)?;
@@ -134,10 +133,10 @@ strip = true
 
 #[test]
 fn test_split_input() {
-    let input_id = OsString::from("input_id");
+    let bin_name = "binary-name".to_string();
     macro_rules! si {
         ($i:expr) => {
-            split_input(&$i, &[], &[], &input_id).ok()
+            split_input(&$i, &[], &[], &bin_name).ok()
         };
     }
 
@@ -158,8 +157,8 @@ fn test_split_input() {
             format!(
                 "{}{}",
                 r#"[[bin]]
-name = "n_input_id"
-path = "n.rs"
+name = "binary-name"
+path = "main.rs"
 
 [dependencies]
 
@@ -184,8 +183,8 @@ fn main() {}
             format!(
                 "{}{}",
                 r#"[[bin]]
-name = "n_input_id"
-path = "n.rs"
+name = "binary-name"
+path = "main.rs"
 
 [dependencies]
 
@@ -213,8 +212,8 @@ fn main() {}
             format!(
                 "{}{}",
                 r#"[[bin]]
-name = "n_input_id"
-path = "n.rs"
+name = "binary-name"
+path = "main.rs"
 
 [dependencies]
 
@@ -242,8 +241,8 @@ fn main() {}
             format!(
                 "{}{}",
                 r#"[[bin]]
-name = "n_input_id"
-path = "n.rs"
+name = "binary-name"
+path = "main.rs"
 
 [dependencies]
 time = "0.1.25"
@@ -271,8 +270,8 @@ fn main() {}
             format!(
                 "{}{}",
                 r#"[[bin]]
-name = "n_input_id"
-path = "n.rs"
+name = "binary-name"
+path = "main.rs"
 
 [dependencies]
 libc = "0.2.5"
@@ -308,8 +307,8 @@ fn main() {}
             format!(
                 "{}{}",
                 r#"[[bin]]
-name = "n_input_id"
-path = "n.rs"
+name = "binary-name"
+path = "main.rs"
 
 [dependencies]
 time = "0.1.25"
@@ -1051,14 +1050,13 @@ time = "*"
 /**
 Generates a default Cargo manifest for the given input.
 */
-fn default_manifest(input: &Input, input_id: &OsString) -> MainResult<toml::value::Table> {
+fn default_manifest(input: &Input, bin_name: &str) -> MainResult<toml::value::Table> {
     let mani_str = {
         let pkg_name = input.package_name();
-        let bin_name = format!("{}_{}", &*pkg_name, input_id.to_str().unwrap());
         let mut subs = HashMap::with_capacity(3);
         subs.insert(consts::MANI_NAME_SUB, &*pkg_name);
-        subs.insert(consts::MANI_BIN_NAME_SUB, &*bin_name);
-        subs.insert(consts::MANI_FILE_SUB, input.safe_name());
+        subs.insert(consts::MANI_BIN_NAME_SUB, bin_name);
+        subs.insert(consts::MANI_FILE_SUB, "main.rs");
         templates::expand(consts::DEFAULT_MANIFEST, &subs)?
     };
     toml::from_str(&mani_str).map_err(|e| {

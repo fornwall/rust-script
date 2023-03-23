@@ -1,0 +1,13 @@
+#!/bin/sh
+set -e -u
+
+# https://unix.stackexchange.com/questions/30091/fix-or-alternative-for-mktemp-in-os-x
+mytmpdir=$(mktemp -d 2>/dev/null || mktemp -d -t 'mytmpdir')
+
+cd "$mytmpdir"
+
+printf '[toolchain]\nchannel = "non-existing"' > rust-toolchain.toml
+
+printf 'println!("hello, world");' > script.rs
+
+rust-script script.rs
