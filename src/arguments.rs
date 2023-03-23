@@ -4,7 +4,6 @@ use crate::build_kind::BuildKind;
 pub struct Args {
     pub script: Option<String>,
     pub script_args: Vec<String>,
-    pub features: Option<String>,
 
     pub expr: bool,
     pub loop_: bool,
@@ -108,11 +107,6 @@ impl Args {
                 .multiple_occurrences(true)
                 .requires("expr_or_loop")
             )
-            .arg(Arg::new("features")
-                 .help("Cargo features to pass when building and running.")
-                 .long("features")
-                 .takes_value(true)
-            )
             .arg(Arg::new("unstable_features")
                 .help("Add a #![feature] declaration to the crate.")
                 .long("unstable-feature")
@@ -214,7 +208,6 @@ impl Args {
         Args {
             script,
             script_args,
-            features: m.value_of("features").map(Into::into),
 
             expr: m.is_present("expr"),
             loop_: m.is_present("loop"),

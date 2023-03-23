@@ -150,7 +150,7 @@ edition = "2021"
 
 [[bin]]
 name = "#{bin_name}"
-path = "#{file}.rs"
+path = "#{file}"
 
 [profile.release]
 strip = true

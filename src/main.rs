@@ -68,41 +68,6 @@ fn try_main() -> MainResult<i32> {
         }
     }
 
-    let input = match (args.script.clone().unwrap(), args.expr, args.loop_) {
-        (script, false, false) => {
-            let (path, mut file) =
-                find_script(&script).ok_or(format!("could not find script: {}", script))?;
-
-            let script_name = path
-                .file_stem()
-                .map(|os| os.to_string_lossy().into_owned())
-                .unwrap_or_else(|| "unknown".into());
-
-            let mut body = String::new();
-            file.read_to_string(&mut body)?;
-
-            let script_path = std::env::current_dir()?.join(path);
-
-            Input::File(script_name, script_path, body)
-        }
-        (expr, true, false) => Input::Expr(expr),
-        (loop_, false, true) => Input::Loop(loop_, args.count),
-        (_, _, _) => {
-            panic!("Internal error: Invalid args");
-        }
-    };
-    info!("input: {:?}", input);
-
-    // Setup environment variables early so it's available at compilation time of scripts,
-    // to allow e.g. include!(concat!(env!("RUST_SCRIPT_BASE_PATH"), "/script-module.rs"));
-    std::env::set_var(
-        "RUST_SCRIPT_PATH",
-        input.path().unwrap_or_else(|| Path::new("")),
-    );
-    std::env::set_var("RUST_SCRIPT_SAFE_NAME", input.safe_name());
-    std::env::set_var("RUST_SCRIPT_PKG_NAME", input.package_name());
-    std::env::set_var("RUST_SCRIPT_BASE_PATH", input.base_path());
-
     // Sort out the dependencies.  We want to do a few things:
     // - Sort them so that they hash consistently.
     // - Check for duplicates.
@@ -143,6 +108,41 @@ fn try_main() -> MainResult<i32> {
         deps
     };
 
+    let input = match (args.script.clone().unwrap(), args.expr, args.loop_) {
+        (script, false, false) => {
+            let (path, mut file) =
+                find_script(&script).ok_or(format!("could not find script: {}", script))?;
+
+            let script_name = path
+                .file_stem()
+                .map(|os| os.to_string_lossy().into_owned())
+                .unwrap_or_else(|| "unknown".into());
+
+            let mut body = String::new();
+            file.read_to_string(&mut body)?;
+
+            let script_path = std::env::current_dir()?.join(path);
+
+            Input::File(script_name, script_path, body)
+        }
+        (expr, true, false) => Input::Expr(expr),
+        (loop_, false, true) => Input::Loop(loop_, args.count),
+        (_, _, _) => {
+            panic!("Internal error: Invalid args");
+        }
+    };
+    info!("input: {:?}", input);
+
+    // Setup environment variables early so it's available at compilation time of scripts,
+    // to allow e.g. include!(concat!(env!("RUST_SCRIPT_BASE_PATH"), "/script-module.rs"));
+    std::env::set_var(
+        "RUST_SCRIPT_PATH",
+        input.path().unwrap_or_else(|| Path::new("")),
+    );
+    std::env::set_var("RUST_SCRIPT_SAFE_NAME", input.safe_name());
+    std::env::set_var("RUST_SCRIPT_PKG_NAME", input.package_name());
+    std::env::set_var("RUST_SCRIPT_BASE_PATH", input.base_path());
+
     // Generate the prelude items, if we need any. Ensure consistent and *valid* sorting.
     let prelude_items = {
         let unstable_features = args
@@ -164,7 +164,7 @@ fn try_main() -> MainResult<i32> {
     let action = decide_action_for(&input, dependencies_from_args, prelude_items, &args)?;
     info!("action: {:?}", action);
 
-    gen_pkg_and_compile(&input, &action)?;
+    gen_pkg_and_compile(&action)?;
 
     // Once we're done, clean out old packages from the cache.
     // There's no point if we've already done a full clear, though.
@@ -183,7 +183,7 @@ fn try_main() -> MainResult<i32> {
     {
         if action.execute {
             let run_quietly = !action.cargo_output;
-            let mut cmd = action.cargo(action.build_kind, &args.script_args, run_quietly)?;
+            let mut cmd = action.cargo(&action, &args.script_args, run_quietly)?;
 
             let err = cmd.exec();
             Err(MainError::from(err))
@@ -195,7 +195,7 @@ fn try_main() -> MainResult<i32> {
     {
         let exit_code = if action.execute {
             let run_quietly = !action.cargo_output;
-            let mut cmd = action.cargo(action.build_kind, &args.script_args, run_quietly)?;
+            let mut cmd = action.cargo(&action, &args.script_args, run_quietly)?;
 
             cmd.status().map(|st| st.code().unwrap_or(1))?
         } else {
@@ -257,7 +257,7 @@ Generate and compile a package from the input.
 
 Why take `PackageMetadata`?  To ensure that any information we need to depend on for compilation *first* passes through `decide_action_for` *and* is less likely to not be serialised with the rest of the metadata.
 */
-fn gen_pkg_and_compile(input: &Input, action: &InputAction) -> MainResult<()> {
+fn gen_pkg_and_compile(action: &InputAction) -> MainResult<()> {
     let pkg_path = &action.pkg_path;
 
     let mani_str = &action.manifest;
@@ -276,11 +276,10 @@ fn gen_pkg_and_compile(input: &Input, action: &InputAction) -> MainResult<()> {
 
     info!("generating Cargo package...");
     let mani_path = action.manifest_path();
-    let script_path = pkg_path.join(format!("{}.rs", input.safe_name()));
+    let script_path = action.script_path();
 
-    let anything_changed =
-        overwrite_file(mani_path, mani_str)? | overwrite_file(script_path, script_str)?;
-    debug!("anything changed? {}", anything_changed);
+    overwrite_file(mani_path, mani_str)?;
+    overwrite_file(script_path, script_str)?;
 
     info!("disarming pkg dir cleanup...");
     cleanup_dir.disarm();
@@ -334,6 +333,9 @@ struct InputAction {
 
     /// Did the user ask to run tests or benchmarks?
     build_kind: BuildKind,
+
+    // Name of the built binary
+    bin_name: String,
 }
 
 impl InputAction {
@@ -341,20 +343,97 @@ impl InputAction {
         self.pkg_path.join("Cargo.toml")
     }
 
+    fn script_path(&self) -> PathBuf {
+        self.pkg_path.join("main.rs")
+    }
+
     fn cargo(
         &self,
-        build_kind: BuildKind,
+        action: &InputAction,
         script_args: &[String],
         run_quietly: bool,
     ) -> MainResult<Command> {
-        cargo(
-            build_kind,
-            &self.manifest_path().to_string_lossy(),
-            self.toolchain_version.as_deref(),
-            &self.metadata,
-            script_args,
-            run_quietly,
-        )
+        let release_mode = !self.metadata.debug && !matches!(action.build_kind, BuildKind::Bench);
+
+        let built_binary_path = platform::binary_cache_path()
+            .join(if release_mode { "release" } else { "debug" })
+            .join(&action.bin_name);
+
+        let manifest_path = self.manifest_path();
+
+        let execute_command = || {
+            let mut cmd = Command::new(&built_binary_path);
+            cmd.args(script_args.iter());
+            cmd
+        };
+
+        if matches!(action.build_kind, BuildKind::Normal) && !action.force_compile {
+            let script_path = self.script_path();
+
+            match fs::File::open(&built_binary_path) {
+                Ok(built_binary_file) => {
+                    let built_binary_mtime =
+                        built_binary_file.metadata().unwrap().modified().unwrap();
+                    match (fs::File::open(script_path), fs::File::open(manifest_path)) {
+                        (Ok(script_file), Ok(manifest_file)) => {
+                            let script_mtime = script_file.metadata().unwrap().modified().unwrap();
+                            let manifest_mtime =
+                                manifest_file.metadata().unwrap().modified().unwrap();
+                            if built_binary_mtime.cmp(&script_mtime).is_ge()
+                                && built_binary_mtime.cmp(&manifest_mtime).is_ge()
+                            {
+                                return Ok(execute_command());
+                            }
+                        }
+                        (Err(error), _) | (_, Err(error)) => {
+                            return Err(error::MainError::Io(error));
+                        }
+                    }
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                    // Continue
+                }
+                Err(e) => {
+                    return Err(error::MainError::Io(e));
+                }
+            }
+        }
+
+        let maybe_toolchain_version = self.toolchain_version.as_deref();
+
+        let mut cmd = Command::new("cargo");
+        if let Some(toolchain_version) = maybe_toolchain_version {
+            cmd.arg(format!("+{}", toolchain_version));
+        }
+        cmd.arg(action.build_kind.exec_command());
+
+        if matches!(action.build_kind, BuildKind::Normal) && run_quietly {
+            cmd.arg("-q");
+        }
+
+        cmd.current_dir(&self.pkg_path);
+
+        if platform::force_cargo_color() {
+            cmd.arg("--color").arg("always");
+        }
+
+        let cargo_target_dir = format!("{}", platform::binary_cache_path().display(),);
+        cmd.arg("--target-dir");
+        cmd.arg(cargo_target_dir);
+
+        if release_mode {
+            cmd.arg("--release");
+        }
+
+        if matches!(action.build_kind, BuildKind::Normal) {
+            if cmd.status()?.code() == Some(0) {
+                cmd = execute_command();
+            } else {
+                return Err(MainError::OtherOwned("Could not execute cargo".to_string()));
+            }
+        }
+
+        Ok(cmd)
     }
 }
 
@@ -378,9 +457,6 @@ struct PackageMetadata {
     /// Sorted list of injected prelude items.
     prelude: Vec<String>,
 
-    /// Cargo features
-    features: Option<String>,
-
     /// Hash of the generated `Cargo.toml` file.
     manifest_hash: String,
 
@@ -401,6 +477,10 @@ fn decide_action_for(
         let deps_iter = deps.iter().map(|(n, v)| (n as &str, v as &str));
         input.compute_id(deps_iter)
     };
+
+    let pkg_name = input.package_name();
+    let bin_name = format!("{}_{}", &*pkg_name, input_id.to_str().unwrap());
+
     info!("id: {:?}", input_id);
 
     let (pkg_path, using_cache) = args
@@ -414,7 +494,7 @@ fn decide_action_for(
     info!("pkg_path: {:?}", pkg_path);
     info!("using_cache: {:?}", using_cache);
 
-    let (mani_str, script_str) = manifest::split_input(input, &deps, &prelude, &input_id)?;
+    let (mani_str, script_str) = manifest::split_input(input, &deps, &prelude, &bin_name)?;
 
     // Forcibly override some flags based on build kind.
     let (debug, force) = match args.build_kind {
@@ -433,7 +513,6 @@ fn decide_action_for(
             debug,
             deps,
             prelude,
-            features: args.features.clone(),
             manifest_hash: hash_str(&mani_str),
             script_hash: hash_str(&script_str),
         }
@@ -459,6 +538,7 @@ fn decide_action_for(
         manifest: mani_str,
         script: script_str,
         build_kind: args.build_kind,
+        bin_name,
     };
 
     // If we were told to only generate the package, we need to stop *now*
@@ -679,7 +759,7 @@ fn hash_str(s: &str) -> String {
 /**
 Overwrite a file if and only if the contents have changed.
 */
-fn overwrite_file<P>(path: P, content: &str) -> MainResult<bool>
+fn overwrite_file<P>(path: P, content: &str) -> MainResult<()>
 where
     P: AsRef<Path>,
 {
@@ -690,7 +770,7 @@ where
             file.read_to_string(&mut existing_content)?;
             if existing_content == content {
                 debug!("Equal content");
-                return Ok(false);
+                return Ok(());
             }
         }
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
@@ -710,55 +790,7 @@ where
     temp_file.write_all(content.as_bytes())?;
     temp_file.flush()?;
     temp_file.persist(path).map_err(|e| e.to_string())?;
-    Ok(true)
-}
-
-/**
-Constructs a Cargo command that runs on the script package.
-*/
-fn cargo(
-    build_kind: BuildKind,
-    manifest: &str,
-    maybe_toolchain_version: Option<&str>,
-    meta: &PackageMetadata,
-    script_args: &[String],
-    run_quietly: bool,
-) -> MainResult<Command> {
-    let mut cmd = Command::new("cargo");
-    if let Some(toolchain_version) = maybe_toolchain_version {
-        cmd.arg(format!("+{}", toolchain_version));
-    }
-    cmd.arg(build_kind.exec_command());
-
-    if matches!(build_kind, BuildKind::Normal) && run_quietly {
-        cmd.arg("-q");
-    }
-
-    cmd.arg("--manifest-path").arg(manifest);
-
-    if platform::force_cargo_color() {
-        cmd.arg("--color").arg("always");
-    }
-
-    let cargo_target_dir = format!("{}", platform::binary_cache_path().display(),);
-    cmd.arg("--target-dir");
-    cmd.arg(cargo_target_dir);
-
-    // Block `--release` on `bench`.
-    if !meta.debug && !matches!(build_kind, BuildKind::Bench) {
-        cmd.arg("--release");
-    }
-
-    if let Some(ref features) = meta.features {
-        cmd.arg("--features").arg(features);
-    }
-
-    if matches!(build_kind, BuildKind::Normal) && !script_args.is_empty() {
-        cmd.arg("--");
-        cmd.args(script_args.iter());
-    }
-
-    Ok(cmd)
+    Ok(())
 }
 
 #[test]

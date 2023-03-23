@@ -8,7 +8,7 @@ pub enum BuildKind {
 impl BuildKind {
     pub fn exec_command(&self) -> &'static str {
         match *self {
-            Self::Normal => "run",
+            Self::Normal => "build",
             Self::Test => "test",
             Self::Bench => "bench",
         }
