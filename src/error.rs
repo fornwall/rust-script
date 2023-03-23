@@ -25,11 +25,11 @@ impl fmt::Display for MainError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         use self::MainError::*;
         use std::fmt::Display;
-        match *self {
-            Io(ref err) => Display::fmt(err, fmt),
-            Tag(ref msg, ref err) => write!(fmt, "{}: {}", msg, err),
-            Other(ref err) => Display::fmt(err, fmt),
-            OtherOwned(ref err) => Display::fmt(err, fmt),
+        match self {
+            Io(err) => Display::fmt(err, fmt),
+            Tag(msg, ref err) => write!(fmt, "{}: {}", msg, err),
+            Other(err) => Display::fmt(err, fmt),
+            OtherOwned(err) => Display::fmt(err, fmt),
             OtherBorrowed(err) => Display::fmt(err, fmt),
         }
     }
