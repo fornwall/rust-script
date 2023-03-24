@@ -136,7 +136,7 @@ You can use `rust-script` to write a quick filter, by specifying a closure to be
 
 ```sh
 $ cat now.ers | rust-script --loop \
-    "let mut n=0; move |l| {n+=1; println!(\"{:>6}: {}\",n,l.trim_right())}"
+    "let mut n=0; move |l| {n+=1; println!(\"{:>6}: {}\",n,l.trim_end())}"
      1: // cargo-deps: time="0.1.25"
      3: fn main() {
      4:     println!("{}", time::now().rfc822z());
@@ -147,7 +147,7 @@ You can achieve a similar effect to the above by using the `--count` flag, which
 
 ```sh
 $ cat now.ers | rust-script --count --loop \
-    "|l,n| println!(\"{:>6}: {}\", n, l.trim_right())"
+    "|l,n| println!(\"{:>6}: {}\", n, l.trim_end())"
      1: // cargo-deps: time="0.1.25"
      2: fn main() {
      3:     println!("{}", time::now().rfc822z());
