@@ -24,7 +24,6 @@ exclude = [
 clap = "4"
 dirs-next = "2"
 env_logger = "0.10"
-lazy_static = "1"
 log = "0.4"
 pulldown-cmark = "0.9"
 regex = "1"
@@ -39,6 +38,7 @@ winreg = "0.11"
 atty = "0.2"
 
 [dev-dependencies]
+lazy_static = "1"
 scan-rules = "0.2"
 
 [profile.release]
