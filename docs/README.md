@@ -98,10 +98,10 @@ Wed, 28 Oct 2020 00:38:45 +0100
 
 Useful command-line arguments:
 
-- `--bench`: Compile and run benchmarks.  Requires a nightly toolchain.
+- `--bench`: Compile and run benchmarks. Requires a nightly toolchain.
 - `--debug`: Build a debug executable, not an optimised one.
 - `--force`: Force the script to be rebuilt.  Useful if you want to force a recompile with a different toolchain.
-- `--gen-pkg-only`: Generate the Cargo package, but don't compile or run it.  Effectively "unpacks" the script into a Cargo package.
+- `--project`: Generate the Cargo package and print the path to it - but don't compile or run it. Effectively "unpacks" the script into a Cargo package.
 - `--test`: Compile and run tests.
 
 ## Executable Scripts

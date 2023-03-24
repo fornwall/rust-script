@@ -134,7 +134,7 @@ impl Args {
             )
             .arg(Arg::new("gen_pkg_only")
                 .help("Generate the Cargo package, but don't compile or run it.")
-                .long("gen-pkg-only")
+                .long("project")
                 .action(ArgAction::SetTrue)
                 .requires("script")
                 .conflicts_with_all(["debug", "force", "test", "bench"])

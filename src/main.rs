@@ -179,26 +179,21 @@ fn try_main() -> MainResult<i32> {
         })
     };
 
+    if !action.execute {
+        println!("{}", action.pkg_path.display());
+        return Ok(0);
+    }
+
     #[cfg(unix)]
     {
-        if action.execute {
-            let mut cmd = action.cargo(&args.script_args)?;
-
-            let err = cmd.exec();
-            Err(MainError::from(err))
-        } else {
-            Ok(0)
-        }
+        let mut cmd = action.cargo(&args.script_args)?;
+        let err = cmd.exec();
+        Err(MainError::from(err))
     }
     #[cfg(not(unix))]
     {
-        let exit_code = if action.execute {
-            let mut cmd = action.cargo(&args.script_args)?;
-
-            cmd.status().map(|st| st.code().unwrap_or(1))?
-        } else {
-            0
-        };
+        let mut cmd = action.cargo(&args.script_args)?;
+        let exit_code = cmd.status().map(|st| st.code().unwrap_or(1))?;
         Ok(exit_code)
     }
 }
