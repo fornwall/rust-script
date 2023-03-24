@@ -252,11 +252,7 @@ fn clean_cache(max_age: u128) -> MainResult<()> {
     Ok(())
 }
 
-/**
-Generate and compile a package from the input.
-
-Why take `PackageMetadata`?  To ensure that any information we need to depend on for compilation *first* passes through `decide_action_for` *and* is less likely to not be serialised with the rest of the metadata.
-*/
+// Generate and compile a package from the input.
 fn gen_pkg_and_compile(action: &InputAction) -> MainResult<()> {
     let pkg_path = &action.pkg_path;
 
@@ -278,8 +274,8 @@ fn gen_pkg_and_compile(action: &InputAction) -> MainResult<()> {
     let mani_path = action.manifest_path();
     let script_path = action.script_path();
 
-    overwrite_file(mani_path, mani_str)?;
-    overwrite_file(script_path, script_str)?;
+    overwrite_file(&mani_path, mani_str)?;
+    overwrite_file(&script_path, script_str)?;
 
     info!("disarming pkg dir cleanup...");
     cleanup_dir.disarm();
@@ -456,12 +452,6 @@ struct PackageMetadata {
 
     /// Sorted list of injected prelude items.
     prelude: Vec<String>,
-
-    /// Hash of the generated `Cargo.toml` file.
-    manifest_hash: String,
-
-    /// Hash of the generated source file.
-    script_hash: String,
 }
 
 /**
@@ -513,8 +503,6 @@ fn decide_action_for(
             debug,
             deps,
             prelude,
-            manifest_hash: hash_str(&mani_str),
-            script_hash: hash_str(&script_str),
         }
     };
     info!("input_meta: {:?}", input_meta);
@@ -747,25 +735,11 @@ impl Input {
     }
 }
 
-/**
-Shorthand for hashing a string.
-*/
-fn hash_str(s: &str) -> String {
-    let mut hasher = Sha1::new();
-    hasher.update(s);
-    format!("{:x}", hasher.finalize())
-}
-
-/**
-Overwrite a file if and only if the contents have changed.
-*/
-fn overwrite_file<P>(path: P, content: &str) -> MainResult<()>
-where
-    P: AsRef<Path>,
-{
-    debug!("overwrite_file({:?}, _)", path.as_ref());
+// Overwrite a file if and only if the contents have changed.
+fn overwrite_file(path: &Path, content: &str) -> MainResult<()> {
+    debug!("overwrite_file({:?}, _)", path);
     let mut existing_content = String::new();
-    match fs::File::open(&path) {
+    match fs::File::open(path) {
         Ok(mut file) => {
             file.read_to_string(&mut existing_content)?;
             if existing_content == content {
@@ -782,10 +756,7 @@ where
     }
 
     debug!(".. files differ");
-    let dir = path
-        .as_ref()
-        .parent()
-        .ok_or("The given path should be a file")?;
+    let dir = path.parent().ok_or("The given path should be a file")?;
     let mut temp_file = tempfile::NamedTempFile::new_in(dir)?;
     temp_file.write_all(content.as_bytes())?;
     temp_file.flush()?;
