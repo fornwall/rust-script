@@ -52,7 +52,6 @@ pub fn split_input(
             || line.starts_with("pub async fn main(")
     }
 
-    let template_buf;
     let (part_mani, source, template, sub_prelude) = match input {
         Input::File(_, _, content) => {
             assert_eq!(prelude_items.len(), 0);
@@ -68,10 +67,10 @@ pub fn split_input(
             (manifest, source, templates::get_template("file")?, false)
         }
         Input::Expr(content) => {
-            template_buf = templates::get_template("expr")?;
-            let (manifest, template_src) = find_embedded_manifest(&template_buf)
-                .unwrap_or((Manifest::Toml(""), &template_buf));
-            (manifest, content.to_string(), template_src.into(), true)
+            let template_buf = templates::get_template("expr")?;
+            let (manifest, template_src) =
+                find_embedded_manifest(template_buf).unwrap_or((Manifest::Toml(""), template_buf));
+            (manifest, content.to_string(), template_src, true)
         }
         Input::Loop(content, count) => {
             let templ = if *count { "loop-count" } else { "loop" };
@@ -99,13 +98,10 @@ pub fn split_input(
         subs.insert(consts::SCRIPT_PRELUDE_SUB, &prelude_str[..]);
     }
 
-    let source = templates::expand(&template, &subs)?;
-
-    info!("part_mani: {:?}", part_mani);
-    info!("source: {:?}", source);
-
+    let source = templates::expand(template, &subs)?;
     let part_mani = part_mani.into_toml()?;
     info!("part_mani: {:?}", part_mani);
+    info!("source: {:?}", source);
 
     // It's-a mergin' time!
     let def_mani = default_manifest(input, bin_name)?;

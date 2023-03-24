@@ -164,7 +164,7 @@ impl Args {
                 // "channel"
                 .short('c')
                 .num_args(1)
-                // FIXME: remove if benchmarking is stabilized
+                // Benchmarking currently requires nightly:
                 .conflicts_with("bench")
             );
 

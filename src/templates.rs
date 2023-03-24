@@ -5,7 +5,6 @@ use crate::consts;
 use crate::error::{MainError, MainResult};
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::borrow::Cow;
 use std::collections::HashMap;
 
 lazy_static! {
@@ -49,19 +48,12 @@ pub fn expand(src: &str, subs: &HashMap<&str, &str>) -> MainResult<String> {
 /**
 Attempts to locate and load the contents of the specified template.
 */
-pub fn get_template(name: &str) -> MainResult<Cow<'static, str>> {
-    if let Some(text) = builtin_template(name) {
-        return Ok(text.into());
-    }
-    panic!("No such template: {name}");
-}
-
-fn builtin_template(name: &str) -> Option<&'static str> {
-    Some(match name {
+pub fn get_template(name: &str) -> MainResult<&'static str> {
+    Ok(match name {
         "expr" => consts::EXPR_TEMPLATE,
         "file" => consts::FILE_TEMPLATE,
         "loop" => consts::LOOP_TEMPLATE,
         "loop-count" => consts::LOOP_COUNT_TEMPLATE,
-        _ => return None,
+        _ => panic!("No such template: {name}"),
     })
 }

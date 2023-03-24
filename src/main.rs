@@ -111,7 +111,7 @@ fn try_main() -> MainResult<i32> {
     let input = match (args.script.clone().unwrap(), args.expr, args.loop_) {
         (script, false, false) => {
             let (path, mut file) =
-                find_script(&script).ok_or(format!("could not find script: {}", script))?;
+                find_script(script.as_ref()).ok_or(format!("could not find script: {}", script))?;
 
             let script_name = path
                 .file_stem()
@@ -316,8 +316,8 @@ struct InputAction {
     */
     toolchain_version: Option<String>,
 
-    /// The package metadata structure for the current invocation.
-    metadata: PackageMetadata,
+    /// If script should be built in debug mode.
+    debug: bool,
 
     /// The package manifest contents.
     manifest: String,
@@ -342,7 +342,7 @@ impl InputAction {
     }
 
     fn cargo(&self, script_args: &[String]) -> MainResult<Command> {
-        let release_mode = !self.metadata.debug && !matches!(self.build_kind, BuildKind::Bench);
+        let release_mode = !self.debug && !matches!(self.build_kind, BuildKind::Bench);
 
         let built_binary_path = platform::binary_cache_path()
             .join(if release_mode { "release" } else { "debug" })
@@ -427,27 +427,6 @@ impl InputAction {
 }
 
 /**
-The metadata here serves two purposes:
-
-1. It records everything necessary for compilation and execution of a package.
-2. It records everything that must be exactly the same in order for a cached executable to still be valid, in addition to the content hash.
-*/
-#[derive(Clone, Debug, Eq, PartialEq)]
-struct PackageMetadata {
-    /// Path to the script file.
-    path: Option<String>,
-
-    /// Was the script compiled in debug mode?
-    debug: bool,
-
-    /// Sorted list of dependencies.
-    deps: Vec<(String, String)>,
-
-    /// Sorted list of injected prelude items.
-    prelude: Vec<String>,
-}
-
-/**
 For the given input, this constructs the package metadata and checks the cache to see what should be done.
 */
 fn decide_action_for(
@@ -460,11 +439,10 @@ fn decide_action_for(
         let deps_iter = deps.iter().map(|(n, v)| (n as &str, v as &str));
         input.compute_id(deps_iter)
     };
+    info!("id: {:?}", input_id);
 
     let pkg_name = input.package_name();
     let bin_name = format!("{}_{}", &*pkg_name, input_id.to_str().unwrap());
-
-    info!("id: {:?}", input_id);
 
     let (pkg_path, using_cache) = args
         .pkg_path
@@ -480,25 +458,11 @@ fn decide_action_for(
     let (mani_str, script_str) = manifest::split_input(input, &deps, &prelude, &bin_name)?;
 
     // Forcibly override some flags based on build kind.
-    let (debug, force) = match args.build_kind {
-        BuildKind::Normal => (args.debug, args.force),
-        BuildKind::Test => (true, false),
-        BuildKind::Bench => (false, false),
+    let debug = match args.build_kind {
+        BuildKind::Normal => args.debug,
+        BuildKind::Test => true,
+        BuildKind::Bench => false,
     };
-
-    let input_meta = {
-        let path = match input {
-            Input::File(_, path, _) => Some(path.to_string_lossy().into_owned()),
-            _ => None,
-        };
-        PackageMetadata {
-            path,
-            debug,
-            deps,
-            prelude,
-        }
-    };
-    info!("input_meta: {:?}", input_meta);
 
     let toolchain_version = args
         .toolchain_version
@@ -508,46 +472,23 @@ fn decide_action_for(
             _ => None,
         });
 
-    let mut action = InputAction {
+    Ok(InputAction {
         cargo_output: args.cargo_output,
-        force_compile: force,
-        execute: true,
+        force_compile: args.force,
+        execute: !args.gen_pkg_only,
         pkg_path,
         using_cache,
         toolchain_version,
-        metadata: input_meta,
+        debug,
         manifest: mani_str,
         script: script_str,
         build_kind: args.build_kind,
         bin_name,
-    };
-
-    // If we were told to only generate the package, we need to stop *now*
-    if args.gen_pkg_only {
-        action.execute = false;
-        return Ok(action);
-    }
-
-    // If we're not doing a regular build, stop.
-    match action.build_kind {
-        BuildKind::Normal => (),
-        BuildKind::Test | BuildKind::Bench => {
-            info!("not recompiling because: user asked for test/bench");
-            action.force_compile = false;
-            return Ok(action);
-        }
-    }
-
-    Ok(action)
+    })
 }
 
 /// Attempts to locate the script specified by the given path.
-fn find_script<P>(path: P) -> Option<(PathBuf, fs::File)>
-where
-    P: AsRef<Path>,
-{
-    let path = path.as_ref();
-
+fn find_script(path: &Path) -> Option<(PathBuf, fs::File)> {
     if let Ok(file) = fs::File::open(path) {
         return Some((path.into(), file));
     }
