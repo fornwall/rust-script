@@ -29,7 +29,7 @@ $ ./script.rs
 A random number: 9240261453149857564
 ```
 
-Rust version 1.60 or newer required.
+Rust version 1.64 or newer required.
 
 See the [documentation at rust-script.org](https://rust-script.org).
 
