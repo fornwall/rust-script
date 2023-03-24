@@ -43,6 +43,7 @@ pub fn split_input(
     deps: &[(String, String)],
     prelude_items: &[String],
     bin_name: &str,
+    toolchain: Option<String>,
 ) -> MainResult<(String, String)> {
     fn contains_main_method(line: &str) -> bool {
         let line = line.trim_start();
@@ -111,7 +112,28 @@ pub fn split_input(
     let mani = merge_manifest(mani, dep_mani)?;
 
     // Fix up relative paths.
-    let mani = fix_manifest_paths(mani, &input.base_path())?;
+    let mut mani = fix_manifest_paths(mani, &input.base_path())?;
+
+    if let Some(toolchain) = toolchain {
+        let mut mani_map = toml::map::Map::new();
+        let mut package_map = toml::map::Map::new();
+        let mut metadata = toml::map::Map::new();
+        let mut rustscript_metadata = toml::map::Map::new();
+        rustscript_metadata.insert(
+            "toolchain".to_string(),
+            toml::value::Value::String(toolchain),
+        );
+        metadata.insert(
+            "rustscript".to_string(),
+            toml::value::Value::Table(rustscript_metadata),
+        );
+        package_map.insert("metadata".to_string(), toml::value::Value::Table(metadata));
+        mani_map.insert(
+            "package".to_string(),
+            toml::value::Value::Table(package_map),
+        );
+        mani = merge_manifest(mani, mani_map)?;
+    }
     info!("mani: {:?}", mani);
 
     let mani_str = format!("{}", mani);
@@ -130,9 +152,10 @@ strip = true
 #[test]
 fn test_split_input() {
     let bin_name = "binary-name".to_string();
+    let toolchain = None;
     macro_rules! si {
         ($i:expr) => {
-            split_input(&$i, &[], &[], &bin_name).ok()
+            split_input(&$i, &[], &[], &bin_name, toolchain.clone()).ok()
         };
     }
 
@@ -163,6 +186,38 @@ authors = ["Anonymous"]
 edition = "2021"
 name = "n"
 version = "0.1.0""#,
+                STRIP_SECTION
+            ),
+            r#"fn main() {}"#
+        )
+    );
+
+    assert_eq!(
+        split_input(
+            &f(r#"fn main() {}"#),
+            &[],
+            &[],
+            &bin_name,
+            Some("stable".to_string())
+        )
+        .ok(),
+        r!(
+            format!(
+                "{}{}",
+                r#"[[bin]]
+name = "binary-name"
+path = "main.rs"
+
+[dependencies]
+
+[package]
+authors = ["Anonymous"]
+edition = "2021"
+name = "n"
+version = "0.1.0"
+
+[package.metadata.rustscript]
+toolchain = "stable""#,
                 STRIP_SECTION
             ),
             r#"fn main() {}"#
