@@ -361,15 +361,15 @@ impl InputAction {
 
             match fs::File::open(&built_binary_path) {
                 Ok(built_binary_file) => {
-                    let built_binary_mtime =
-                        built_binary_file.metadata().unwrap().modified().unwrap();
+                    // Use ctime instead of mtime as cargo may copy an already
+                    // built binary (with old mtime) here:
+                    let built_binary_ctime = built_binary_file.metadata()?.created()?;
                     match (fs::File::open(script_path), fs::File::open(manifest_path)) {
                         (Ok(script_file), Ok(manifest_file)) => {
-                            let script_mtime = script_file.metadata().unwrap().modified().unwrap();
-                            let manifest_mtime =
-                                manifest_file.metadata().unwrap().modified().unwrap();
-                            if built_binary_mtime.cmp(&script_mtime).is_ge()
-                                && built_binary_mtime.cmp(&manifest_mtime).is_ge()
+                            let script_mtime = script_file.metadata()?.modified()?;
+                            let manifest_mtime = manifest_file.metadata()?.modified()?;
+                            if built_binary_ctime.cmp(&script_mtime).is_ge()
+                                && built_binary_ctime.cmp(&manifest_mtime).is_ge()
                             {
                                 return Ok(execute_command());
                             }
@@ -455,15 +455,6 @@ fn decide_action_for(
     info!("pkg_path: {:?}", pkg_path);
     info!("using_cache: {:?}", using_cache);
 
-    let (mani_str, script_str) = manifest::split_input(input, &deps, &prelude, &bin_name)?;
-
-    // Forcibly override some flags based on build kind.
-    let debug = match args.build_kind {
-        BuildKind::Normal => args.debug,
-        BuildKind::Test => true,
-        BuildKind::Bench => false,
-    };
-
     let toolchain_version = args
         .toolchain_version
         .clone()
@@ -471,6 +462,16 @@ fn decide_action_for(
             BuildKind::Bench => Some("nightly".into()),
             _ => None,
         });
+
+    let (mani_str, script_str) =
+        manifest::split_input(input, &deps, &prelude, &bin_name, toolchain_version.clone())?;
+
+    // Forcibly override some flags based on build kind.
+    let debug = match args.build_kind {
+        BuildKind::Normal => args.debug,
+        BuildKind::Test => true,
+        BuildKind::Bench => false,
+    };
 
     Ok(InputAction {
         cargo_output: args.cargo_output,
