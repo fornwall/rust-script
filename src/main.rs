@@ -182,8 +182,7 @@ fn try_main() -> MainResult<i32> {
     #[cfg(unix)]
     {
         if action.execute {
-            let run_quietly = !action.cargo_output;
-            let mut cmd = action.cargo(&action, &args.script_args, run_quietly)?;
+            let mut cmd = action.cargo(&args.script_args)?;
 
             let err = cmd.exec();
             Err(MainError::from(err))
@@ -194,8 +193,7 @@ fn try_main() -> MainResult<i32> {
     #[cfg(not(unix))]
     {
         let exit_code = if action.execute {
-            let run_quietly = !action.cargo_output;
-            let mut cmd = action.cargo(&action, &args.script_args, run_quietly)?;
+            let mut cmd = action.cargo(&args.script_args)?;
 
             cmd.status().map(|st| st.code().unwrap_or(1))?
         } else {
@@ -343,17 +341,12 @@ impl InputAction {
         self.pkg_path.join("main.rs")
     }
 
-    fn cargo(
-        &self,
-        action: &InputAction,
-        script_args: &[String],
-        run_quietly: bool,
-    ) -> MainResult<Command> {
-        let release_mode = !self.metadata.debug && !matches!(action.build_kind, BuildKind::Bench);
+    fn cargo(&self, script_args: &[String]) -> MainResult<Command> {
+        let release_mode = !self.metadata.debug && !matches!(self.build_kind, BuildKind::Bench);
 
         let built_binary_path = platform::binary_cache_path()
             .join(if release_mode { "release" } else { "debug" })
-            .join(&action.bin_name);
+            .join(&self.bin_name);
 
         let manifest_path = self.manifest_path();
 
@@ -363,7 +356,7 @@ impl InputAction {
             cmd
         };
 
-        if matches!(action.build_kind, BuildKind::Normal) && !action.force_compile {
+        if matches!(self.build_kind, BuildKind::Normal) && !self.force_compile {
             let script_path = self.script_path();
 
             match fs::File::open(&built_binary_path) {
@@ -401,9 +394,9 @@ impl InputAction {
         if let Some(toolchain_version) = maybe_toolchain_version {
             cmd.arg(format!("+{}", toolchain_version));
         }
-        cmd.arg(action.build_kind.exec_command());
+        cmd.arg(self.build_kind.exec_command());
 
-        if matches!(action.build_kind, BuildKind::Normal) && run_quietly {
+        if matches!(self.build_kind, BuildKind::Normal) && !self.cargo_output {
             cmd.arg("-q");
         }
 
@@ -421,7 +414,7 @@ impl InputAction {
             cmd.arg("--release");
         }
 
-        if matches!(action.build_kind, BuildKind::Normal) {
+        if matches!(self.build_kind, BuildKind::Normal) {
             if cmd.status()?.code() == Some(0) {
                 cmd = execute_command();
             } else {
@@ -661,11 +654,11 @@ impl Input {
     */
     pub fn base_path(&self) -> PathBuf {
         match self {
-            Input::File(_, path, _) => path
+            Self::File(_, path, _) => path
                 .parent()
                 .expect("couldn't get parent directory for file input base path")
                 .into(),
-            Input::Expr(..) | Input::Loop(..) => {
+            Self::Expr(..) | Self::Loop(..) => {
                 std::env::current_dir().expect("couldn't get current directory for input base path")
             }
         }
