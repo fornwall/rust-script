@@ -32,7 +32,7 @@ pub struct Args {
 }
 
 impl Args {
-    pub fn parse() -> Args {
+    pub fn parse() -> Self {
         use clap::{Arg, ArgGroup, Command};
         let version = option_env!("CARGO_PKG_VERSION").unwrap_or("unknown");
         let about = r#"Compiles and runs a Rust script."#;
@@ -205,7 +205,7 @@ impl Args {
             script_args = Vec::new();
         }
 
-        Args {
+        Self {
             script,
             script_args,
 

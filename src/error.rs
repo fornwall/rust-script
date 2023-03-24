@@ -56,6 +56,6 @@ where
     T: 'static + Error,
 {
     fn from(src: Box<T>) -> Self {
-        MainError::Other(src)
+        Self::Other(src)
     }
 }

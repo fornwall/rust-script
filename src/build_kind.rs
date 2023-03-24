@@ -6,7 +6,7 @@ pub enum BuildKind {
 }
 
 impl BuildKind {
-    pub fn exec_command(&self) -> &'static str {
+    pub const fn exec_command(&self) -> &'static str {
         match *self {
             Self::Normal => "build",
             Self::Test => "test",
