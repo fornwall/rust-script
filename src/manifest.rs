@@ -11,27 +11,7 @@ use crate::consts;
 use crate::error::{MainError, MainResult};
 use crate::templates;
 use crate::Input;
-use lazy_static::lazy_static;
 use log::{error, info};
-
-lazy_static! {
-    static ref RE_SHORT_MANIFEST: Regex =
-        Regex::new(r"^(?i)\s*//\s*cargo-deps\s*:(.*?)(\r\n|\n)").unwrap();
-    static ref RE_MARGIN: Regex = Regex::new(r"^\s*\*( |$)").unwrap();
-    static ref RE_SPACE: Regex = Regex::new(r"^(\s+)").unwrap();
-    static ref RE_NESTING: Regex = Regex::new(r"/\*|\*/").unwrap();
-    static ref RE_COMMENT: Regex = Regex::new(r"^\s*//(!|/)").unwrap();
-    static ref RE_SHEBANG: Regex = Regex::new(r"^#![^\[].*?(\r\n|\n)").unwrap();
-    static ref RE_CRATE_COMMENT: Regex = {
-        Regex::new(
-            r"(?x)
-                # We need to find the first `/*!` or `//!` that *isn't* preceeded by something that would make it apply to anything other than the crate itself.  Because we can't do this accurately, we'll just require that the doc comment is the *first* thing in the file (after the optional shebang, which should already have been stripped).
-                ^\s*
-                (/\*!|//(!|/))
-            "
-        ).unwrap()
-    };
-}
 
 /**
 Splits input into a complete Cargo manifest and unadultered Rust source.
@@ -105,39 +85,17 @@ pub fn split_input(
     info!("source: {:?}", source);
 
     // It's-a mergin' time!
-    let def_mani = default_manifest(input, bin_name)?;
+    let def_mani = default_manifest(input, bin_name, toolchain);
     let dep_mani = deps_manifest(deps)?;
 
     let mani = merge_manifest(def_mani, part_mani)?;
     let mani = merge_manifest(mani, dep_mani)?;
 
     // Fix up relative paths.
-    let mut mani = fix_manifest_paths(mani, &input.base_path())?;
-
-    if let Some(toolchain) = toolchain {
-        let mut mani_map = toml::map::Map::new();
-        let mut package_map = toml::map::Map::new();
-        let mut metadata = toml::map::Map::new();
-        let mut rustscript_metadata = toml::map::Map::new();
-        rustscript_metadata.insert(
-            "toolchain".to_string(),
-            toml::value::Value::String(toolchain),
-        );
-        metadata.insert(
-            "rustscript".to_string(),
-            toml::value::Value::Table(rustscript_metadata),
-        );
-        package_map.insert("metadata".to_string(), toml::value::Value::Table(metadata));
-        mani_map.insert(
-            "package".to_string(),
-            toml::value::Value::Table(package_map),
-        );
-        mani = merge_manifest(mani, mani_map)?;
-    }
-    info!("mani: {:?}", mani);
+    let mani = fix_manifest_paths(mani, &input.base_path())?;
 
     let mani_str = format!("{}", mani);
-    info!("mani_str: {}", mani_str);
+    info!("manifest: {}", mani_str);
 
     Ok((mani_str, source))
 }
@@ -189,6 +147,53 @@ version = "0.1.0""#,
                 STRIP_SECTION
             ),
             r#"fn main() {}"#
+        )
+    );
+
+    assert_eq!(
+        si!(f(r#"#!/usr/bin/env rust-script
+fn main() {}"#)),
+        r!(
+            format!(
+                "{}{}",
+                r#"[[bin]]
+name = "binary-name"
+path = "main.rs"
+
+[dependencies]
+
+[package]
+authors = ["Anonymous"]
+edition = "2021"
+name = "n"
+version = "0.1.0""#,
+                STRIP_SECTION
+            ),
+            r#"fn main() {}"#
+        )
+    );
+
+    assert_eq!(
+        si!(f(r#"#[thingy]
+fn main() {}"#)),
+        r!(
+            format!(
+                "{}{}",
+                r#"[[bin]]
+name = "binary-name"
+path = "main.rs"
+
+[dependencies]
+
+[package]
+authors = ["Anonymous"]
+edition = "2021"
+name = "n"
+version = "0.1.0""#,
+                STRIP_SECTION
+            ),
+            r#"#[thingy]
+fn main() {}"#
         )
     );
 
@@ -390,41 +395,11 @@ fn main() {}
 Returns a slice of the input string with the leading shebang, if there is one, omitted.
 */
 fn strip_shebang(s: &str) -> &str {
-    match RE_SHEBANG.find(s) {
+    let re_shebang: Regex = Regex::new(r"^#![^\[].*?(\r\n|\n)").unwrap();
+    match re_shebang.find(s) {
         Some(m) => &s[m.end()..],
         None => s,
     }
-}
-
-#[test]
-fn test_strip_shebang() {
-    assert_eq!(
-        strip_shebang(
-            "\
-#!/usr/bin/env rust-script
-and the rest
-\
-        "
-        ),
-        "\
-and the rest
-\
-        "
-    );
-    assert_eq!(
-        strip_shebang(
-            "\
-#![thingy]
-and the rest
-\
-        "
-        ),
-        "\
-#![thingy]
-and the rest
-\
-        "
-    );
 }
 
 /**
@@ -696,10 +671,10 @@ fn main() {}
 Locates a "short comment manifest" in Rust source.
 */
 fn find_short_comment_manifest(s: &str) -> Option<(Manifest, &str)> {
+    let re: Regex = Regex::new(r"^(?i)\s*//\s*cargo-deps\s*:(.*?)(\r\n|\n)").unwrap();
     /*
     This is pretty simple: the only valid syntax for this is for the first, non-blank line to contain a single-line comment whose first token is `cargo-deps:`.  That's it.
     */
-    let re = &*RE_SHORT_MANIFEST;
     if let Some(cap) = re.captures(s) {
         if let Some(m) = cap.get(1) {
             return Some((Manifest::DepList(m.as_str()), s));
@@ -712,6 +687,15 @@ fn find_short_comment_manifest(s: &str) -> Option<(Manifest, &str)> {
 Locates a "code block manifest" in Rust source.
 */
 fn find_code_block_manifest(s: &str) -> Option<(Manifest, &str)> {
+    let re_crate_comment: Regex = {
+        Regex::new(
+            r"(?x)
+                # We need to find the first `/*!` or `//!` that *isn't* preceeded by something that would make it apply to anything other than the crate itself.  Because we can't do this accurately, we'll just require that the doc comment is the *first* thing in the file (after the optional shebang, which should already have been stripped).
+                ^\s*
+                (/\*!|//(!|/))
+            "
+        ).unwrap()
+    };
     /*
     This has to happen in a few steps.
 
@@ -721,7 +705,7 @@ fn find_code_block_manifest(s: &str) -> Option<(Manifest, &str)> {
 
     Then, we need to take the contents of this doc comment and feed it to a Markdown parser.  We are looking for *the first* fenced code block with a language token of `cargo`.  This is extracted and pasted back together into the manifest.
     */
-    let start = match RE_CRATE_COMMENT.captures(s) {
+    let start = match re_crate_comment.captures(s) {
         Some(cap) => match cap.get(1) {
             Some(m) => m.start(),
             None => return None,
@@ -897,9 +881,9 @@ fn extract_comment(s: &str) -> MainResult<String> {
         */
         let mut r = String::new();
 
-        let margin_re = &*RE_MARGIN;
-        let space_re = &*RE_SPACE;
-        let nesting_re = &*RE_NESTING;
+        let margin_re: Regex = Regex::new(r"^\s*\*( |$)").unwrap();
+        let space_re: Regex = Regex::new(r"^(\s+)").unwrap();
+        let nesting_re: Regex = Regex::new(r"/\*|\*/").unwrap();
 
         let mut leading_space = None;
         let mut margin = None;
@@ -971,8 +955,9 @@ fn extract_comment(s: &str) -> MainResult<String> {
     fn extract_line(s: &str) -> MainResult<String> {
         let mut r = String::new();
 
-        let comment_re = &*RE_COMMENT;
-        let space_re = &*RE_SPACE;
+        let comment_re = Regex::new(r"^\s*//(!|/)").unwrap();
+
+        let space_re = Regex::new(r"^(\s+)").unwrap();
 
         let mut leading_space = None;
 
@@ -1101,21 +1086,76 @@ time = "*"
 /**
 Generates a default Cargo manifest for the given input.
 */
-fn default_manifest(input: &Input, bin_name: &str) -> MainResult<toml::value::Table> {
-    let mani_str = {
-        let pkg_name = input.package_name();
-        let mut subs = HashMap::with_capacity(3);
-        subs.insert(consts::MANI_NAME_SUB, &*pkg_name);
-        subs.insert(consts::MANI_BIN_NAME_SUB, bin_name);
-        subs.insert(consts::MANI_FILE_SUB, "main.rs");
-        templates::expand(consts::DEFAULT_MANIFEST, &subs)?
-    };
-    toml::from_str(&mani_str).map_err(|e| {
-        MainError::Tag(
-            "could not parse default manifest".into(),
-            Box::new(MainError::Other(Box::new(e))),
-        )
-    })
+fn default_manifest(
+    input: &Input,
+    bin_name: &str,
+    toolchain: Option<String>,
+) -> toml::value::Table {
+    let mut package_map = toml::map::Map::new();
+    package_map.insert(
+        "name".to_string(),
+        toml::value::Value::String(input.package_name()),
+    );
+    package_map.insert(
+        "version".to_string(),
+        toml::value::Value::String("0.1.0".to_string()),
+    );
+    package_map.insert(
+        "authors".to_string(),
+        toml::value::Value::Array(vec![toml::value::Value::String("Anonymous".to_string())]),
+    );
+    package_map.insert(
+        "edition".to_string(),
+        toml::value::Value::String("2021".to_string()),
+    );
+    if let Some(toolchain) = toolchain {
+        let mut metadata = toml::map::Map::new();
+        let mut rustscript_metadata = toml::map::Map::new();
+        rustscript_metadata.insert(
+            "toolchain".to_string(),
+            toml::value::Value::String(toolchain),
+        );
+        metadata.insert(
+            "rustscript".to_string(),
+            toml::value::Value::Table(rustscript_metadata),
+        );
+        package_map.insert("metadata".to_string(), toml::value::Value::Table(metadata));
+    }
+
+    let mut release_map = toml::map::Map::new();
+    release_map.insert("strip".to_string(), toml::value::Value::Boolean(true));
+
+    let mut profile_map = toml::map::Map::new();
+    profile_map.insert(
+        "release".to_string(),
+        toml::value::Value::Table(release_map),
+    );
+
+    let mut bin_map = toml::map::Map::new();
+    bin_map.insert(
+        "name".to_string(),
+        toml::value::Value::String(bin_name.to_string()),
+    );
+    bin_map.insert(
+        "path".to_string(),
+        toml::value::Value::String("main.rs".to_string()),
+    );
+
+    let mut mani_map = toml::map::Map::new();
+    mani_map.insert(
+        "bin".to_string(),
+        toml::value::Value::Array(vec![toml::value::Value::Table(bin_map)]),
+    );
+    mani_map.insert(
+        "package".to_string(),
+        toml::value::Value::Table(package_map),
+    );
+    mani_map.insert(
+        "profile".to_string(),
+        toml::value::Value::Table(profile_map),
+    );
+
+    mani_map
 }
 
 /**

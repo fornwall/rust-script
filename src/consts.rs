@@ -129,33 +129,6 @@ where F: FnMut(&str, usize) -> T, T: 'static {
 }
 "#;
 
-/// Substitution for the identifier-safe package name of the script.
-pub const MANI_NAME_SUB: &str = "name";
-
-/// Substitution for the identifier-safe bin name of the script.
-pub const MANI_BIN_NAME_SUB: &str = "bin_name";
-
-/// Substitution for the filesystem-safe name of the script.
-pub const MANI_FILE_SUB: &str = "file";
-
-/**
-The default manifest used for packages.
-*/
-pub const DEFAULT_MANIFEST: &str = r##"
-[package]
-name = "#{name}"
-version = "0.1.0"
-authors = ["Anonymous"]
-edition = "2021"
-
-[[bin]]
-name = "#{bin_name}"
-path = "#{file}"
-
-[profile.release]
-strip = true
-"##;
-
 /**
 When generating a package's unique ID, how many hex nibbles of the digest should be used *at most*?
 
@@ -168,6 +141,4 @@ How old can stuff in the cache be before we automatically clear it out?
 
 Measured in milliseconds.
 */
-// It's been *one week* since you looked at me,
-// cocked your head to the side and said "I'm angry."
 pub const MAX_CACHE_AGE_MS: u128 = 7 * 24 * 60 * 60 * 1000;

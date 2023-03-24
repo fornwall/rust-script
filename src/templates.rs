@@ -3,15 +3,12 @@ This module contains code related to template support.
 */
 use crate::consts;
 use crate::error::{MainError, MainResult};
-use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::HashMap;
 
-lazy_static! {
-    static ref RE_SUB: Regex = Regex::new(r#"#\{([A-Za-z_][A-Za-z0-9_]*)}"#).unwrap();
-}
-
 pub fn expand(src: &str, subs: &HashMap<&str, &str>) -> MainResult<String> {
+    let re_sub = Regex::new(r#"#\{([A-Za-z_][A-Za-z0-9_]*)}"#).unwrap();
+
     // The estimate of final size is the sum of the size of all the input.
     let sub_size = subs.iter().map(|(_, v)| v.len()).sum::<usize>();
     let est_size = src.len() + sub_size;
@@ -19,7 +16,7 @@ pub fn expand(src: &str, subs: &HashMap<&str, &str>) -> MainResult<String> {
     let mut anchor = 0;
     let mut result = String::with_capacity(est_size);
 
-    for m in RE_SUB.captures_iter(src) {
+    for m in re_sub.captures_iter(src) {
         // Concatenate the static bit just before the match.
         let (m_start, m_end) = {
             let m_0 = m.get(0).unwrap();
