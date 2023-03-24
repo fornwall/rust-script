@@ -1,3 +1,5 @@
+use clap::ArgAction;
+
 use crate::build_kind::BuildKind;
 
 #[derive(Debug)]
@@ -38,40 +40,40 @@ impl Args {
         let about = r#"Compiles and runs a Rust script."#;
 
         let app = Command::new(crate::consts::PROGRAM_NAME)
-        .version(version)
-        .about(about)
-        .trailing_var_arg(true)
+            .version(version)
+            .about(about)
             .arg(Arg::new("script")
                 .index(1)
                 .help("Script file or expression to execute.")
                 .required_unless_present_any(if cfg!(windows) {
-                    vec!["clear-cache", "install-file-association", "uninstall-file-association"]
+                    ["clear-cache", "install-file-association", "uninstall-file-association"].iter()
                 } else {
-                    vec!["clear-cache"]
+                    ["clear-cache"].iter()
                 })
                 .conflicts_with_all(if cfg!(windows) {
-                    &["install-file-association", "uninstall-file-association"]
+                    ["install-file-association", "uninstall-file-association"].iter()
                 } else {
-                    &[]
+                    [].iter()
                 })
-                .multiple_values(true)
+                .num_args(1..)
+                .trailing_var_arg(true)
             )
             .arg(Arg::new("expr")
                 .help("Execute <script> as a literal expression and display the result.")
                 .long("expr")
                 .short('e')
-                .takes_value(false)
+                .action(ArgAction::SetTrue)
                 .requires("script")
             )
             .arg(Arg::new("loop")
                 .help("Execute <script> as a literal closure once for each line from stdin.")
                 .long("loop")
                 .short('l')
-                .takes_value(false)
+                .action(ArgAction::SetTrue)
                 .requires("script")
             )
             .group(ArgGroup::new("expr_or_loop")
-                .args(&["expr", "loop"])
+                .args(["expr", "loop"])
             )
             /*
             Options that impact the script being executed.
@@ -80,39 +82,39 @@ impl Args {
                 .help("Show output from cargo when building.")
                 .short('o')
                 .long("cargo-output")
+                .action(ArgAction::SetTrue)
                 .requires("script")
             )
             .arg(Arg::new("count")
                 .help("Invoke the loop closure with two arguments: line, and line number.")
                 .long("count")
+                .action(ArgAction::SetTrue)
                 .requires("loop")
             )
             .arg(Arg::new("debug")
                 .help("Build a debug executable, not an optimised one.")
                 .long("debug")
+                .action(ArgAction::SetTrue)
             )
             .arg(Arg::new("dep")
                 .help("Add an additional Cargo dependency. Each SPEC can be either just the package name (which will assume the latest version) or a full `name=version` spec.")
                 .long("dep")
                 .short('d')
-                .takes_value(true)
-                .multiple_occurrences(true)
+                .num_args(1..)
                 .number_of_values(1)
             )
             .arg(Arg::new("extern")
                 .help("Adds an `#[macro_use] extern crate name;` item for expressions and loop scripts.")
                 .long("extern")
                 .short('x')
-                .takes_value(true)
-                .multiple_occurrences(true)
+                .num_args(1..)
                 .requires("expr_or_loop")
             )
             .arg(Arg::new("unstable_features")
                 .help("Add a #![feature] declaration to the crate.")
                 .long("unstable-feature")
                 .short('u')
-                .takes_value(true)
-                .multiple_occurrences(true)
+                .num_args(1..)
                 .requires("expr_or_loop")
             )
 
@@ -122,41 +124,46 @@ impl Args {
             .arg(Arg::new("clear-cache")
                 .help("Clears out the script cache.")
                 .long("clear-cache")
+                .action(ArgAction::SetTrue),
             )
             .arg(Arg::new("force")
                 .help("Force the script to be rebuilt.")
                 .long("force")
+                .action(ArgAction::SetTrue)
                 .requires("script")
             )
             .arg(Arg::new("gen_pkg_only")
                 .help("Generate the Cargo package, but don't compile or run it.")
                 .long("gen-pkg-only")
+                .action(ArgAction::SetTrue)
                 .requires("script")
-                .conflicts_with_all(&["debug", "force", "test", "bench"])
+                .conflicts_with_all(["debug", "force", "test", "bench"])
             )
             .arg(Arg::new("pkg_path")
                 .help("Specify where to place the generated Cargo package.")
                 .long("pkg-path")
-                .takes_value(true)
+                .num_args(1)
                 .requires("script")
-                .conflicts_with_all(&["clear-cache", "force"])
+                .conflicts_with_all(["clear-cache", "force"])
             )
             .arg(Arg::new("test")
                 .help("Compile and run tests.")
                 .long("test")
-                .conflicts_with_all(&["bench", "debug", "force"])
+                .action(ArgAction::SetTrue)
+                .conflicts_with_all(["bench", "debug", "force"])
             )
             .arg(Arg::new("bench")
                 .help("Compile and run benchmarks. Requires a nightly toolchain.")
                 .long("bench")
-                .conflicts_with_all(&["test", "debug", "force"])
+                .action(ArgAction::SetTrue)
+                .conflicts_with_all(["test", "debug", "force"])
             )
             .arg(Arg::new("toolchain-version")
                 .help("Build the script using the given toolchain version.")
                 .long("toolchain-version")
                 // "channel"
                 .short('c')
-                .takes_value(true)
+                .num_args(1)
                 // FIXME: remove if benchmarking is stabilized
                 .conflicts_with("bench")
             );
@@ -166,31 +173,27 @@ impl Args {
             .arg(
                 Arg::new("install-file-association")
                     .help("Install a file association so that rust-script executes .ers files.")
-                    .long("install-file-association"),
+                    .long("install-file-association")
+                    .action(ArgAction::SetTrue),
             )
             .arg(
                 Arg::new("uninstall-file-association")
                     .help(
                         "Uninstall the file association that makes rust-script execute .ers files.",
                     )
-                    .long("uninstall-file-association"),
+                    .long("uninstall-file-association")
+                    .action(ArgAction::SetTrue),
             )
             .group(
                 ArgGroup::new("file-association")
-                    .args(&["install-file-association", "uninstall-file-association"]),
+                    .args(["install-file-association", "uninstall-file-association"]),
             );
 
-        let m = app.get_matches();
+        let mut m = app.get_matches();
 
-        fn owned_vec_string<'a, I>(v: Option<I>) -> Vec<String>
-        where
-            I: ::std::iter::Iterator<Item = &'a str>,
-        {
-            v.map(|itr| itr.map(Into::into).collect())
-                .unwrap_or_default()
-        }
-
-        let script_and_args: Option<Vec<&str>> = m.values_of("script").map(|o| o.collect());
+        let script_and_args: Option<Vec<String>> = m
+            .remove_many::<String>("script")
+            .map(|values| values.collect());
         let script;
         let script_args: Vec<String>;
         if let Some(script_and_args) = script_and_args {
@@ -209,25 +212,34 @@ impl Args {
             script,
             script_args,
 
-            expr: m.is_present("expr"),
-            loop_: m.is_present("loop"),
-            count: m.is_present("count"),
+            expr: m.get_flag("expr"),
+            loop_: m.get_flag("loop"),
+            count: m.get_flag("count"),
 
-            pkg_path: m.value_of("pkg_path").map(Into::into),
-            gen_pkg_only: m.is_present("gen_pkg_only"),
-            cargo_output: m.is_present("cargo-output"),
-            clear_cache: m.is_present("clear-cache"),
-            debug: m.is_present("debug"),
-            dep: owned_vec_string(m.values_of("dep")),
-            extern_: owned_vec_string(m.values_of("extern")),
-            force: m.is_present("force"),
-            unstable_features: owned_vec_string(m.values_of("unstable_features")),
-            build_kind: BuildKind::from_flags(m.is_present("test"), m.is_present("bench")),
-            toolchain_version: m.value_of("toolchain-version").map(Into::into),
+            pkg_path: m.get_one::<String>("pkg_path").map(Into::into),
+            gen_pkg_only: m.get_flag("gen_pkg_only"),
+            cargo_output: m.get_flag("cargo-output"),
+            clear_cache: m.get_flag("clear-cache"),
+            debug: m.get_flag("debug"),
+            dep: m
+                .remove_many::<String>("dep")
+                .map(|values| values.collect())
+                .unwrap_or_default(),
+            extern_: m
+                .remove_many::<String>("extern")
+                .map(|values| values.collect())
+                .unwrap_or_default(),
+            force: m.get_flag("force"),
+            unstable_features: m
+                .remove_many::<String>("unstable_features")
+                .map(|values| values.collect())
+                .unwrap_or_default(),
+            build_kind: BuildKind::from_flags(m.get_flag("test"), m.get_flag("bench")),
+            toolchain_version: m.get_one::<String>("toolchain-version").map(Into::into),
             #[cfg(windows)]
-            install_file_association: m.is_present("install-file-association"),
+            install_file_association: m.get_flag("install-file-association"),
             #[cfg(windows)]
-            uninstall_file_association: m.is_present("uninstall-file-association"),
+            uninstall_file_association: m.get_flag("uninstall-file-association"),
         }
     }
 }
