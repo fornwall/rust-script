@@ -13,6 +13,11 @@
 - [Environment Variables](#environment-variables)
 - [Troubleshooting](#troubleshooting)
 
+**Latest release:** [Version 0.23.0](https://github.com/fornwall/rust-script/releases/tag/0.23.0), released 2023-03-25.
+
+## News
+- **2023-03-25:** [Version 0.23.0](https://github.com/fornwall/rust-script/releases/tag/0.23.0) has been released, bring improved performance on subsequent runs, flexibility using `-p`/`--package` by printing the path to the generated package and avoids breakage due to rust toolchain files.
+
 ## Overview
 
 With `rust-script` Rust files and expressions can be executed just like a shell or Python script. Features include:
