@@ -368,7 +368,10 @@ impl InputAction {
                             if built_binary_ctime.cmp(&script_mtime).is_ge()
                                 && built_binary_ctime.cmp(&manifest_mtime).is_ge()
                             {
+                                debug!("Keeping old binary");
                                 return Ok(execute_command());
+                            } else {
+                                debug!("Old binary too old - rebuilding");
                             }
                         }
                         (Err(error), _) | (_, Err(error)) => {
@@ -377,7 +380,7 @@ impl InputAction {
                     }
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                    // Continue
+                    debug!("No old binary found");
                 }
                 Err(e) => {
                     return Err(error::MainError::Io(e));
