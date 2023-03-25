@@ -2,6 +2,9 @@
   ul li:not(:last-child) { margin-bottom: 0.4em; }
 </style>
 
+## News
+- **2023-03-25:** [Version 0.23.0](https://github.com/fornwall/rust-script/releases/tag/0.23.0) has been released, bring improved performance on subsequent runs, flexibility using `-p`/`--package` by printing the path to the generated package and avoids breakage due to rust toolchain files.
+
 - [Overview](#overview)
 - [Installation](#installation)
   - [Distro Packages](#distro-packages)
@@ -12,11 +15,6 @@
 - [Filters](#filters)
 - [Environment Variables](#environment-variables)
 - [Troubleshooting](#troubleshooting)
-
-**Latest release:** [Version 0.23.0](https://github.com/fornwall/rust-script/releases/tag/0.23.0), released 2023-03-25.
-
-## News
-- **2023-03-25:** [Version 0.23.0](https://github.com/fornwall/rust-script/releases/tag/0.23.0) has been released, bring improved performance on subsequent runs, flexibility using `-p`/`--package` by printing the path to the generated package and avoids breakage due to rust toolchain files.
 
 ## Overview
 
