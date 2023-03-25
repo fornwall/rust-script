@@ -6,11 +6,9 @@ use crate::build_kind::BuildKind;
 pub struct Args {
     pub script: Option<String>,
     pub script_args: Vec<String>,
-
     pub expr: bool,
     pub loop_: bool,
     pub count: bool,
-
     pub pkg_path: Option<String>,
     pub gen_pkg_only: bool,
     pub cargo_output: bool,
@@ -21,12 +19,7 @@ pub struct Args {
     pub force: bool,
     pub unstable_features: Vec<String>,
     pub build_kind: BuildKind,
-    // This is a String instead of an
-    // enum since one can have custom
-    // toolchains (ex. a rustc developer
-    // will probably have `stage1`).
     pub toolchain_version: Option<String>,
-
     #[cfg(windows)]
     pub install_file_association: bool,
     #[cfg(windows)]
@@ -80,7 +73,7 @@ impl Args {
             */
             .arg(Arg::new("cargo-output")
                 .help("Show output from cargo when building.")
-                .short('o')
+                .short('c')
                 .long("cargo-output")
                 .action(ArgAction::SetTrue)
                 .requires("script")
@@ -97,7 +90,7 @@ impl Args {
                 .action(ArgAction::SetTrue)
             )
             .arg(Arg::new("dep")
-                .help("Add an additional Cargo dependency. Each SPEC can be either just the package name (which will assume the latest version) or a full `name=version` spec.")
+                .help("Add a dependency - either just the package name (for the latest version) or as `name=version`.")
                 .long("dep")
                 .short('d')
                 .num_args(1..)
@@ -124,17 +117,20 @@ impl Args {
             .arg(Arg::new("clear-cache")
                 .help("Clears out the script cache.")
                 .long("clear-cache")
+                .exclusive(true)
                 .action(ArgAction::SetTrue),
             )
             .arg(Arg::new("force")
                 .help("Force the script to be rebuilt.")
                 .long("force")
+                .short('f')
                 .action(ArgAction::SetTrue)
                 .requires("script")
             )
             .arg(Arg::new("gen_pkg_only")
-                .help("Generate the Cargo package, but don't compile or run it.")
+                .help("Generate the Cargo package and print the path to it, but don't compile or run it.")
                 .long("project")
+                .short('p')
                 .action(ArgAction::SetTrue)
                 .requires("script")
                 .conflicts_with_all(["debug", "force", "test", "bench"])
@@ -158,11 +154,10 @@ impl Args {
                 .action(ArgAction::SetTrue)
                 .conflicts_with_all(["test", "debug", "force"])
             )
-            .arg(Arg::new("toolchain-version")
+            .arg(Arg::new("toolchain")
                 .help("Build the script using the given toolchain version.")
-                .long("toolchain-version")
-                // "channel"
-                .short('c')
+                .long("toolchain")
+                .short('t')
                 .num_args(1)
                 // Benchmarking currently requires nightly:
                 .conflicts_with("bench")
@@ -174,6 +169,7 @@ impl Args {
                 Arg::new("install-file-association")
                     .help("Install a file association so that rust-script executes .ers files.")
                     .long("install-file-association")
+                    .exclusive(true)
                     .action(ArgAction::SetTrue),
             )
             .arg(
@@ -182,6 +178,7 @@ impl Args {
                         "Uninstall the file association that makes rust-script execute .ers files.",
                     )
                     .long("uninstall-file-association")
+                    .exclusive(true)
                     .action(ArgAction::SetTrue),
             )
             .group(
@@ -235,7 +232,7 @@ impl Args {
                 .map(|values| values.collect())
                 .unwrap_or_default(),
             build_kind: BuildKind::from_flags(m.get_flag("test"), m.get_flag("bench")),
-            toolchain_version: m.get_one::<String>("toolchain-version").map(Into::into),
+            toolchain_version: m.get_one::<String>("toolchain").map(Into::into),
             #[cfg(windows)]
             install_file_association: m.get_flag("install-file-association"),
             #[cfg(windows)]
