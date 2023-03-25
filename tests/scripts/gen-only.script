@@ -8,7 +8,7 @@ cd "$mytmpdir"
 
 printf 'println!("hello, world");' > script.rs
 
-cd $(rust-script --project script.rs)
+cd $(rust-script --package script.rs)
 
 echo "About to cargo run"
 cargo run -q
