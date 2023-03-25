@@ -1,0 +1,14 @@
+#!/bin/sh
+set -e -u
+
+# https://unix.stackexchange.com/questions/30091/fix-or-alternative-for-mktemp-in-os-x
+mytmpdir=$(mktemp -d 2>/dev/null || mktemp -d -t 'mytmpdir')
+
+cd "$mytmpdir"
+
+printf 'println!("hello, world");' > script.rs
+
+cd $(rust-script --project script.rs)
+
+echo "About to cargo run"
+cargo run -q
