@@ -129,7 +129,7 @@ impl Args {
             )
             .arg(Arg::new("gen_pkg_only")
                 .help("Generate the Cargo package and print the path to it, but don't compile or run it.")
-                .long("project")
+                .long("package")
                 .short('p')
                 .action(ArgAction::SetTrue)
                 .requires("script")

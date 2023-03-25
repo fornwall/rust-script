@@ -101,7 +101,7 @@ Useful command-line arguments:
 - `--bench`: Compile and run benchmarks. Requires a nightly toolchain.
 - `--debug`: Build a debug executable, not an optimised one.
 - `--force`: Force the script to be rebuilt.  Useful if you want to force a recompile with a different toolchain.
-- `--project`: Generate the Cargo package and print the path to it - but don't compile or run it. Effectively "unpacks" the script into a Cargo package.
+- `--package`: Generate the Cargo package and print the path to it - but don't compile or run it. Effectively "unpacks" the script into a Cargo package.
 - `--test`: Compile and run tests.
 
 ## Executable Scripts
