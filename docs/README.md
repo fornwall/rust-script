@@ -3,7 +3,7 @@
 </style>
 
 ## News
-- **2023-03-25:** [Version 0.23.0](https://github.com/fornwall/rust-script/releases/tag/0.23.0) has been released, bring improved performance on subsequent runs, flexibility using `-p`/`--package` by printing the path to the generated package and avoids breakage due to rust toolchain files.
+**2023-03-25:** [Version 0.23.0](https://github.com/fornwall/rust-script/releases/tag/0.23.0) has been released, bring improved performance on subsequent runs, flexibility using `-p`/`--package` by printing the path to the generated package and avoids breakage due to rust toolchain files.
 
 - [Overview](#overview)
 - [Installation](#installation)
