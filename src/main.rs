@@ -297,6 +297,8 @@ struct InputAction {
     /// Directory where the package should live.
     pkg_path: PathBuf,
 
+    script_name: String,
+
     /**
     Is the package directory in the cache?
 
@@ -333,7 +335,7 @@ impl InputAction {
     }
 
     fn script_path(&self) -> PathBuf {
-        self.pkg_path.join("main.rs")
+        self.pkg_path.join(&self.script_name)
     }
 
     fn cargo(&self, script_args: &[String]) -> MainResult<Command> {
@@ -458,8 +460,16 @@ fn decide_action_for(
             _ => None,
         });
 
-    let (mani_str, script_str) =
-        manifest::split_input(input, &deps, &prelude, &bin_name, toolchain_version.clone())?;
+    let script_name = format!("{}.rs", input.safe_name());
+
+    let (mani_str, script_str) = manifest::split_input(
+        input,
+        &deps,
+        &prelude,
+        &bin_name,
+        &script_name,
+        toolchain_version.clone(),
+    )?;
 
     // Forcibly override some flags based on build kind.
     let debug = match args.build_kind {
@@ -473,6 +483,7 @@ fn decide_action_for(
         force_compile: args.force,
         execute: !args.gen_pkg_only,
         pkg_path,
+        script_name,
         using_cache,
         toolchain_version,
         debug,

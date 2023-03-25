@@ -23,6 +23,7 @@ pub fn split_input(
     deps: &[(String, String)],
     prelude_items: &[String],
     bin_name: &str,
+    script_name: &str,
     toolchain: Option<String>,
 ) -> MainResult<(String, String)> {
     fn contains_main_method(line: &str) -> bool {
@@ -85,7 +86,7 @@ pub fn split_input(
     info!("source: {:?}", source);
 
     // It's-a mergin' time!
-    let def_mani = default_manifest(input, bin_name, toolchain);
+    let def_mani = default_manifest(input, bin_name, script_name, toolchain);
     let dep_mani = deps_manifest(deps)?;
 
     let mani = merge_manifest(def_mani, part_mani)?;
@@ -110,15 +111,16 @@ strip = true
 #[test]
 fn test_split_input() {
     let bin_name = "binary-name".to_string();
+    let script_name = "main.rs".to_string();
     let toolchain = None;
     macro_rules! si {
         ($i:expr) => {
-            split_input(&$i, &[], &[], &bin_name, toolchain.clone()).ok()
+            split_input(&$i, &[], &[], &bin_name, &script_name, toolchain.clone()).ok()
         };
     }
 
     let f = |c: &str| {
-        let dummy_path: ::std::path::PathBuf = "p".into();
+        let dummy_path: ::std::path::PathBuf = "main.rs".into();
         Input::File("n".to_string(), dummy_path, c.to_string())
     };
 
@@ -203,6 +205,7 @@ fn main() {}"#
             &[],
             &[],
             &bin_name,
+            "main.rs",
             Some("stable".to_string())
         )
         .ok(),
@@ -1089,6 +1092,7 @@ Generates a default Cargo manifest for the given input.
 fn default_manifest(
     input: &Input,
     bin_name: &str,
+    script_name: &str,
     toolchain: Option<String>,
 ) -> toml::value::Table {
     let mut package_map = toml::map::Map::new();
@@ -1138,7 +1142,7 @@ fn default_manifest(
     );
     bin_map.insert(
         "path".to_string(),
-        toml::value::Value::String("main.rs".to_string()),
+        toml::value::Value::String(script_name.to_string()),
     );
 
     let mut mani_map = toml::map::Map::new();
