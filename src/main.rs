@@ -167,12 +167,11 @@ fn try_main() -> MainResult<i32> {
     gen_pkg_and_compile(&action)?;
 
     // Once we're done, clean out old packages from the cache.
-    // There's no point if we've already done a full clear, though.
     let _defer_clear = {
-        // To get around partially moved args problems.
-        let cc = args.clear_cache;
         Defer::<_, MainError>::new(move || {
-            if !cc {
+            if args.clear_cache {
+                // Do nothing if cache was cleared explicitly.
+            } else {
                 clean_cache(consts::MAX_CACHE_AGE_MS)?;
             }
             Ok(())
