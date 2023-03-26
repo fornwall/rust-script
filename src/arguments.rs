@@ -68,9 +68,8 @@ impl Args {
             .group(ArgGroup::new("expr_or_loop")
                 .args(["expr", "loop"])
             )
-            /*
-            Options that impact the script being executed.
-            */
+
+            // Options that impact the script being executed.
             .arg(Arg::new("cargo-output")
                 .help("Show output from cargo when building")
                 .short('c')
@@ -111,13 +110,10 @@ impl Args {
                 .requires("expr_or_loop")
             )
 
-            /*
-            Options that change how rust-script itself behaves, and don't alter what the script will do.
-            */
+            // Options that change how rust-script itself behaves, and don't alter what the script will do.
             .arg(Arg::new("clear-cache")
                 .help("Clears out the script cache")
                 .long("clear-cache")
-                .exclusive(true)
                 .action(ArgAction::SetTrue),
             )
             .arg(Arg::new("force")
