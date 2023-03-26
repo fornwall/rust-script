@@ -3,11 +3,11 @@
 mod arguments;
 mod build_kind;
 mod consts;
+mod defer;
 mod error;
 mod manifest;
 mod platform;
 mod templates;
-mod util;
 
 #[cfg(windows)]
 mod file_assoc;
@@ -27,8 +27,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::build_kind::BuildKind;
+use crate::defer::Defer;
 use crate::error::{MainError, MainResult};
-use crate::util::Defer;
 use sha1::{Digest, Sha1};
 
 fn main() {
