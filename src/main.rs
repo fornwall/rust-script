@@ -164,7 +164,7 @@ fn try_main() -> MainResult<i32> {
     let action = decide_action_for(&input, dependencies_from_args, prelude_items, &args)?;
     info!("action: {:?}", action);
 
-    gen_pkg_and_compile(&action)?;
+    generate_package(&action)?;
 
     // Once we're done, clean out old packages from the cache.
     let _defer_clear = {
@@ -244,20 +244,17 @@ fn clean_cache(max_age: u128) -> MainResult<()> {
     Ok(())
 }
 
-// Generate and compile a package from the input.
-fn gen_pkg_and_compile(action: &InputAction) -> MainResult<()> {
-    let pkg_path = &action.pkg_path;
-
-    let mani_str = &action.manifest;
-    let script_str = &action.script;
-
+// Generate a package from the input.
+fn generate_package(action: &InputAction) -> MainResult<()> {
     info!("creating pkg dir...");
-    fs::create_dir_all(pkg_path)?;
+    fs::create_dir_all(&action.pkg_path)?;
     let cleanup_dir: Defer<_, MainError> = Defer::new(|| {
-        // DO NOT try deleting ANYTHING if we're not cleaning up inside our own cache.  We *DO NOT* want to risk killing user files.
         if action.using_cache {
-            info!("cleaning up cache directory {:?}", pkg_path);
-            fs::remove_dir_all(pkg_path)?;
+            // Only cleanup on failure if we are using the shared package
+            // cache, and not when the user has specified the package path
+            // (since that would risk removing user files).
+            info!("cleaning up cache directory {:?}", &action.pkg_path);
+            fs::remove_dir_all(&action.pkg_path)?;
         }
         Ok(())
     });
@@ -266,8 +263,8 @@ fn gen_pkg_and_compile(action: &InputAction) -> MainResult<()> {
     let mani_path = action.manifest_path();
     let script_path = action.script_path();
 
-    overwrite_file(&mani_path, mani_str)?;
-    overwrite_file(&script_path, script_str)?;
+    overwrite_file(&mani_path, &action.manifest)?;
+    overwrite_file(&script_path, &action.script)?;
 
     info!("disarming pkg dir cleanup...");
     cleanup_dir.disarm();
