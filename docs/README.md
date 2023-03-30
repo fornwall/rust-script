@@ -58,7 +58,7 @@ $ rust-script hello.rs
 Hello, World!
 ```
 
-Under the hood, a Cargo project will be generated and built (with the Cargo output hidden unless compilation fails or the `-o`/`--cargo-output` option is used). The first invocation of the script will be slower as the script is compiled - subsequent invocations of unmodified scripts will be fast as the built executable is cached.
+Under the hood, a Cargo project will be generated and built (with the Cargo output hidden unless compilation fails or the `-c`/`--cargo-output` option is used). The first invocation of the script will be slower as the script is compiled - subsequent invocations of unmodified scripts will be fast as the built executable is cached.
 
 As seen from the above example, using a `fn main() {}` function is not required. If not present, the script file will be wrapped in a `fn main() { ... }` block.
 
