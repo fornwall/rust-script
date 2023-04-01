@@ -1,7 +1,6 @@
 /*!
 This module contains code related to template support.
 */
-use crate::consts;
 use crate::error::{MainError, MainResult};
 use regex::Regex;
 use std::collections::HashMap;
@@ -40,17 +39,4 @@ pub fn expand(src: &str, subs: &HashMap<&str, &str>) -> MainResult<String> {
     }
     result.push_str(&src[anchor..]);
     Ok(result)
-}
-
-/**
-Attempts to locate and load the contents of the specified template.
-*/
-pub fn get_template(name: &str) -> MainResult<&'static str> {
-    Ok(match name {
-        "expr" => consts::EXPR_TEMPLATE,
-        "file" => consts::FILE_TEMPLATE,
-        "loop" => consts::LOOP_TEMPLATE,
-        "loop-count" => consts::LOOP_COUNT_TEMPLATE,
-        _ => panic!("No such template: {name}"),
-    })
 }
