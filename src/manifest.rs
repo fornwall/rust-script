@@ -46,23 +46,24 @@ pub fn split_input(
             } else {
                 format!("fn main() -> Result<(), Box<dyn std::error::Error+Sync+Send>> {{\n    {{\n    {}    }}\n    Ok(())\n}}", source)
             };
-            (manifest, source, templates::get_template("file")?, false)
+            (manifest, source, consts::FILE_TEMPLATE, false)
         }
-        Input::Expr(content) => {
-            let template_buf = templates::get_template("expr")?;
-            let (manifest, template_src) =
-                find_embedded_manifest(template_buf).unwrap_or((Manifest::Toml(""), template_buf));
-            (manifest, content.to_string(), template_src, true)
-        }
-        Input::Loop(content, count) => {
-            let templ = if *count { "loop-count" } else { "loop" };
-            (
-                Manifest::Toml(""),
-                content.to_string(),
-                templates::get_template(templ)?,
-                true,
-            )
-        }
+        Input::Expr(content) => (
+            Manifest::Toml(""),
+            content.to_string(),
+            consts::EXPR_TEMPLATE,
+            true,
+        ),
+        Input::Loop(content, count) => (
+            Manifest::Toml(""),
+            content.to_string(),
+            if *count {
+                consts::LOOP_COUNT_TEMPLATE
+            } else {
+                consts::LOOP_TEMPLATE
+            },
+            true,
+        ),
     };
 
     let mut prelude_str;
