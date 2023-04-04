@@ -9,8 +9,6 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use is_terminal::IsTerminal as _;
-
 // Last-modified time of a directory, in milliseconds since the UNIX epoch.
 pub fn dir_last_modified(dir: &fs::DirEntry) -> u128 {
     dir.metadata()
@@ -57,6 +55,7 @@ pub fn binary_cache_path() -> PathBuf {
 #[cfg(unix)]
 mod inner {
     pub use super::*;
+    use is_terminal::IsTerminal as _;
 
     /**
     Returns `true` if `rust-script` should force Cargo to use coloured output.
