@@ -9,6 +9,8 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use is_terminal::IsTerminal as _;
+
 // Last-modified time of a directory, in milliseconds since the UNIX epoch.
 pub fn dir_last_modified(dir: &fs::DirEntry) -> u128 {
     dir.metadata()
@@ -62,7 +64,7 @@ mod inner {
     This depends on whether `rust-script`'s STDERR is connected to a TTY or not.
     */
     pub fn force_cargo_color() -> bool {
-        atty::is(atty::Stream::Stderr)
+        std::io::stderr().is_terminal()
     }
 }
 
