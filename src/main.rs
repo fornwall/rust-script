@@ -339,7 +339,16 @@ impl InputAction {
 
         let built_binary_path = platform::binary_cache_path()
             .join(if release_mode { "release" } else { "debug" })
-            .join(&self.bin_name);
+            .join({
+                #[cfg(windows)]
+                {
+                    format!("{}.exe", &self.bin_name)
+                }
+                #[cfg(not(windows))]
+                {
+                    &self.bin_name
+                }
+            });
 
         let manifest_path = self.manifest_path();
 

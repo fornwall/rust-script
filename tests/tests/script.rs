@@ -187,6 +187,34 @@ fn test_whitespace_before_main() {
 }
 
 #[test]
+fn test_force_rebuild() {
+    for option in ["-f", "--force"] {
+        std::env::remove_var("_RUST_SCRIPT_TEST_MESSAGE");
+
+        let script_path = "tests/data/script-using-env.rs";
+        let out = rust_script!(option, script_path).unwrap();
+        scan!(out.stdout_output();
+            ("msg = undefined") => ()
+        )
+        .unwrap();
+
+        std::env::set_var("_RUST_SCRIPT_TEST_MESSAGE", "hello");
+
+        let out = rust_script!(script_path).unwrap();
+        scan!(out.stdout_output();
+            ("msg = undefined") => ()
+        )
+        .unwrap();
+
+        let out = rust_script!(option, script_path).unwrap();
+        scan!(out.stdout_output();
+            ("msg = hello") => ()
+        )
+        .unwrap();
+    }
+}
+
+#[test]
 #[ignore]
 fn test_stable_toolchain() {
     let out = rust_script!(
