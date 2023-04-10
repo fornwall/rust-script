@@ -3,6 +3,8 @@
 </style>
 
 ## News
+**2023-04-11:** [Version 0.25.0](https://github.com/fornwall/rust-script/releases/tag/0.25.0) has been released, fixing whitespace between `main` and `()` not working, and avoids having shebangs cause a line number mismatch.
+
 **2023-04-05:** [Version 0.24.0](https://github.com/fornwall/rust-script/releases/tag/0.24.0) has been released, containing a fix for Windows executable caching not working.
 
 **2023-03-25:** [Version 0.23.0](https://github.com/fornwall/rust-script/releases/tag/0.23.0) has been released, bringing improved performance on subsequent runs, flexibility using `-p`/`--package` by printing the path to the generated package and avoids breakage due to rust toolchain files.
