@@ -34,14 +34,18 @@ pub fn split_input(
     let (part_mani, source, template, sub_prelude) = match input {
         Input::File(_, _, content) => {
             assert_eq!(prelude_items.len(), 0);
-            let content = strip_shebang(content);
+            let (content, shebang_used) = strip_shebang(content);
             let (manifest, source) =
                 find_embedded_manifest(content).unwrap_or((Manifest::Toml(""), content));
 
             let source = if contains_main_method(source) {
-                source.to_string()
+                if shebang_used {
+                    format!("//\n{}", source)
+                } else {
+                    source.to_string()
+                }
             } else {
-                format!("fn main() -> Result<(), Box<dyn std::error::Error+Sync+Send>> {{\n    {{\n    {}    }}\n    Ok(())\n}}", source)
+                format!("fn main() -> Result<(), Box<dyn std::error::Error+Sync+Send>> {{    {{\n{}    }}\n    Ok(())\n}}", source)
             };
             (manifest, source, consts::FILE_TEMPLATE, false)
         }
@@ -169,7 +173,8 @@ name = "n"
 version = "0.1.0""#,
                 STRIP_SECTION
             ),
-            r#"fn main() {}"#
+            r#"//
+fn main() {}"#
         )
     );
 
@@ -395,11 +400,11 @@ fn main() {}
 /**
 Returns a slice of the input string with the leading shebang, if there is one, omitted.
 */
-fn strip_shebang(s: &str) -> &str {
+fn strip_shebang(s: &str) -> (&str, bool) {
     let re_shebang: Regex = Regex::new(r"^#![^\[].*?(\r\n|\n)").unwrap();
     match re_shebang.find(s) {
-        Some(m) => &s[m.end()..],
-        None => s,
+        Some(m) => (&s[m.end()..], true),
+        None => (s, false),
     }
 }
 
