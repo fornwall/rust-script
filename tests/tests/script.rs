@@ -35,6 +35,15 @@ fn test_script_full_line_without_main() {
 }
 
 #[test]
+fn test_script_main_with_space() {
+    let out = rust_script!("tests/data/script-main-with-spaces.rs").unwrap();
+    scan!(out.stdout_output();
+        ("Hello, World!") => ()
+    )
+    .unwrap()
+}
+
+#[test]
 fn test_script_invalid_doc_comment() {
     let out = rust_script!("tests/data/script-invalid-doc-comment.rs").unwrap();
     scan!(out.stdout_output();

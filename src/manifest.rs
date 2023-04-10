@@ -26,12 +26,9 @@ pub fn split_input(
     script_name: &str,
     toolchain: Option<String>,
 ) -> MainResult<(String, String)> {
-    fn contains_main_method(line: &str) -> bool {
-        let line = line.trim_start();
-        line.starts_with("fn main(")
-            || line.starts_with("pub fn main(")
-            || line.starts_with("async fn main(")
-            || line.starts_with("pub async fn main(")
+    fn contains_main_method(source: &str) -> bool {
+        let re_shebang: Regex = Regex::new(r"(?m)^ *(pub )?(async )?fn main *\(").unwrap();
+        re_shebang.is_match(source)
     }
 
     let (part_mani, source, template, sub_prelude) = match input {
@@ -41,7 +38,7 @@ pub fn split_input(
             let (manifest, source) =
                 find_embedded_manifest(content).unwrap_or((Manifest::Toml(""), content));
 
-            let source = if source.lines().any(contains_main_method) {
+            let source = if contains_main_method(source) {
                 source.to_string()
             } else {
                 format!("fn main() -> Result<(), Box<dyn std::error::Error+Sync+Send>> {{\n    {{\n    {}    }}\n    Ok(())\n}}", source)
