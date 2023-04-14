@@ -260,3 +260,12 @@ fn test_same_flags() {
     )
     .unwrap()
 }
+
+#[test]
+fn test_extern_c_main() {
+    let out = rust_script!("tests/data/extern-c-main.rs").unwrap();
+    scan!(out.stdout_output();
+        ("hello, world") => ()
+    )
+    .unwrap()
+}
