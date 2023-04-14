@@ -27,7 +27,8 @@ pub fn split_input(
     toolchain: Option<String>,
 ) -> MainResult<(String, String)> {
     fn contains_main_method(source: &str) -> bool {
-        let re_shebang: Regex = Regex::new(r"(?m)^ *(pub )?(async )?fn main *\(").unwrap();
+        let re_shebang: Regex =
+            Regex::new(r#"(?m)^ *(pub )?(async )?(extern "C" )?fn main *\("#).unwrap();
         re_shebang.is_match(source)
     }
 
