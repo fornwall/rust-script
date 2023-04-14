@@ -1,4 +1,4 @@
-#![forbid(unsafe_code)]
+#![windows_subsystem = "windows"]
 
 mod arguments;
 mod build_kind;
@@ -32,6 +32,14 @@ use crate::error::{MainError, MainResult};
 use sha1::{Digest, Sha1};
 
 fn main() {
+    #[cfg(target_os = "windows")]
+    {
+        use winapi::um::wincon::{AttachConsole, ATTACH_PARENT_PROCESS};
+        unsafe {
+            AttachConsole(ATTACH_PARENT_PROCESS);
+        }
+    }
+
     env_logger::init();
 
     match try_main() {
