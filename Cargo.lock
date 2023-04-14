@@ -433,7 +433,7 @@ checksum = "f162c6dd7b008981e4d40210aca20b4bd0f9b60ca9271061b07f78537722f2e1"
 
 [[package]]
 name = "rust-script"
-version = "0.26.0"
+version = "0.27.0"
 dependencies = [
  "clap",
  "dirs-next",
