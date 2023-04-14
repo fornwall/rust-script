@@ -261,6 +261,7 @@ fn test_same_flags() {
     .unwrap()
 }
 
+#[cfg(unix)]
 #[test]
 fn test_extern_c_main() {
     let out = rust_script!("tests/data/extern-c-main.rs").unwrap();
