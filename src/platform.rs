@@ -30,7 +30,7 @@ pub fn current_time() -> u128 {
 pub fn cache_dir() -> PathBuf {
     #[cfg(not(test))]
     {
-        dirs_next::cache_dir()
+        dirs::cache_dir()
             .map(|dir| dir.join(crate::consts::PROGRAM_NAME))
             .expect("Cannot get cache directory")
     }
