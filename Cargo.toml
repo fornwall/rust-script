@@ -22,7 +22,7 @@ exclude = [
 
 [dependencies]
 clap = "4"
-dirs-next = "2"
+dirs = "5"
 env_logger = "0.10"
 log = "0.4"
 pulldown-cmark = "0.9"
@@ -32,7 +32,7 @@ tempfile = "3"
 toml = "0.7"
 
 [target.'cfg(windows)'.dependencies]
-winreg = "0.11"
+winreg = "0.50"
 
 [target.'cfg(unix)'.dependencies]
 is-terminal = "0.4.6"
