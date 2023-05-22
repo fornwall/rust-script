@@ -362,7 +362,10 @@ impl InputAction {
                     // Use ctime instead of mtime as cargo may copy an already
                     // built binary (with old mtime) here:
                     let built_binary_ctime = built_binary_file.metadata()?.created()?;
-                    match (fs::File::open(&self.script_path), fs::File::open(manifest_path)) {
+                    match (
+                        fs::File::open(&self.script_path),
+                        fs::File::open(manifest_path),
+                    ) {
                         (Ok(script_file), Ok(manifest_file)) => {
                             let script_mtime = script_file.metadata()?.modified()?;
                             let manifest_mtime = manifest_file.metadata()?.modified()?;

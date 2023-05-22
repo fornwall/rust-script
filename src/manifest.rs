@@ -45,7 +45,13 @@ pub fn split_input(
             if contains_main_method(content) {
                 (manifest, path.clone(), source.to_string(), None, false)
             } else {
-                (manifest, source_in_package, content.to_string(), Some(consts::FILE_NO_MAIN_TEMPLATE), false)
+                (
+                    manifest,
+                    source_in_package,
+                    content.to_string(),
+                    Some(consts::FILE_NO_MAIN_TEMPLATE),
+                    false,
+                )
             }
         }
         Input::Expr(content) => (
@@ -83,12 +89,16 @@ pub fn split_input(
         subs.insert(consts::SCRIPT_PRELUDE_SUB, &prelude_str[..]);
     }
 
-    let source = template.map(|template| templates::expand(template, &subs)).transpose()?;
+    let source = template
+        .map(|template| templates::expand(template, &subs))
+        .transpose()?;
     let part_mani = part_mani.into_toml()?;
     info!("part_mani: {:?}", part_mani);
     info!("source: {:?}", source);
 
-    let source_path_str = source_path.to_str().ok_or_else(|| format!("Unable to stringify {source_path:?}"))?;
+    let source_path_str = source_path
+        .to_str()
+        .ok_or_else(|| format!("Unable to stringify {source_path:?}"))?;
 
     // It's-a mergin' time!
     let def_mani = default_manifest(input, bin_name, source_path_str, toolchain);
@@ -120,7 +130,16 @@ fn test_split_input() {
     let toolchain = None;
     macro_rules! si {
         ($i:expr) => {
-            split_input(&$i, &[], &[], "", &bin_name, &script_name, toolchain.clone()).ok()
+            split_input(
+                &$i,
+                &[],
+                &[],
+                "",
+                &bin_name,
+                &script_name,
+                toolchain.clone(),
+            )
+            .ok()
         };
     }
 
