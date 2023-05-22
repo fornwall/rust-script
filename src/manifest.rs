@@ -134,7 +134,7 @@ fn test_split_input() {
                 &$i,
                 &[],
                 &[],
-                "",
+                "/package",
                 &bin_name,
                 &script_name,
                 toolchain.clone(),
@@ -144,13 +144,13 @@ fn test_split_input() {
     }
 
     let f = |c: &str| {
-        let dummy_path: ::std::path::PathBuf = "main.rs".into();
+        let dummy_path: ::std::path::PathBuf = "/dummy/main.rs".into();
         Input::File("n".to_string(), dummy_path, c.to_string())
     };
 
     macro_rules! r {
-        ($m:expr, $r:expr) => {
-            Some(($m.into(), "main.rs".into(), $r.into()))
+        ($m:expr, $p:expr, $r:expr) => {
+            Some(($m.into(), $p.into(), $r.into()))
         };
     }
 
@@ -161,7 +161,7 @@ fn test_split_input() {
                 "{}{}",
                 r#"[[bin]]
 name = "binary-name"
-path = "main.rs"
+path = "/dummy/main.rs"
 
 [dependencies]
 
@@ -172,6 +172,7 @@ name = "n"
 version = "0.1.0""#,
                 STRIP_SECTION
             ),
+            "/dummy/main.rs",
             None
         )
     );
@@ -184,7 +185,7 @@ fn main() {}"#)),
                 "{}{}",
                 r#"[[bin]]
 name = "binary-name"
-path = "main.rs"
+path = "/dummy/main.rs"
 
 [dependencies]
 
@@ -195,6 +196,7 @@ name = "n"
 version = "0.1.0""#,
                 STRIP_SECTION
             ),
+            "/dummy/main.rs",
             None
         )
     );
@@ -207,7 +209,7 @@ fn main() {}"#)),
                 "{}{}",
                 r#"[[bin]]
 name = "binary-name"
-path = "main.rs"
+path = "/dummy/main.rs"
 
 [dependencies]
 
@@ -218,6 +220,7 @@ name = "n"
 version = "0.1.0""#,
                 STRIP_SECTION
             ),
+            "/dummy/main.rs",
             None
         )
     );
@@ -238,7 +241,7 @@ version = "0.1.0""#,
                 "{}{}",
                 r#"[[bin]]
 name = "binary-name"
-path = "main.rs"
+path = "/dummy/main.rs"
 
 [dependencies]
 
@@ -252,6 +255,7 @@ version = "0.1.0"
 toolchain = "stable""#,
                 STRIP_SECTION
             ),
+            "/dummy/main.rs",
             None
         )
     );
@@ -267,7 +271,7 @@ fn main() {}
                 "{}{}",
                 r#"[[bin]]
 name = "binary-name"
-path = "main.rs"
+path = "/dummy/main.rs"
 
 [dependencies]
 
@@ -278,6 +282,7 @@ name = "n"
 version = "0.1.0""#,
                 STRIP_SECTION
             ),
+            "/dummy/main.rs",
             None
         )
     );
@@ -293,7 +298,7 @@ fn main() {}
                 "{}{}",
                 r#"[[bin]]
 name = "binary-name"
-path = "main.rs"
+path = "/dummy/main.rs"
 
 [dependencies]
 
@@ -304,6 +309,7 @@ name = "n"
 version = "0.1.0""#,
                 STRIP_SECTION
             ),
+            "/dummy/main.rs",
             None
         )
     );
@@ -318,7 +324,7 @@ fn main() {}
                 "{}{}",
                 r#"[[bin]]
 name = "binary-name"
-path = "main.rs"
+path = "/dummy/main.rs"
 
 [dependencies]
 time = "0.1.25"
@@ -330,6 +336,7 @@ name = "n"
 version = "0.1.0""#,
                 STRIP_SECTION
             ),
+            "/dummy/main.rs",
             None
         )
     );
@@ -344,7 +351,7 @@ fn main() {}
                 "{}{}",
                 r#"[[bin]]
 name = "binary-name"
-path = "main.rs"
+path = "/dummy/main.rs"
 
 [dependencies]
 libc = "0.2.5"
@@ -357,6 +364,7 @@ name = "n"
 version = "0.1.0""#,
                 STRIP_SECTION
             ),
+            "/dummy/main.rs",
             None
         )
     );
@@ -378,7 +386,7 @@ fn main() {}
                 "{}{}",
                 r#"[[bin]]
 name = "binary-name"
-path = "main.rs"
+path = "/dummy/main.rs"
 
 [dependencies]
 time = "0.1.25"
@@ -390,7 +398,37 @@ name = "n"
 version = "0.1.0""#,
                 STRIP_SECTION
             ),
+            "/dummy/main.rs",
             None
+        )
+    );
+
+    assert_eq!(
+        si!(f(r#"#!/usr/bin/env rust-script
+println!("Hello")"#)),
+        r!(
+            format!(
+                "{}{}",
+                r#"[[bin]]
+name = "binary-name"
+path = "/package/main.rs"
+
+[dependencies]
+
+[package]
+authors = ["Anonymous"]
+edition = "2021"
+name = "n"
+version = "0.1.0""#,
+                STRIP_SECTION
+            ),
+            "/package/main.rs",
+            Some(r#"
+fn main() -> Result<(), Box<dyn std::error::Error+Sync+Send>> {
+    {println!("Hello")}
+    Ok(())
+}
+"#.to_string())
         )
     );
 }
