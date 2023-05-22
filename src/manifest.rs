@@ -6,6 +6,7 @@ use regex;
 use self::regex::Regex;
 use std::collections::HashMap;
 use std::path::Path;
+use std::path::PathBuf;
 
 use crate::consts;
 use crate::error::{MainError, MainResult};
@@ -22,48 +23,47 @@ pub fn split_input(
     input: &Input,
     deps: &[(String, String)],
     prelude_items: &[String],
+    package_path: impl AsRef<Path>,
     bin_name: &str,
     script_name: &str,
     toolchain: Option<String>,
-) -> MainResult<(String, String)> {
+) -> MainResult<(String, PathBuf, Option<String>)> {
     fn contains_main_method(source: &str) -> bool {
         let re_shebang: Regex =
             Regex::new(r#"(?m)^ *(pub )?(async )?(extern "C" )?fn main *\("#).unwrap();
         re_shebang.is_match(source)
     }
 
-    let (part_mani, source, template, sub_prelude) = match input {
-        Input::File(_, _, content) => {
+    let source_in_package = package_path.as_ref().join(script_name);
+    let (part_mani, source_path, source, template, sub_prelude) = match input {
+        Input::File(_, path, content) => {
             assert_eq!(prelude_items.len(), 0);
-            let (content, shebang_used) = strip_shebang(content);
+            let content = strip_shebang(content);
             let (manifest, source) =
                 find_embedded_manifest(content).unwrap_or((Manifest::Toml(""), content));
 
-            let source = if contains_main_method(source) {
-                if shebang_used {
-                    format!("//\n{}", source)
-                } else {
-                    source.to_string()
-                }
+            if contains_main_method(content) {
+                (manifest, path.clone(), source.to_string(), None, false)
             } else {
-                format!("fn main() -> Result<(), Box<dyn std::error::Error+Sync+Send>> {{    {{\n{}    }}\n    Ok(())\n}}", source)
-            };
-            (manifest, source, consts::FILE_TEMPLATE, false)
+                (manifest, source_in_package, content.to_string(), Some(consts::FILE_NO_MAIN_TEMPLATE), false)
+            }
         }
         Input::Expr(content) => (
             Manifest::Toml(""),
+            source_in_package,
             content.to_string(),
-            consts::EXPR_TEMPLATE,
+            Some(consts::EXPR_TEMPLATE),
             true,
         ),
         Input::Loop(content, count) => (
             Manifest::Toml(""),
+            source_in_package,
             content.to_string(),
-            if *count {
+            Some(if *count {
                 consts::LOOP_COUNT_TEMPLATE
             } else {
                 consts::LOOP_TEMPLATE
-            },
+            }),
             true,
         ),
     };
@@ -83,13 +83,15 @@ pub fn split_input(
         subs.insert(consts::SCRIPT_PRELUDE_SUB, &prelude_str[..]);
     }
 
-    let source = templates::expand(template, &subs)?;
+    let source = template.map(|template| templates::expand(template, &subs)).transpose()?;
     let part_mani = part_mani.into_toml()?;
     info!("part_mani: {:?}", part_mani);
     info!("source: {:?}", source);
 
+    let source_path_str = source_path.to_str().ok_or_else(|| format!("Unable to stringify {source_path:?}"))?;
+
     // It's-a mergin' time!
-    let def_mani = default_manifest(input, bin_name, script_name, toolchain);
+    let def_mani = default_manifest(input, bin_name, source_path_str, toolchain);
     let dep_mani = deps_manifest(deps)?;
 
     let mani = merge_manifest(def_mani, part_mani)?;
@@ -101,7 +103,7 @@ pub fn split_input(
     let mani_str = format!("{}", mani);
     info!("manifest: {}", mani_str);
 
-    Ok((mani_str, source))
+    Ok((mani_str, source_path, source))
 }
 
 #[cfg(test)]
@@ -118,7 +120,7 @@ fn test_split_input() {
     let toolchain = None;
     macro_rules! si {
         ($i:expr) => {
-            split_input(&$i, &[], &[], &bin_name, &script_name, toolchain.clone()).ok()
+            split_input(&$i, &[], &[], "", &bin_name, &script_name, toolchain.clone()).ok()
         };
     }
 
@@ -129,7 +131,7 @@ fn test_split_input() {
 
     macro_rules! r {
         ($m:expr, $r:expr) => {
-            Some(($m.into(), $r.into()))
+            Some(($m.into(), "main.rs".into(), $r.into()))
         };
     }
 
@@ -151,7 +153,7 @@ name = "n"
 version = "0.1.0""#,
                 STRIP_SECTION
             ),
-            r#"fn main() {}"#
+            None
         )
     );
 
@@ -174,8 +176,7 @@ name = "n"
 version = "0.1.0""#,
                 STRIP_SECTION
             ),
-            r#"//
-fn main() {}"#
+            None
         )
     );
 
@@ -198,8 +199,7 @@ name = "n"
 version = "0.1.0""#,
                 STRIP_SECTION
             ),
-            r#"#[thingy]
-fn main() {}"#
+            None
         )
     );
 
@@ -208,6 +208,7 @@ fn main() {}"#
             &f(r#"fn main() {}"#),
             &[],
             &[],
+            "",
             &bin_name,
             "main.rs",
             Some("stable".to_string())
@@ -232,7 +233,7 @@ version = "0.1.0"
 toolchain = "stable""#,
                 STRIP_SECTION
             ),
-            r#"fn main() {}"#
+            None
         )
     );
 
@@ -258,10 +259,7 @@ name = "n"
 version = "0.1.0""#,
                 STRIP_SECTION
             ),
-            r#"
----
-fn main() {}
-"#
+            None
         )
     );
 
@@ -287,11 +285,7 @@ name = "n"
 version = "0.1.0""#,
                 STRIP_SECTION
             ),
-            r#"[dependencies]
-time="0.1.25"
----
-fn main() {}
-"#
+            None
         )
     );
 
@@ -317,10 +311,7 @@ name = "n"
 version = "0.1.0""#,
                 STRIP_SECTION
             ),
-            r#"
-// Cargo-Deps: time="0.1.25"
-fn main() {}
-"#
+            None
         )
     );
 
@@ -347,10 +338,7 @@ name = "n"
 version = "0.1.0""#,
                 STRIP_SECTION
             ),
-            r#"
-// Cargo-Deps: time="0.1.25", libc="0.2.5"
-fn main() {}
-"#
+            None
         )
     );
 
@@ -383,17 +371,7 @@ name = "n"
 version = "0.1.0""#,
                 STRIP_SECTION
             ),
-            r#"
-/*!
-Here is a manifest:
-
-```cargo
-[dependencies]
-time = "0.1.25"
-```
-*/
-fn main() {}
-"#
+            None
         )
     );
 }
@@ -401,11 +379,11 @@ fn main() {}
 /**
 Returns a slice of the input string with the leading shebang, if there is one, omitted.
 */
-fn strip_shebang(s: &str) -> (&str, bool) {
+fn strip_shebang(s: &str) -> &str {
     let re_shebang: Regex = Regex::new(r"^#![^\[].*?(\r\n|\n)").unwrap();
     match re_shebang.find(s) {
-        Some(m) => (&s[m.end()..], true),
-        None => (s, false),
+        Some(m) => &s[m.end()..],
+        None => s,
     }
 }
 
@@ -1096,7 +1074,7 @@ Generates a default Cargo manifest for the given input.
 fn default_manifest(
     input: &Input,
     bin_name: &str,
-    script_name: &str,
+    bin_source_path: &str,
     toolchain: Option<String>,
 ) -> toml::value::Table {
     let mut package_map = toml::map::Map::new();
@@ -1144,9 +1122,10 @@ fn default_manifest(
         "name".to_string(),
         toml::value::Value::String(bin_name.to_string()),
     );
+
     bin_map.insert(
         "path".to_string(),
-        toml::value::Value::String(script_name.to_string()),
+        toml::value::Value::String(bin_source_path.to_string()),
     );
 
     let mut mani_map = toml::map::Map::new();

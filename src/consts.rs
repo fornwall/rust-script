@@ -14,8 +14,13 @@ pub const SCRIPT_BODY_SUB: &str = "script";
 /// Substitution for the script prelude.
 pub const SCRIPT_PRELUDE_SUB: &str = "prelude";
 
-/// The template used for script file inputs.
-pub const FILE_TEMPLATE: &str = r#"#{script}"#;
+/// The template used for script file inputs that doesn't have main function.
+pub const FILE_NO_MAIN_TEMPLATE: &str = r#"
+fn main() -> Result<(), Box<dyn std::error::Error+Sync+Send>> {
+    {#{script}}
+    Ok(())
+}
+"#;
 
 /// The template used for `--expr` input.
 pub const EXPR_TEMPLATE: &str = r#"

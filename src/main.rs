@@ -261,10 +261,11 @@ fn generate_package(action: &InputAction) -> MainResult<()> {
 
     info!("generating Cargo package...");
     let mani_path = action.manifest_path();
-    let script_path = action.script_path();
 
     overwrite_file(&mani_path, &action.manifest)?;
-    overwrite_file(&script_path, &action.script)?;
+    if let Some(script) = &action.script {
+        overwrite_file(&action.script_path, script)?;
+    }
 
     info!("disarming pkg dir cleanup...");
     cleanup_dir.disarm();
@@ -293,7 +294,8 @@ struct InputAction {
     /// Directory where the package should live.
     pkg_path: PathBuf,
 
-    script_name: String,
+    /// Path of the source code that Cargo.toml refers.
+    script_path: PathBuf,
 
     /**
     Is the package directory in the cache?
@@ -315,8 +317,8 @@ struct InputAction {
     /// The package manifest contents.
     manifest: String,
 
-    /// The script source.
-    script: String,
+    /// The script source in case it has to be written.
+    script: Option<String>,
 
     /// Did the user ask to run tests or benchmarks?
     build_kind: BuildKind,
@@ -328,10 +330,6 @@ struct InputAction {
 impl InputAction {
     fn manifest_path(&self) -> PathBuf {
         self.pkg_path.join("Cargo.toml")
-    }
-
-    fn script_path(&self) -> PathBuf {
-        self.pkg_path.join(&self.script_name)
     }
 
     fn cargo(&self, script_args: &[String]) -> MainResult<Command> {
@@ -359,14 +357,12 @@ impl InputAction {
         };
 
         if matches!(self.build_kind, BuildKind::Normal) && !self.force_compile {
-            let script_path = self.script_path();
-
             match fs::File::open(&built_binary_path) {
                 Ok(built_binary_file) => {
                     // Use ctime instead of mtime as cargo may copy an already
                     // built binary (with old mtime) here:
                     let built_binary_ctime = built_binary_file.metadata()?.created()?;
-                    match (fs::File::open(script_path), fs::File::open(manifest_path)) {
+                    match (fs::File::open(&self.script_path), fs::File::open(manifest_path)) {
                         (Ok(script_file), Ok(manifest_file)) => {
                             let script_mtime = script_file.metadata()?.modified()?;
                             let manifest_mtime = manifest_file.metadata()?.modified()?;
@@ -470,10 +466,11 @@ fn decide_action_for(
 
     let script_name = format!("{}.rs", input.safe_name());
 
-    let (mani_str, script_str) = manifest::split_input(
+    let (mani_str, script_path, script_str) = manifest::split_input(
         input,
         &deps,
         &prelude,
+        &pkg_path,
         &bin_name,
         &script_name,
         toolchain_version.clone(),
@@ -491,7 +488,7 @@ fn decide_action_for(
         force_compile: args.force,
         execute: !args.gen_pkg_only,
         pkg_path,
-        script_name,
+        script_path,
         using_cache,
         toolchain_version,
         debug,
