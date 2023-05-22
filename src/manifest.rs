@@ -29,9 +29,9 @@ pub fn split_input(
     toolchain: Option<String>,
 ) -> MainResult<(String, PathBuf, Option<String>)> {
     fn contains_main_method(source: &str) -> bool {
-        let re_shebang: Regex =
+        let re_main: Regex =
             Regex::new(r#"(?m)^ *(pub )?(async )?(extern "C" )?fn main *\("#).unwrap();
-        re_shebang.is_match(source)
+        re_main.is_match(source)
     }
 
     let source_in_package = package_path.as_ref().join(script_name);
