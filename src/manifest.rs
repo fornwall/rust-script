@@ -96,12 +96,16 @@ pub fn split_input(
     info!("part_mani: {:?}", part_mani);
     info!("source: {:?}", source);
 
-    let source_path_str = source_path
-        .to_str()
-        .ok_or_else(|| format!("Unable to stringify {source_path:?}"))?;
+    let source_path_from_package = if template.is_some() {
+        script_name
+    } else {
+        source_path
+            .to_str()
+            .ok_or_else(|| format!("Unable to stringify {source_path:?}"))?
+    };
 
     // It's-a mergin' time!
-    let def_mani = default_manifest(input, bin_name, source_path_str, toolchain);
+    let def_mani = default_manifest(input, bin_name, source_path_from_package, toolchain);
     let dep_mani = deps_manifest(deps)?;
 
     let mani = merge_manifest(def_mani, part_mani)?;
@@ -411,7 +415,7 @@ println!("Hello")"#)),
                 "{}{}",
                 r#"[[bin]]
 name = "binary-name"
-path = "/package/main.rs"
+path = "main.rs"
 
 [dependencies]
 
@@ -423,12 +427,15 @@ version = "0.1.0""#,
                 STRIP_SECTION
             ),
             "/package/main.rs",
-            Some(r#"
+            Some(
+                r#"
 fn main() -> Result<(), Box<dyn std::error::Error+Sync+Send>> {
     {println!("Hello")}
     Ok(())
 }
-"#.to_string())
+"#
+                .to_string()
+            )
         )
     );
 }
