@@ -20,7 +20,7 @@ jobs:
       with:
         toolchain: ${{ matrix.rust }}
     - name: Run unit tests
-      run: rustc --version && cargo --version && cargo test
+      run: rustc --version && cargo --version && cargo test --features online_tests
     - name: Run script tests
       if: runner.os != 'Windows'
       run: |

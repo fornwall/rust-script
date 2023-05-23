@@ -28,6 +28,7 @@ fn test_expr_temporary() {
     assert!(out.success());
 }
 
+#[cfg_attr(not(feature = "online_tests"), ignore)]
 #[test]
 fn test_expr_dep() {
     let out = rust_script!(
