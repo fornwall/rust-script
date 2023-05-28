@@ -1,3 +1,4 @@
+#[cfg_attr(not(feature = "online_tests"), ignore)]
 #[test]
 fn test_script_explicit() {
     let out = rust_script!("-d", "boolinator", "tests/data/script-explicit.rs").unwrap();
@@ -7,6 +8,7 @@ fn test_script_explicit() {
     .unwrap()
 }
 
+#[cfg_attr(not(feature = "online_tests"), ignore)]
 #[test]
 fn test_script_full_block() {
     let out = rust_script!("tests/data/script-full-block.rs").unwrap();
@@ -16,6 +18,7 @@ fn test_script_full_block() {
     .unwrap()
 }
 
+#[cfg_attr(not(feature = "online_tests"), ignore)]
 #[test]
 fn test_script_full_line() {
     let out = rust_script!("tests/data/script-full-line.rs").unwrap();
@@ -25,6 +28,7 @@ fn test_script_full_line() {
     .unwrap()
 }
 
+#[cfg_attr(not(feature = "online_tests"), ignore)]
 #[test]
 fn test_script_full_line_without_main() {
     let out = rust_script!("tests/data/script-full-line-without-main.rs").unwrap();
@@ -61,6 +65,7 @@ fn test_script_no_deps() {
     .unwrap()
 }
 
+#[cfg_attr(not(feature = "online_tests"), ignore)]
 #[test]
 fn test_script_short() {
     let out = rust_script!("tests/data/script-short.rs").unwrap();
@@ -70,6 +75,7 @@ fn test_script_short() {
     .unwrap()
 }
 
+#[cfg_attr(not(feature = "online_tests"), ignore)]
 #[test]
 fn test_script_short_without_main() {
     let out = rust_script!("tests/data/script-short-without-main.rs").unwrap();
@@ -133,6 +139,7 @@ fn test_script_including_relative() {
     .unwrap()
 }
 
+#[cfg_attr(not(feature = "online_tests"), ignore)]
 #[test]
 fn script_with_same_name_as_dependency() {
     let out = rust_script!("tests/data/time.rs").unwrap();
@@ -150,6 +157,7 @@ fn script_without_main_question_mark() {
         .starts_with("Error: Os { code: 2, kind: NotFound, message:"));
 }
 
+#[cfg_attr(not(feature = "online_tests"), ignore)]
 #[test]
 fn test_script_async_main() {
     let out = rust_script!("tests/data/script-async-main.rs").unwrap();
@@ -159,6 +167,7 @@ fn test_script_async_main() {
     .unwrap()
 }
 
+#[cfg_attr(not(feature = "online_tests"), ignore)]
 #[test]
 fn test_pub_fn_main() {
     let out = rust_script!("tests/data/pub-fn-main.rs").unwrap();
@@ -177,6 +186,7 @@ fn test_cargo_target_dir_env() {
     .unwrap()
 }
 
+#[cfg_attr(not(feature = "online_tests"), ignore)]
 #[test]
 fn test_outer_line_doc() {
     let out = rust_script!("tests/data/outer-line-doc.rs").unwrap();
@@ -262,6 +272,7 @@ fn test_same_flags() {
 }
 
 #[cfg(unix)]
+#[cfg_attr(not(feature = "online_tests"), ignore)]
 #[test]
 fn test_extern_c_main() {
     let out = rust_script!("tests/data/extern-c-main.rs").unwrap();

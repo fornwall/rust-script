@@ -43,3 +43,7 @@ scan-rules = "0.2"
 
 [profile.release]
 lto = true
+
+[features]
+default=[]
+online_tests=[]
