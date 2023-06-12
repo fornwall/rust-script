@@ -281,3 +281,20 @@ fn test_extern_c_main() {
     )
     .unwrap()
 }
+
+#[test]
+#[cfg_attr(not(feature = "online_tests"), ignore)]
+fn test_script_multiple_deps() {
+    let out = rust_script!(
+        "-d",
+        "serde_json=1.0.96",
+        "-d",
+        "anyhow=1.0.71",
+        "tests/data/script-using-anyhow-and-serde.rs"
+    )
+    .unwrap();
+    scan!(out.stdout_output();
+        ("Ok") => ()
+    )
+    .unwrap()
+}
