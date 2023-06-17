@@ -359,9 +359,12 @@ impl InputAction {
         if matches!(self.build_kind, BuildKind::Normal) && !self.force_compile {
             match fs::File::open(&built_binary_path) {
                 Ok(built_binary_file) => {
-                    // Use ctime instead of mtime as cargo may copy an already
-                    // built binary (with old mtime) here:
-                    let built_binary_ctime = built_binary_file.metadata()?.created()?;
+                    // When possible, use creation time instead of modified time as cargo may copy
+                    // an already built binary (with old modified time):
+                    let built_binary_time = built_binary_file
+                        .metadata()?
+                        .created()
+                        .unwrap_or(built_binary_file.metadata()?.modified()?);
                     match (
                         fs::File::open(&self.script_path),
                         fs::File::open(manifest_path),
@@ -369,8 +372,8 @@ impl InputAction {
                         (Ok(script_file), Ok(manifest_file)) => {
                             let script_mtime = script_file.metadata()?.modified()?;
                             let manifest_mtime = manifest_file.metadata()?.modified()?;
-                            if built_binary_ctime.cmp(&script_mtime).is_ge()
-                                && built_binary_ctime.cmp(&manifest_mtime).is_ge()
+                            if built_binary_time.cmp(&script_mtime).is_ge()
+                                && built_binary_time.cmp(&manifest_mtime).is_ge()
                             {
                                 debug!("Keeping old binary");
                                 return Ok(execute_command());
