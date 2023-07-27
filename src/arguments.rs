@@ -9,6 +9,7 @@ pub struct Args {
     pub expr: bool,
     pub loop_: bool,
     pub count: bool,
+    pub base_path: Option<String>,
     pub pkg_path: Option<String>,
     pub gen_pkg_only: bool,
     pub cargo_output: bool,
@@ -70,6 +71,12 @@ impl Args {
             )
 
             // Options that impact the script being executed.
+            .arg(Arg::new("base-path")
+                .help("Base path for resolving dependencies")
+                .short('b')
+                .long("base-path")
+                .num_args(0..=1)
+            )
             .arg(Arg::new("cargo-output")
                 .help("Show output from cargo when building")
                 .short('c')
@@ -208,6 +215,7 @@ impl Args {
             loop_: m.get_flag("loop"),
             count: m.get_flag("count"),
 
+            base_path: m.get_one::<String>("base-path").map(Into::into),
             pkg_path: m.get_one::<String>("pkg_path").map(Into::into),
             gen_pkg_only: m.get_flag("gen_pkg_only"),
             cargo_output: m.get_flag("cargo-output"),

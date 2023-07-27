@@ -19,8 +19,10 @@ Splits input into a complete Cargo manifest and unadultered Rust source.
 
 Unless we have prelude items to inject, in which case it will be *slightly* adulterated.
 */
+#[allow(clippy::too_many_arguments)]
 pub fn split_input(
     input: &Input,
+    base_path: &Path,
     deps: &[(String, String)],
     prelude_items: &[String],
     package_path: impl AsRef<Path>,
@@ -105,14 +107,14 @@ pub fn split_input(
     };
 
     // It's-a mergin' time!
-    let def_mani = default_manifest(input, bin_name, source_path_from_package, toolchain);
+    let def_mani = default_manifest(bin_name, source_path_from_package, toolchain);
     let dep_mani = deps_manifest(deps)?;
 
     let mani = merge_manifest(def_mani, part_mani)?;
     let mani = merge_manifest(mani, dep_mani)?;
 
     // Fix up relative paths.
-    let mani = fix_manifest_paths(mani, &input.base_path())?;
+    let mani = fix_manifest_paths(mani, base_path)?;
 
     let mani_str = format!("{}", mani);
     info!("manifest: {}", mani_str);
@@ -136,6 +138,7 @@ fn test_split_input() {
         ($i:expr) => {
             split_input(
                 &$i,
+                &$i.base_path(),
                 &[],
                 &[],
                 "/package",
@@ -172,7 +175,7 @@ path = "/dummy/main.rs"
 [package]
 authors = ["Anonymous"]
 edition = "2021"
-name = "n"
+name = "binary-name"
 version = "0.1.0""#,
                 STRIP_SECTION
             ),
@@ -196,7 +199,7 @@ path = "/dummy/main.rs"
 [package]
 authors = ["Anonymous"]
 edition = "2021"
-name = "n"
+name = "binary-name"
 version = "0.1.0""#,
                 STRIP_SECTION
             ),
@@ -220,7 +223,7 @@ path = "/dummy/main.rs"
 [package]
 authors = ["Anonymous"]
 edition = "2021"
-name = "n"
+name = "binary-name"
 version = "0.1.0""#,
                 STRIP_SECTION
             ),
@@ -232,6 +235,7 @@ version = "0.1.0""#,
     assert_eq!(
         split_input(
             &f(r#"fn main() {}"#),
+            &f(r#"fn main() {}"#).base_path(),
             &[],
             &[],
             "",
@@ -252,7 +256,7 @@ path = "/dummy/main.rs"
 [package]
 authors = ["Anonymous"]
 edition = "2021"
-name = "n"
+name = "binary-name"
 version = "0.1.0"
 
 [package.metadata.rustscript]
@@ -282,7 +286,7 @@ path = "/dummy/main.rs"
 [package]
 authors = ["Anonymous"]
 edition = "2021"
-name = "n"
+name = "binary-name"
 version = "0.1.0""#,
                 STRIP_SECTION
             ),
@@ -309,7 +313,7 @@ path = "/dummy/main.rs"
 [package]
 authors = ["Anonymous"]
 edition = "2021"
-name = "n"
+name = "binary-name"
 version = "0.1.0""#,
                 STRIP_SECTION
             ),
@@ -336,7 +340,7 @@ time = "0.1.25"
 [package]
 authors = ["Anonymous"]
 edition = "2021"
-name = "n"
+name = "binary-name"
 version = "0.1.0""#,
                 STRIP_SECTION
             ),
@@ -364,7 +368,7 @@ time = "0.1.25"
 [package]
 authors = ["Anonymous"]
 edition = "2021"
-name = "n"
+name = "binary-name"
 version = "0.1.0""#,
                 STRIP_SECTION
             ),
@@ -398,7 +402,7 @@ time = "0.1.25"
 [package]
 authors = ["Anonymous"]
 edition = "2021"
-name = "n"
+name = "binary-name"
 version = "0.1.0""#,
                 STRIP_SECTION
             ),
@@ -422,7 +426,7 @@ path = "main.rs"
 [package]
 authors = ["Anonymous"]
 edition = "2021"
-name = "n"
+name = "binary-name"
 version = "0.1.0""#,
                 STRIP_SECTION
             ),
@@ -1136,7 +1140,6 @@ time = "*"
 Generates a default Cargo manifest for the given input.
 */
 fn default_manifest(
-    input: &Input,
     bin_name: &str,
     bin_source_path: &str,
     toolchain: Option<String>,
@@ -1144,7 +1147,7 @@ fn default_manifest(
     let mut package_map = toml::map::Map::new();
     package_map.insert(
         "name".to_string(),
-        toml::value::Value::String(input.package_name()),
+        toml::value::Value::String(bin_name.to_owned()),
     );
     package_map.insert(
         "version".to_string(),

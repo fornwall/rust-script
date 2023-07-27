@@ -472,8 +472,14 @@ fn decide_action_for(
 
     let script_name = format!("{}.rs", input.safe_name());
 
+    let base_path = match &args.base_path {
+        Some(path) => Path::new(path).into(),
+        None => input.base_path(),
+    };
+
     let (mani_str, script_path, script_str) = manifest::split_input(
         input,
+        &base_path,
         &deps,
         &prelude,
         &pkg_path,
