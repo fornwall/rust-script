@@ -81,7 +81,7 @@ impl Output {
         assert!(self.success());
         for marker in self.stdout.matches(OUTPUT_MARKER) {
             let i = subslice_offset(&self.stdout, marker).expect("couldn't find marker in output");
-            let before_cp = self.stdout[..i].chars().rev().next().unwrap_or('\n');
+            let before_cp = self.stdout[..i].chars().next_back().unwrap_or('\n');
             if !(before_cp == '\r' || before_cp == '\n') {
                 continue;
             }
