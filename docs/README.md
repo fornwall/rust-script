@@ -27,15 +27,7 @@ With `rust-script` Rust files and expressions can be executed just like a shell 
 You can get an overview of the available options using the `--help` flag.
 
 ## News
-**2023-05-01:** [Version 0.27.0](https://github.com/fornwall/rust-script/releases/tag/0.27.0) has been released, replacing dirs-next with dirs and updating winreg.
-
-**2023-04-14:** [Version 0.26.0](https://github.com/fornwall/rust-script/releases/tag/0.26.0) has been released, detecting `extern "C"` main functions.
-
-**2023-04-11:** [Version 0.25.0](https://github.com/fornwall/rust-script/releases/tag/0.25.0) has been released, fixing whitespace between `main` and `()` not working, and avoids having shebangs cause a line number mismatch.
-
-**2023-04-05:** [Version 0.24.0](https://github.com/fornwall/rust-script/releases/tag/0.24.0) has been released, containing a fix for Windows executable caching not working.
-
-**2023-03-25:** [Version 0.23.0](https://github.com/fornwall/rust-script/releases/tag/0.23.0) has been released, bringing improved performance on subsequent runs, flexibility using `-p`/`--package` by printing the path to the generated package and avoids breakage due to rust toolchain files.
+**2023-07-27:** [Version 0.30.0](https://github.com/fornwall/rust-script/releases/tag/0.30.0) has been released, adding the  `-b`/`--base-path` option which can be used for e.g. Justfile integration.
 
 ## Installation
 
