@@ -573,7 +573,7 @@ impl Input {
     /**
     Return the "safe name" for the input.  This should be filename-safe.
 
-    Currently, nothing is done to ensure this, other than hoping *really hard* that we don't get fed some excessively bizzare input filename.
+    Currently, nothing is done to ensure this, other than hoping *really hard* that we don't get fed some excessively bizarre input filename.
     */
     pub fn safe_name(&self) -> &str {
         use crate::Input::*;
