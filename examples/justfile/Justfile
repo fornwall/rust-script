@@ -1,0 +1,11 @@
+demo:
+    #!/usr/bin/env rust-script --base-path {{justfile_directory()}}
+    //! ```cargo
+    //! [dependencies]
+    //! dummy = { path = "./dummy" }
+    //! ```
+    fn main() {
+       let result = dummy::add(1, 2);
+       println!("result: {}", result);
+    }
+

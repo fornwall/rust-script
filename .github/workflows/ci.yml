@@ -28,6 +28,27 @@ jobs:
         ./tests/scripts/test-runner.sh
         ./tests/scripts/test-runner.sh
 
+  test-examples:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        rust: ["1.64.0", "stable"]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v3
+    - name: Setup rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: ${{ matrix.rust }}
+    - name: Install just
+      uses: taiki-e/install-action@just
+    - name: Install rust-script
+      run: cargo install --path .
+    - name: Test examples
+      run: ./test-examples.sh
+      working-directory: examples
+
   check-format:
     runs-on: ubuntu-latest
     steps:
