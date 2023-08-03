@@ -75,7 +75,7 @@ impl Args {
                 .help("Base path for resolving dependencies")
                 .short('b')
                 .long("base-path")
-                .num_args(0..=1)
+                .num_args(1..=1)
             )
             .arg(Arg::new("cargo-output")
                 .help("Show output from cargo when building")
