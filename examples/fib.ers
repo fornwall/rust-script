@@ -1,0 +1,13 @@
+#!/usr/bin/env rust-script
+
+fn fib(n: i32) -> i32 {
+  match n {
+    1 | 2 => 1,
+    _ => fib(n-1) + fib(n-2)
+  }
+}
+
+fn main() {
+  assert_eq!(fib(30), 832040);
+}
+

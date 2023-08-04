@@ -107,6 +107,7 @@ Useful command-line arguments:
 - `--force`: Force the script to be rebuilt.  Useful if you want to force a recompile with a different toolchain.
 - `--package`: Generate the Cargo package and print the path to it - but don't compile or run it. Effectively "unpacks" the script into a Cargo package.
 - `--test`: Compile and run tests.
+- `--wrapper`: Add a wrapper around the executable. Can be used to run debugging with e.g. `rust-script --wrapper rust-lldb my-script.rs` or benchmarking with `rust-script --wrapper "hyperfine --runs 100" my-script.rs`
 
 ## Executable Scripts
 

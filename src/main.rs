@@ -183,15 +183,14 @@ fn try_main() -> MainResult<i32> {
         return Ok(0);
     }
 
+    let mut cmd = action.command_to_execute(&args.script_args, args.wrapper)?;
     #[cfg(unix)]
     {
-        let mut cmd = action.cargo(&args.script_args)?;
         let err = cmd.exec();
         Err(MainError::from(err))
     }
     #[cfg(not(unix))]
     {
-        let mut cmd = action.cargo(&args.script_args)?;
         let exit_code = cmd.status().map(|st| st.code().unwrap_or(1))?;
         Ok(exit_code)
     }
@@ -332,7 +331,11 @@ impl InputAction {
         self.pkg_path.join("Cargo.toml")
     }
 
-    fn cargo(&self, script_args: &[String]) -> MainResult<Command> {
+    fn command_to_execute(
+        &self,
+        script_args: &[String],
+        wrapper: Option<String>,
+    ) -> MainResult<Command> {
         let release_mode = !self.debug && !matches!(self.build_kind, BuildKind::Bench);
 
         let built_binary_path = platform::binary_cache_path()
@@ -351,9 +354,25 @@ impl InputAction {
         let manifest_path = self.manifest_path();
 
         let execute_command = || {
-            let mut cmd = Command::new(&built_binary_path);
-            cmd.args(script_args.iter());
-            cmd
+            if let Some(wrapper) = wrapper {
+                let wrapper_words = shell_words::split(&wrapper).unwrap();
+                if wrapper_words.is_empty() {
+                    return MainResult::Err(MainError::OtherBorrowed(
+                        "The wrapper cannot be empty",
+                    ));
+                }
+                let mut cmd = Command::new(&wrapper_words[0]);
+                if wrapper_words.len() > 1 {
+                    cmd.args(wrapper_words[1..].iter());
+                }
+                cmd.arg(&built_binary_path);
+                cmd.args(script_args.iter());
+                Ok(cmd)
+            } else {
+                let mut cmd = Command::new(&built_binary_path);
+                cmd.args(script_args.iter());
+                Ok(cmd)
+            }
         };
 
         if matches!(self.build_kind, BuildKind::Normal) && !self.force_compile {
@@ -376,7 +395,7 @@ impl InputAction {
                                 && built_binary_time.cmp(&manifest_mtime).is_ge()
                             {
                                 debug!("Keeping old binary");
-                                return Ok(execute_command());
+                                return execute_command();
                             } else {
                                 debug!("Old binary too old - rebuilding");
                             }
@@ -423,7 +442,7 @@ impl InputAction {
 
         if matches!(self.build_kind, BuildKind::Normal) {
             if cmd.status()?.code() == Some(0) {
-                cmd = execute_command();
+                cmd = execute_command()?;
             } else {
                 return Err(MainError::OtherOwned("Could not execute cargo".to_string()));
             }

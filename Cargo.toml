@@ -28,6 +28,7 @@ log = "0.4"
 pulldown-cmark = "0.9"
 regex = "1"
 sha1 = "0.10"
+shell-words = "1"
 tempfile = "3"
 toml = "0.7"
 

@@ -25,6 +25,7 @@ pub struct Args {
     pub install_file_association: bool,
     #[cfg(windows)]
     pub uninstall_file_association: bool,
+    pub wrapper: Option<String>,
 }
 
 impl Args {
@@ -75,7 +76,7 @@ impl Args {
                 .help("Base path for resolving dependencies")
                 .short('b')
                 .long("base-path")
-                .num_args(1..=1)
+                .num_args(1)
             )
             .arg(Arg::new("cargo-output")
                 .help("Show output from cargo when building")
@@ -163,6 +164,12 @@ impl Args {
                 .num_args(1)
                 // Benchmarking currently requires nightly:
                 .conflicts_with("bench")
+            )
+            .arg(Arg::new("wrapper")
+                .help("Wrapper injected before the command to run, e.g. 'rust-lldb' or 'hyperfine --runs 100'")
+                .long("wrapper")
+                .short('w')
+                .num_args(1)
             );
 
         #[cfg(windows)]
@@ -240,6 +247,7 @@ impl Args {
             install_file_association: m.get_flag("install-file-association"),
             #[cfg(windows)]
             uninstall_file_association: m.get_flag("uninstall-file-association"),
+            wrapper: m.get_one::<String>("wrapper").map(Into::into),
         }
     }
 }

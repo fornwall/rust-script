@@ -41,8 +41,10 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: ${{ matrix.rust }}
-    - name: Install just
-      uses: taiki-e/install-action@just
+    - name: Setup homebrew
+      uses: Homebrew/actions/setup-homebrew@master
+    - name: Install hyperfine and just
+      run: brew install hyperfine just
     - name: Install rust-script
       run: cargo install --path .
     - name: Test examples
