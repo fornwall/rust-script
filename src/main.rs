@@ -324,6 +324,9 @@ struct InputAction {
 
     // Name of the built binary
     bin_name: String,
+
+    // How the script was called originally
+    original_script_path: Option<String>,
 }
 
 impl InputAction {
@@ -370,6 +373,9 @@ impl InputAction {
                 Ok(cmd)
             } else {
                 let mut cmd = Command::new(&built_binary_path);
+                if let Some(original_script_path) = &self.original_script_path {
+                    cmd.arg0(original_script_path);
+                }
                 cmd.args(script_args.iter());
                 Ok(cmd)
             }
@@ -527,6 +533,7 @@ fn decide_action_for(
         script: script_str,
         build_kind: args.build_kind,
         bin_name,
+        original_script_path: args.script.clone(),
     })
 }
 
