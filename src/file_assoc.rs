@@ -14,7 +14,7 @@ pub fn install_file_association() -> MainResult<()> {
 
     // We have to remove the `\\?\` prefix because, if we don't, the shell freaks out.
     let rust_script_path = rust_script_path.to_string_lossy();
-    let rust_script_path = if let Some(stripped) = rust_script_path.strip_prefix(r#"\\?\"#) {
+    let rust_script_path = if let Some(stripped) = rust_script_path.strip_prefix(r"\\?\") {
         stripped
     } else {
         &rust_script_path[..]
@@ -28,7 +28,7 @@ pub fn install_file_association() -> MainResult<()> {
         let (cs_ers, _) = hlcr.create_subkey("RustScript.Ers")?;
         cs_ers.set_value("", &"Rust Script")?;
 
-        let (sh_o_c, _) = cs_ers.create_subkey(r#"shell\open\command"#)?;
+        let (sh_o_c, _) = cs_ers.create_subkey(r"shell\open\command")?;
         sh_o_c.set_value("", &format!(r#""{}" "%1" %*"#, rust_script_path))?;
         Ok(())
     })();
@@ -57,9 +57,9 @@ pub fn uninstall_file_association() -> MainResult<()> {
         let mut notify = || ignored_missing = true;
 
         let hlcr = RegKey::predef(wre::HKEY_CLASSES_ROOT);
-        hlcr.delete_subkey(r#"RustScript.Ers\shell\open\command"#)
+        hlcr.delete_subkey(r"RustScript.Ers\shell\open\command")
             .ignore_missing_and(&mut notify)?;
-        hlcr.delete_subkey(r#"RustScript.Ers\shell\open"#)
+        hlcr.delete_subkey(r"RustScript.Ers\shell\open")
             .ignore_missing_and(&mut notify)?;
         hlcr.delete_subkey(r#"RustScript.Ers\shell"#)
             .ignore_missing_and(&mut notify)?;
