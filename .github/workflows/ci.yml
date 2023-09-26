@@ -46,7 +46,7 @@ jobs:
     - name: Install hyperfine and just
       run: brew install hyperfine just
     - name: Install rust-script
-      run: cargo install --path .
+      run: cargo install --locked --path .
     - name: Test examples
       run: ./test-examples.sh
       working-directory: examples
