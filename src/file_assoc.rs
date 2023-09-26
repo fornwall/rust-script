@@ -61,9 +61,9 @@ pub fn uninstall_file_association() -> MainResult<()> {
             .ignore_missing_and(&mut notify)?;
         hlcr.delete_subkey(r"RustScript.Ers\shell\open")
             .ignore_missing_and(&mut notify)?;
-        hlcr.delete_subkey(r#"RustScript.Ers\shell"#)
+        hlcr.delete_subkey(r"RustScript.Ers\shell")
             .ignore_missing_and(&mut notify)?;
-        hlcr.delete_subkey(r#"RustScript.Ers"#)
+        hlcr.delete_subkey(r"RustScript.Ers")
             .ignore_missing_and(&mut notify)?;
     }
 
