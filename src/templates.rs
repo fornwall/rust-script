@@ -6,7 +6,7 @@ use regex::Regex;
 use std::collections::HashMap;
 
 pub fn expand(src: &str, subs: &HashMap<&str, &str>) -> MainResult<String> {
-    let re_sub = Regex::new(r#"#\{([A-Za-z_][A-Za-z0-9_]*)}"#).unwrap();
+    let re_sub = Regex::new(r"#\{([A-Za-z_][A-Za-z0-9_]*)}").unwrap();
 
     // The estimate of final size is the sum of the size of all the input.
     let sub_size = subs.iter().map(|(_, v)| v.len()).sum::<usize>();
