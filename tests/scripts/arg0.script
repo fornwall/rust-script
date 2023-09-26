@@ -1,0 +1,19 @@
+#!/bin/sh
+set -e -u
+
+# See https://github.com/fornwall/rust-script/issues/113
+
+mytmpdir=$(mktemp -d 2>/dev/null || mktemp -d -t 'mytmpdir')
+mkdir $mytmpdir/subdir
+cd "$mytmpdir"
+
+cat > subdir/myscript.rs << EOF
+use std::env;
+
+fn main() {
+  let args: Vec<String> = env::args().collect();
+  println!("{:?}", args);
+}
+EOF
+
+rust-script ./subdir/myscript.rs
