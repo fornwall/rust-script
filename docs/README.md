@@ -27,9 +27,7 @@ With `rust-script` Rust files and expressions can be executed just like a shell 
 You can get an overview of the available options using the `--help` flag.
 
 ## News
-**2023-08-04:** [Version 0.31.0](https://github.com/fornwall/rust-script/releases/tag/0.31.0) has been released, adding support for `-w`/`--wrapper`, which can be used to add a wrapper around the executable, as in `rust-script --debug --wrapper rust-lldb my-script.rs` or `rust-script --wrapper "hyperfine --runs 100" my-script.rs`. See [#54](https://github.com/fornwall/rust-script/issues/54) and [#112](https://github.com/fornwall/rust-script/pull/112).
-
-**2023-07-27:** [Version 0.30.0](https://github.com/fornwall/rust-script/releases/tag/0.30.0) has been released, adding the  `-b`/`--base-path` option which can be used for e.g. Justfile integration. See [#109](https://github.com/fornwall/rust-script/issues/109).
+See the [changelog] for information about releases and changes.
 
 ## Installation
 
