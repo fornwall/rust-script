@@ -1,6 +1,7 @@
 
 [![CI](https://github.com/fornwall/rust-script/workflows/CI/badge.svg)](https://github.com/fornwall/rust-script/actions?query=workflow%3ACI)
 [![Crates.io](https://img.shields.io/crates/v/rust-script.svg)](https://crates.io/crates/rust-script)
+[![MSRV](https://img.shields.io/badge/rustc-1.64.0+-ab6000.svg)](https://blog.rust-lang.org/2022/09/22/Rust-1.64.0.html)
 
 # rust-script
 Run Rust script files without any setup or explicit compilation step, with seamless use of crates specified as dependencies inside the scripts.
