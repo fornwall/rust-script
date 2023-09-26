@@ -326,6 +326,7 @@ struct InputAction {
     bin_name: String,
 
     // How the script was called originally
+    #[cfg(unix)]
     original_script_path: Option<String>,
 }
 
@@ -534,6 +535,7 @@ fn decide_action_for(
         script: script_str,
         build_kind: args.build_kind,
         bin_name,
+        #[cfg(unix)]
         original_script_path: args.script.clone(),
     })
 }
