@@ -373,6 +373,7 @@ impl InputAction {
                 Ok(cmd)
             } else {
                 let mut cmd = Command::new(&built_binary_path);
+                #[cfg(unix)]
                 if let Some(original_script_path) = &self.original_script_path {
                     cmd.arg0(original_script_path);
                 }
