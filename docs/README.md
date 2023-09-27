@@ -27,7 +27,7 @@ With `rust-script` Rust files and expressions can be executed just like a shell 
 You can get an overview of the available options using the `--help` flag.
 
 ## News
-See the [changelog] for information about releases and changes.
+See the [changelog](https://github.com/fornwall/rust-script/blob/main/CHANGELOG.md) for information about releases and changes.
 
 ## Installation
 
