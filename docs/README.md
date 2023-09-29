@@ -43,7 +43,7 @@ Rust 1.64 or later is required.
 
 #### Arch Linux
 
-`rust-script` can be installed from the [community repository](https://archlinux.org/packages/community/x86_64/rust-script/):
+`rust-script` can be installed from the [extra repository](https://archlinux.org/packages/extra/x86_64/rust-script/):
 
 ```sh
 pacman -S rust-script
