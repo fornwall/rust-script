@@ -40,6 +40,7 @@ See the [documentation at rust-script.org](https://rust-script.org).
 - [cargo-play](https://github.com/fanzeyi/cargo-play) - local Rust playground.
 - [runner](https://github.com/stevedonovan/runner/) - tool for running Rust snippets.
 - [scriptisto](https://github.com/igor-petruk/scriptisto) - language-agnostic "shebang interpreter" that enables you to write scripts in compiled languages.
+- [official cargo-script RFC](https://github.com/rust-lang/cargo/issues/12207) - in progress integration into cargo
 
 ## License
 `rust-script` is primarily distributed under the terms of both the [MIT license](LICENSE-MIT) and the [Apache License (Version 2.0)](LICENSE-APACHE).
