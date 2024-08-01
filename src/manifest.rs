@@ -38,7 +38,7 @@ pub fn split_input(
 
     let source_in_package = package_path.as_ref().join(script_name);
     let (part_mani, source_path, source, template, sub_prelude) = match input {
-        Input::File(_, path, content) => {
+        Input::File(_, path, content, _) => {
             assert_eq!(prelude_items.len(), 0);
             let content = strip_shebang(content);
             let (manifest, source) =
@@ -56,14 +56,14 @@ pub fn split_input(
                 )
             }
         }
-        Input::Expr(content) => (
+        Input::Expr(content, _) => (
             Manifest::Toml(""),
             source_in_package,
             content.to_string(),
             Some(consts::EXPR_TEMPLATE),
             true,
         ),
-        Input::Loop(content, count) => (
+        Input::Loop(content, count, _) => (
             Manifest::Toml(""),
             source_in_package,
             content.to_string(),
@@ -152,7 +152,7 @@ fn test_split_input() {
 
     let f = |c: &str| {
         let dummy_path: ::std::path::PathBuf = "/dummy/main.rs".into();
-        Input::File("n".to_string(), dummy_path, c.to_string())
+        Input::File("n".to_string(), dummy_path.clone(), c.to_string(), dummy_path)
     };
 
     macro_rules! r {

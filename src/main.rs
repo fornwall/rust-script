@@ -123,10 +123,33 @@ fn try_main() -> MainResult<i32> {
 
             let script_path = std::env::current_dir()?.join(path);
 
-            Input::File(script_name, script_path, body)
+            let base_path = if let Some(base_path_arg) = &args.base_path {
+                Path::new(base_path_arg).into()
+            } else {
+                script_path
+                    .parent()
+                    .expect("couldn't get parent directory for file input base path")
+                    .into()
+            };
+
+            Input::File(script_name, script_path, body, base_path)
         }
-        (expr, true, false) => Input::Expr(expr),
-        (loop_, false, true) => Input::Loop(loop_, args.count),
+        (expr, true, false) => {
+            let base_path = if let Some(base_path_arg) = &args.base_path {
+                Path::new(base_path_arg).into()
+            } else {
+                std::env::current_dir().expect("couldn't get current directory for input base path")
+            };
+            Input::Expr(expr, base_path)
+        }
+        (loop_, false, true) => {
+            let base_path = if let Some(base_path_arg) = &args.base_path {
+                Path::new(base_path_arg).into()
+            } else {
+                std::env::current_dir().expect("couldn't get current directory for input base path")
+            };
+            Input::Loop(loop_, args.count, base_path)
+        }
         (_, _, _) => {
             panic!("Internal error: Invalid args");
         }
@@ -499,14 +522,9 @@ fn decide_action_for(
 
     let script_name = format!("{}.rs", input.safe_name());
 
-    let base_path = match &args.base_path {
-        Some(path) => Path::new(path).into(),
-        None => input.base_path(),
-    };
-
     let (mani_str, script_path, script_str) = manifest::split_input(
         input,
-        &base_path,
+        input.base_path(),
         &deps,
         &prelude,
         &pkg_path,
@@ -566,23 +584,23 @@ pub enum Input {
     /**
     The input is a script file.
 
-    The tuple members are: the name, absolute path, script contents.
+    The tuple members are: the name, absolute path, script contents, base path.
     */
-    File(String, PathBuf, String),
+    File(String, PathBuf, String, PathBuf),
 
     /**
     The input is an expression.
 
-    The tuple member is: the script contents.
+    The tuple member is: the script contents, base path.
     */
-    Expr(String),
+    Expr(String, PathBuf),
 
     /**
     The input is a loop expression.
 
-    The tuple member is: the script contents, whether the `--count` flag was given.
+    The tuple member is: the script contents, whether the `--count` flag was given, base path.
     */
-    Loop(String, bool),
+    Loop(String, bool, PathBuf),
 }
 
 impl Input {
@@ -593,7 +611,7 @@ impl Input {
         use crate::Input::*;
 
         match self {
-            File(_, path, _) => Some(path),
+            File(_, path, _, _) => Some(path),
             Expr(..) => None,
             Loop(..) => None,
         }
@@ -608,7 +626,7 @@ impl Input {
         use crate::Input::*;
 
         match self {
-            File(name, _, _) => name,
+            File(name, _, _, _) => name,
             Expr(..) => "expr",
             Loop(..) => "loop",
         }
@@ -646,15 +664,11 @@ impl Input {
     /**
     Base directory for resolving relative paths.
     */
-    pub fn base_path(&self) -> PathBuf {
+    pub fn base_path(&self) -> &PathBuf {
         match self {
-            Self::File(_, path, _) => path
-                .parent()
-                .expect("couldn't get parent directory for file input base path")
-                .into(),
-            Self::Expr(..) | Self::Loop(..) => {
-                std::env::current_dir().expect("couldn't get current directory for input base path")
-            }
+            Input::File(_, _, _, base_path)
+            | Input::Expr(_, base_path)
+            | Input::Loop(_, _, base_path) => base_path,
         }
     }
 
@@ -680,7 +694,7 @@ impl Input {
         };
 
         match self {
-            File(_, path, _) => {
+            File(_, path, _, _) => {
                 let mut hasher = Sha1::new();
 
                 // Hash the path to the script.
@@ -692,7 +706,7 @@ impl Input {
                 id.push(&*digest);
                 id
             }
-            Expr(content) => {
+            Expr(content, _) => {
                 let mut hasher = hash_deps();
 
                 hasher.update(content);
@@ -703,7 +717,7 @@ impl Input {
                 id.push(&*digest);
                 id
             }
-            Loop(content, count) => {
+            Loop(content, count, _) => {
                 let mut hasher = hash_deps();
 
                 // Make sure to include the [non-]presence of the `--count` flag in the flag, since it changes the actual generated script output.
@@ -757,12 +771,14 @@ fn test_package_name() {
         "Script".to_string(),
         Path::new("path").into(),
         "script".to_string(),
+        Path::new("path").into(),
     );
     assert_eq!("script", input.package_name());
     let input = Input::File(
         "1Script".to_string(),
         Path::new("path").into(),
         "script".to_string(),
+        Path::new("path").into(),
     );
     assert_eq!("_1script", input.package_name());
 }
