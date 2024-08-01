@@ -69,7 +69,6 @@ mod inner {
 
 #[cfg(windows)]
 pub mod inner {
-    pub use super::*;
 
     /**
     Returns `true` if `rust-script` should force Cargo to use coloured output.
