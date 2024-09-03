@@ -1,7 +1,7 @@
 
 [![CI](https://github.com/fornwall/rust-script/workflows/CI/badge.svg)](https://github.com/fornwall/rust-script/actions?query=workflow%3ACI)
 [![Crates.io](https://img.shields.io/crates/v/rust-script.svg)](https://crates.io/crates/rust-script)
-[![MSRV](https://img.shields.io/badge/rustc-1.64.0+-ab6000.svg)](https://blog.rust-lang.org/2022/09/22/Rust-1.64.0.html)
+[![MSRV](https://img.shields.io/badge/rustc-1.74.0+-ab6000.svg)](https://blog.rust-lang.org/2023/11/16/Rust-1.74.0.html)
 
 # rust-script
 Run Rust script files without any setup or explicit compilation step, with seamless use of crates specified as dependencies inside the scripts.
@@ -30,7 +30,7 @@ $ ./script.rs
 A random number: 9240261453149857564
 ```
 
-Rust version 1.64 or newer required.
+Rust version 1.74 or newer required.
 
 See the [documentation at rust-script.org](https://rust-script.org).
 

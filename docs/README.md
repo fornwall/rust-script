@@ -37,7 +37,7 @@ Install or update `rust-script` using Cargo:
 cargo install rust-script
 ```
 
-Rust 1.64 or later is required.
+Rust 1.74 or later is required.
 
 ### Distro Packages
 
