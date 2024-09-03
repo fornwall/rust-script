@@ -1,0 +1,9 @@
+#!/bin/sh
+
+WITHOUT_BASE_PATH=$(rust-script -e 'println!("{}", std::env::var("RUST_SCRIPT_BASE_PATH").unwrap());')
+PWD=$(pwd)
+if [ "$WITHOUT_BASE_PATH" != "$PWD" ]; then
+	echo "Error: Expected $PWD, was $WITHOUT_BASE_PATH"
+fi
+
+rust-script --base-path /tmp -e 'println!("{}", std::env::var("RUST_SCRIPT_BASE_PATH").unwrap());'
