@@ -1,0 +1,3 @@
+allowed-duplicate-crates = [
+	"bitflags",
+]
