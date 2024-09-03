@@ -2,7 +2,7 @@
 name = "rust-script"
 version = "0.35.0"
 edition = "2021"
-rust-version = "1.64"
+rust-version = "1.74"
 authors = ["Fredrik Fornwall <fredrik@fornwall.net>"]
 description = "Command-line tool to run Rust \"scripts\" which can make use of crates."
 homepage = "https://rust-script.org"
@@ -23,17 +23,17 @@ exclude = [
 [dependencies]
 clap = "4"
 dirs = "5"
-env_logger = "0.10"
+env_logger = "0.11"
 log = "0.4"
-pulldown-cmark = "0.9"
+pulldown-cmark = "0.12"
 regex = "1"
 sha1 = "0.10"
 shell-words = "1"
 tempfile = "3"
-toml = "0.7"
+toml = "0.8"
 
 [target.'cfg(windows)'.dependencies]
-winreg = "0.50"
+winreg = "0.52"
 
 [target.'cfg(unix)'.dependencies]
 is-terminal = "0.4.6"

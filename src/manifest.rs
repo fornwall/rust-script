@@ -1,6 +1,7 @@
 /*!
 This module is concerned with how `rust-script` extracts the manfiest from a script file.
 */
+use pulldown_cmark::TagEnd;
 use regex;
 
 use self::regex::Regex;
@@ -807,7 +808,7 @@ fn scrape_markdown_manifest(content: &str) -> Option<String> {
                 let s = output.get_or_insert(String::new());
                 s.push_str(text);
             }
-            Event::End(Tag::CodeBlock(_)) if found => {
+            Event::End(TagEnd::CodeBlock) if found => {
                 found = false;
             }
             _ => (),
