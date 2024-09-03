@@ -10,7 +10,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        rust: ["1.64.0", "stable"]
+        rust: ["1.74.0", "stable"]
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout source
@@ -32,7 +32,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-        rust: ["1.64.0", "stable"]
+        rust: ["1.74.0", "stable"]
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout source
