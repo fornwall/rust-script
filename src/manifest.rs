@@ -240,7 +240,7 @@ version = "0.1.0""#,
     assert_eq!(
         split_input(
             &f(r#"fn main() {}"#),
-            &f(r#"fn main() {}"#).base_path(),
+            f(r#"fn main() {}"#).base_path(),
             &[],
             &[],
             "",

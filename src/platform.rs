@@ -54,7 +54,6 @@ pub fn binary_cache_path() -> PathBuf {
 
 #[cfg(unix)]
 mod inner {
-    pub use super::*;
     use is_terminal::IsTerminal as _;
 
     /**
