@@ -152,7 +152,12 @@ fn test_split_input() {
 
     let f = |c: &str| {
         let dummy_path: ::std::path::PathBuf = "/dummy/main.rs".into();
-        Input::File("n".to_string(), dummy_path.clone(), c.to_string(), dummy_path)
+        Input::File(
+            "n".to_string(),
+            dummy_path.clone(),
+            c.to_string(),
+            dummy_path,
+        )
     };
 
     macro_rules! r {
