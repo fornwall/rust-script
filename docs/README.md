@@ -49,6 +49,14 @@ Rust 1.74 or later is required.
 pacman -S rust-script
 ```
 
+#### Homebrew
+
+`rust-script` can be installed from the [Homebrew](https://brew.sh/):
+
+```sh
+brew install rust-script
+```
+
 ## Scripts
 
 The primary use for `rust-script` is for running Rust source files as scripts. For example:
