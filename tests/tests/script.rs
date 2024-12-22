@@ -89,6 +89,7 @@ fn test_script_short_without_main() {
 fn test_script_test() {
     let out = rust_script!("--test", "tests/data/script-test.rs").unwrap();
     assert!(out.success());
+    assert!(out.stdout.contains("running 1 test"));
 }
 
 #[test]
