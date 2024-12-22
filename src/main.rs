@@ -480,6 +480,8 @@ impl InputAction {
             } else {
                 return Err(MainError::OtherOwned("Could not execute cargo".to_string()));
             }
+        } else {
+            cmd.args(script_args.iter());
         }
 
         Ok(cmd)
