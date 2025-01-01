@@ -475,7 +475,7 @@ enum Manifest<'s> {
     DepList(&'s str),
 }
 
-impl<'s> Manifest<'s> {
+impl Manifest<'_> {
     pub fn into_toml(self) -> MainResult<toml::value::Table> {
         use self::Manifest::*;
         match self {
