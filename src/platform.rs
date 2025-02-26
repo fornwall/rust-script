@@ -54,7 +54,7 @@ pub fn binary_cache_path() -> PathBuf {
 
 #[cfg(unix)]
 mod inner {
-    use is_terminal::IsTerminal as _;
+    use std::io::IsTerminal as _;
 
     /**
     Returns `true` if `rust-script` should force Cargo to use coloured output.
