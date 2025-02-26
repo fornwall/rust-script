@@ -35,9 +35,6 @@ toml = "0.8"
 [target.'cfg(windows)'.dependencies]
 winreg = "0.52"
 
-[target.'cfg(unix)'.dependencies]
-is-terminal = "0.4.6"
-
 [dev-dependencies]
 lazy_static = "1"
 scan-rules = "0.2"
