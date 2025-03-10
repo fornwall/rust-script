@@ -93,6 +93,20 @@ fn test_script_test() {
 }
 
 #[test]
+fn test_script_test_extra_args_for_cargo() {
+    let out = rust_script!("--test", "tests/data/script-test-extra-args.rs", "--help").unwrap();
+    assert!(out.success());
+    assert!(out.stdout.contains("Usage: cargo test "));
+}
+
+#[test]
+fn test_script_test_extra_args_for_test() {
+    let out = rust_script!("--test", "tests/data/script-test-extra-args.rs", "--", "--nocapture").unwrap();
+    assert!(out.success());
+    assert!(out.stdout.contains("Hello, world!"));
+}
+
+#[test]
 fn test_script_hyphens() {
     use scan_rules::scanner::QuotedString;
     let out = rust_script!("--", "tests/data/script-args.rs", "-NotAnArg").unwrap();
