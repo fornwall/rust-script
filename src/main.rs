@@ -239,26 +239,29 @@ fn clean_cache(max_age: u128) -> MainResult<()> {
     info!("cutoff:     {:>20?} ms", cutoff);
 
     let cache_dir = platform::generated_projects_cache_path();
-    for child in fs::read_dir(cache_dir)? {
-        let child = child?;
-        let path = child.path();
-        if path.is_file() {
-            continue;
-        }
 
-        info!("checking: {:?}", path);
-
-        let remove_dir = || {
-            let meta_mtime = platform::dir_last_modified(&child);
-            info!("meta_mtime: {:>20?} ms", meta_mtime);
-
-            meta_mtime <= cutoff
-        };
-
-        if remove_dir() {
-            info!("removing {:?}", path);
-            if let Err(err) = fs::remove_dir_all(&path) {
-                error!("failed to remove {:?} from cache: {}", path, err);
+    if cache_dir.exists(){
+        for child in fs::read_dir(cache_dir)? {
+            let child = child?;
+            let path = child.path();
+            if path.is_file() {
+                continue;
+            }
+            
+            info!("checking: {:?}", path);
+            
+            let remove_dir = || {
+                let meta_mtime = platform::dir_last_modified(&child);
+                info!("meta_mtime: {:>20?} ms", meta_mtime);
+                
+                meta_mtime <= cutoff
+            };
+            
+            if remove_dir() {
+                info!("removing {:?}", path);
+                if let Err(err) = fs::remove_dir_all(&path) {
+                    error!("failed to remove {:?} from cache: {}", path, err);
+                }
             }
         }
     }
