@@ -22,7 +22,7 @@ jobs:
     - name: Run unit tests
       run: rustc --version && cargo --version && cargo test --features online_tests
       env:
-        CLICOLOR: 0
+        CLICOLOR: "0"
     - name: Run script tests
       if: runner.os != 'Windows'
       run: |
