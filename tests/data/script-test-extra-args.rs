@@ -1,4 +1,6 @@
 fn main() {}
 
 #[test]
-fn test() { println!("Hello, world!"); }
+fn test() {
+    println!("Hello, world!");
+}

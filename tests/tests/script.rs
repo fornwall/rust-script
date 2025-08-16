@@ -94,7 +94,14 @@ fn test_script_test() {
 
 #[test]
 fn test_script_test_extra_args_for_cargo() {
-    let out = rust_script!("--test", "tests/data/script-test-extra-args.rs", "--help").unwrap();
+    let out = rust_script!(
+        "--test",
+        "tests/data/script-test-extra-args.rs",
+        "--help",
+        "--color",
+        "never"
+    )
+    .unwrap();
     assert!(out.success());
     assert!(out.stdout.contains("Usage: cargo test "));
 }
