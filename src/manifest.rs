@@ -517,7 +517,7 @@ Locates a manifest embedded in Rust source.
 
 Returns `Some((manifest, source))` if it finds a manifest, `None` otherwise.
 */
-fn find_embedded_manifest(s: &str) -> Option<(Manifest, &str)> {
+fn find_embedded_manifest(s: &str) -> Option<(Manifest<'_>, &str)> {
     find_short_comment_manifest(s).or_else(|| find_code_block_manifest(s))
 }
 
@@ -729,7 +729,7 @@ fn main() {}
 /**
 Locates a "short comment manifest" in Rust source.
 */
-fn find_short_comment_manifest(s: &str) -> Option<(Manifest, &str)> {
+fn find_short_comment_manifest(s: &str) -> Option<(Manifest<'_>, &str)> {
     let re: Regex = Regex::new(r"^(?i)\s*//\s*cargo-deps\s*:(.*?)(\r\n|\n)").unwrap();
     /*
     This is pretty simple: the only valid syntax for this is for the first, non-blank line to contain a single-line comment whose first token is `cargo-deps:`.  That's it.
@@ -745,7 +745,7 @@ fn find_short_comment_manifest(s: &str) -> Option<(Manifest, &str)> {
 /**
 Locates a "code block manifest" in Rust source.
 */
-fn find_code_block_manifest(s: &str) -> Option<(Manifest, &str)> {
+fn find_code_block_manifest(s: &str) -> Option<(Manifest<'_>, &str)> {
     let re_crate_comment: Regex = {
         Regex::new(
             r"(?x)
