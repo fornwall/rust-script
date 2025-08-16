@@ -22,18 +22,18 @@ exclude = [
 
 [dependencies]
 clap = "4"
-dirs = "5"
+dirs = "6"
 env_logger = "0.11"
 log = "0.4"
-pulldown-cmark = "0.12"
+pulldown-cmark = "0.13"
 regex = "1"
 sha1 = "0.10"
 shell-words = "1"
 tempfile = "3"
-toml = "0.8"
+toml = "0.9"
 
 [target.'cfg(windows)'.dependencies]
-winreg = "0.52"
+winreg = "0.55"
 
 [dev-dependencies]
 lazy_static = "1"
