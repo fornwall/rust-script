@@ -14,7 +14,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout source
-      uses: actions/checkout@v3
+      uses: actions/checkout@v5
     - name: Setup rust
       uses: dtolnay/rust-toolchain@stable
       with:
@@ -36,7 +36,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout source
-      uses: actions/checkout@v3
+      uses: actions/checkout@v5
     - name: Setup rust
       uses: dtolnay/rust-toolchain@stable
       with:
@@ -55,7 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout source
-      uses: actions/checkout@v3
+      uses: actions/checkout@v5
     - name: Setup rust
       uses: dtolnay/rust-toolchain@stable
     - name: Install rustfmt
@@ -70,7 +70,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout source
-      uses: actions/checkout@v3
+      uses: actions/checkout@v5
     - name: Setup rust
       uses: dtolnay/rust-toolchain@stable
     - name: Install rustfmt
@@ -85,7 +85,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout source
-      uses: actions/checkout@v3
+      uses: actions/checkout@v5
     - name: Setup rust
       uses: dtolnay/rust-toolchain@stable
     - name: Build debug
@@ -113,7 +113,7 @@ jobs:
     runs-on: windows-latest
     steps:
     - name: Checkout source
-      uses: actions/checkout@v3
+      uses: actions/checkout@v5
     - name: Setup rust
       uses: dtolnay/rust-toolchain@stable
     - name: Build debug
@@ -131,7 +131,7 @@ jobs:
   security-audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
       - uses: actions-rs/audit-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
