@@ -101,7 +101,13 @@ fn test_script_test_extra_args_for_cargo() {
 
 #[test]
 fn test_script_test_extra_args_for_test() {
-    let out = rust_script!("--test", "tests/data/script-test-extra-args.rs", "--", "--nocapture").unwrap();
+    let out = rust_script!(
+        "--test",
+        "tests/data/script-test-extra-args.rs",
+        "--",
+        "--nocapture"
+    )
+    .unwrap();
     assert!(out.success());
     assert!(out.stdout.contains("Hello, world!"));
 }
